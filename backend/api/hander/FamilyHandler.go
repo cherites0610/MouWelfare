@@ -12,12 +12,17 @@ import (
 )
 
 type FamilyHandler struct {
-	FamilyService service.FamilyService
-	UserRepo      repository.UserRerpository
+	FamilyService       service.FamilyService
+	UserRepo            repository.UserRerpository
+	VerificationService *service.VerificationService
 }
 
-func NewFamilyHandler(familyService service.FamilyService, userRepo repository.UserRerpository) *FamilyHandler {
-	return &FamilyHandler{FamilyService: familyService, UserRepo: userRepo}
+func NewFamilyHandler(familyService service.FamilyService, userRepo repository.UserRerpository, VerificationService *service.VerificationService) *FamilyHandler {
+	return &FamilyHandler{
+		FamilyService:       familyService,
+		UserRepo:            userRepo,
+		VerificationService: VerificationService,
+	}
 }
 
 func (h *FamilyHandler) CreateFamily(c *gin.Context) {
@@ -206,6 +211,43 @@ func (h *FamilyHandler) UpdataMember(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "成員權限更新成功"})
+}
+
+func (h *FamilyHandler) GetFamilyCode(c *gin.Context) {
+	id := c.Param("id")
+	parsedID, _ := strconv.ParseUint(id, 10, 32)
+	code := h.VerificationService.GenerateCode(models.CodeData{
+		CodeMode: 2,
+		FmailyID: func(id uint) *uint { return &id }(uint(parsedID)),
+		UserID:   nil,
+		Email:    "",
+	})
+
+	c.JSON(http.StatusOK, code)
+}
+
+func (h *FamilyHandler) JoinFamilyByCode(c *gin.Context) {
+	code := c.Param("code")
+	userID, exists := c.Get("user_id")
+
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "無法獲取用戶 ID"})
+		return
+	}
+
+	verify, data := h.VerificationService.VerifyCode(code, "")
+	if !verify {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "驗證碼錯誤"})
+		return
+	}
+
+	err := h.FamilyService.JoinFamily(userID.(uint), *data.FmailyID, 3) // 3 是代表成員
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "成功加入家庭"})
 }
 
 func ToFamilyResponse(family *models.Family, userRepo repository.UserRerpository) dto.FamilyResponse {

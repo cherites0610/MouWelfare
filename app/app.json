@@ -18,7 +18,7 @@
               "NSIncludesSubdomawins": true,
               "NSExceptionAllowsInsecureHTTPLoads": true
             },
-            "172.20.10.2": {
+            "192.168.0.101": {
               "NSExceptionAllowsInsecureHTTPLoads": true
             }
           }
@@ -61,7 +61,12 @@
         }
       }
     ],
-    "@xmartlabs/react-native-line"
+    "expo-camera",
+    {
+      "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera",
+      "microphonePermission": "Allow $(PRODUCT_NAME) to access your microphone",
+      "recordAudioAndroid": true
+    }
   ],
   "experiments": {
     "typedRoutes": true

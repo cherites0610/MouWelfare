@@ -1,4 +1,4 @@
-import { registerApi } from '@/src/api/userApi';
+import { registerApi, ResponseType } from '@/src/api/userApi';
 import { COLORS } from '@/src/utils/colors';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -12,7 +12,6 @@ import {
   StyleSheet,
   ScrollView, // 使用 ScrollView 防止內容超出螢幕
   Dimensions,   // 用於獲取螢幕寬度
-  Platform,     // 可能需要針對不同平台微調
   Alert,         // 臨時用於按鈕點擊提示
   Keyboard
 } from 'react-native';
@@ -25,43 +24,33 @@ export default function Register() {
   const [account, setAccount] = useState('');
   const [password, setPassword] = useState('');
   const [email, setEmail] = useState('');
-  const route = useRouter();
+  const [isLoading, setIsLoading] = useState(false);
+  const router = useRouter();
 
-  // 臨時的按鈕處理函數
   const handleLogin = async () => {
-    route.navigate("/auth/login")
+    router.navigate("/auth/login")
   };
 
   const handleRegister = async () => {
+    setIsLoading(true)
     if (!account || !password || !email) {
       Alert.alert("錯誤", "請填寫所有欄位");
       return;
     }
 
-    Keyboard.dismiss();
+    const result: ResponseType = await registerApi({
+      account: account, // 將 username 傳遞給 API 的 account 欄位
+      password: password,
+      email: email
+    })
 
-    try {
-      console.log('Calling register function...'); // Log: 準備呼叫 API
-      const result = await registerApi({
-        account: account, // 將 username 傳遞給 API 的 account 欄位
-        password: password,
-        email: email
-      });
-
-      if (result) { // 你需要根據實際的 result 結構來判斷是否成功
-        Alert.alert("註冊成功", `帳號: ${account}\n郵箱: ${email}`);
-        // 可以在成功後導航
-        route.navigate("/auth/verify");
-      } else {
-        // 從 result 中獲取錯誤訊息，如果有的話
-        Alert.alert("註冊失敗");
-      }
-
-    } catch (error) {
-      console.error("Error during registration:", error); // Log: 捕捉到的錯誤
-      // 顯示一個通用的錯誤訊息
-      Alert.alert("註冊出錯", "發生預期外的錯誤，請檢查網路或稍後再試。");
+    if (result.status_code != 200) {
+      Alert.alert("註冊出錯", result.message);
+      return
+    } else {
+      router.navigate(`/auth/verify/${email}`);
     }
+    setIsLoading(false)
   };
 
 
@@ -131,12 +120,15 @@ export default function Register() {
               keyboardType="email-address" // 或 default
               autoCapitalize="none"
               value={email}
-              onChangeText={setEmail}
+              onChangeText={(email) => {
+                setEmail(email);
+                router.setParams({ email: email });
+              }}
             />
           </View>
 
           {/* --- 登入按鈕 --- */}
-          <TouchableOpacity style={styles.registerButton} onPress={handleRegister}>
+          <TouchableOpacity disabled={isLoading} style={styles.registerButton} onPress={handleRegister}>
             <Text style={styles.registerButtonText}>註冊</Text>
           </TouchableOpacity>
         </View>
@@ -144,7 +136,7 @@ export default function Register() {
         <View style={{ alignSelf: 'center', marginBottom: 10, justifyContent: 'center' }}>
           <Text style={styles.orText}>or</Text>
           {/* --- 創建帳號連結 --- */}
-          <TouchableOpacity onPress={handleLogin}>
+          <TouchableOpacity disabled={isLoading} onPress={handleLogin}>
             <Text style={styles.loginLinkText}>登入</Text>
           </TouchableOpacity>
         </View>

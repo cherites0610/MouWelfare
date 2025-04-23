@@ -13,6 +13,7 @@ import { COLORS } from '@/src/utils/colors';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '@/src/store';
 import { logout } from '@/src/store/slices/userSlice';
+import { setAuthToken, writeConfig } from '@/src/store/slices/configSlice';
 
 export default function Settings() {
     const { user, status } = useSelector((state: RootState) => state.user)
@@ -45,21 +46,18 @@ export default function Settings() {
                     ))}
                 </View>
 
-                {status == "succeeded" ? (
-                    <TouchableOpacity
-                        style={[styles.bottomButton, styles.logoutButton]}
-                        activeOpacity={0.8}
-                        onPress={() => dispatch(logout(),route.replace("home"))}
-                    >
-                        <Text style={styles.bottomButtonText}>登出</Text>
-                    </TouchableOpacity>) : (
-                    <TouchableOpacity
-                        style={[styles.bottomButton, styles.loginButton]}
-                        onPress={() => route.navigate("/auth/login")}
-                        activeOpacity={0.8}
-                    >
-                        <Text style={styles.bottomButtonText}>登入</Text>
-                    </TouchableOpacity>)}
+                <TouchableOpacity
+                    style={[styles.bottomButton, styles.logoutButton]}
+                    activeOpacity={0.8}
+                    onPress={() => {
+                        route.replace("/home");
+                        dispatch(logout());
+                        dispatch(setAuthToken(""));
+                        dispatch(writeConfig());
+                    }}
+                >
+                    <Text style={styles.bottomButtonText}>登出</Text>
+                </TouchableOpacity>
             </View>
         </SafeAreaView>
     );

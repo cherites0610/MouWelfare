@@ -11,7 +11,7 @@ export default function Layout() {
         >
             <Stack.Screen name='login'></Stack.Screen>
             <Stack.Screen name='register'></Stack.Screen>
-            <Stack.Screen name='verify'></Stack.Screen>
+            <Stack.Screen name='verify/[email]'></Stack.Screen>
             <Stack.Screen name='forgetPassword'></Stack.Screen>
         </Stack>
     )

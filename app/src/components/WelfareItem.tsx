@@ -1,10 +1,25 @@
 import { View, Text, StyleSheet } from 'react-native'
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import { COLORS } from '../utils/colors';
 
 type props = { location: string, category: string[], title: string, lightStatus: number }
 
 export default function WelfareItem({ location, category, title, lightStatus }: props) {
+    const [currentCategoryIndex, setCurrentCategoryIndex] = useState(0);
+
+  // Carousel effect: Cycle through categories every 3 seconds
+  useEffect(() => {
+    if (category.length > 1) {
+      const interval = setInterval(() => {
+        setCurrentCategoryIndex((prevIndex) => 
+          prevIndex === category.length - 1 ? 0 : prevIndex + 1
+        );
+      }, 3000); // Change every 3 seconds
+
+      return () => clearInterval(interval); // Cleanup on unmount
+    }
+  }, [category]);
+
     const getCircleColor = () => {
         switch (lightStatus) {
             case 1:
@@ -21,7 +36,7 @@ export default function WelfareItem({ location, category, title, lightStatus }: 
     return (
         <View style={styles.container}>
             <View style={styles.textContainer}>
-                <Text style={styles.subTitle}>{location} / {category.pop()}</Text>
+                <Text style={styles.subTitle}>{location} / {category[currentCategoryIndex]}</Text>
                 <Text style={styles.title}>{title}</Text>
             </View>
             <View style={[styles.circle, { backgroundColor: getCircleColor() }]} />

@@ -1,6 +1,5 @@
 ngrok.exe
-
-.env
+.*
 */google-services.json
 .venv
 */GoogleService-Info.plist

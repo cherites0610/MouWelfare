@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"Mou-Welfare/internal/config"
 	"net/http"
 	"strings"
 
@@ -8,7 +9,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-func JWTAuth() gin.HandlerFunc {
+func JWTAuth(cfg *config.Config) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
@@ -25,7 +26,7 @@ func JWTAuth() gin.HandlerFunc {
 		}
 
 		token, err := jwt.Parse(parts[1], func(token *jwt.Token) (interface{}, error) {
-			return []byte("your-secret-key"), nil // 替換為你的密鑰
+			return []byte(cfg.TOKEN_SERCRET), nil // 替換為你的密鑰
 		})
 
 		if err != nil || !token.Valid {

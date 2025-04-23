@@ -27,9 +27,8 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB, cfg *config.Config, log *logrus.Log
 	welfareService := service.NewWelfareService(welfareRepo)
 
 	// 初始化 Handler
-	verificationHandler := handler.NewVerificationHandler(verificationService)
-	userHandler := handler.NewUserHandler(*userService, authService)
-	familyHandler := handler.NewFamilyHandler(*familyService, *userRepo)
+	userHandler := handler.NewUserHandler(userService, authService, verificationService)
+	familyHandler := handler.NewFamilyHandler(*familyService, *userRepo, verificationService)
 	welfareHandler := handler.NewWelfareHandler(welfareService)
 
 	r.GET("/api/fqa", handler.GetFQAHandler)
@@ -43,14 +42,14 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB, cfg *config.Config, log *logrus.Log
 
 	auth := r.Group("/auth")
 	{
-		auth.POST("/login", userHandler.Login)                 // 登錄
-		auth.POST("/register", userHandler.Register)           // 註冊
-		auth.POST("/code", verificationHandler.SendVerifyCode) // 發送驗證碼
-		auth.POST("/verify", verificationHandler.VerifyCode)   // 驗證驗證碼
+		auth.POST("/login", userHandler.Login)                        // 登錄
+		auth.POST("/register", userHandler.Register)                  // 註冊
+		auth.POST("/verify", userHandler.VerifyEmail)                 // 驗證郵箱
+		auth.POST("/send-verify/:email", userHandler.SendVerifyEmail) // 發送驗證郵件
 	}
 
 	// 受保護路由
-	api := r.Group("/api").Use(middleware.JWTAuth())
+	api := r.Group("/api").Use(middleware.JWTAuth(cfg))
 	{
 		api.GET("/profile", userHandler.GetUserProfile) // 獲取用戶資料
 		api.PUT("/profile", userHandler.UpdateProfile)  // 更新用戶資料
@@ -63,6 +62,9 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB, cfg *config.Config, log *logrus.Log
 		api.GET("/user/family", familyHandler.GetUserFamily)      // 獲取用戶家庭
 		api.PUT("/family/:id", familyHandler.UpdateFamily)        // 更新家庭資料
 		api.PUT("/family/role/:id", familyHandler.UpdataMember)   // 更新家庭成員角色
+
+		api.POST("/family/:code", familyHandler.JoinFamilyByCode) // 創建加入家庭的邀請碼
+		api.GET("/family/:id/code", familyHandler.GetFamilyCode)  // 獲取加入家庭的邀請碼
 
 		api.GET("/lineLoginUrl", userHandler.GetLineLoginUrl)
 	}

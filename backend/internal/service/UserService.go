@@ -33,16 +33,16 @@ func NewUserService(userRepo *repository.UserRerpository, verificationService *V
 func (s *UserService) Register(account, password, email string) (*models.User, error) {
 	// 檢查郵箱，賬號是否存在
 	if _, err := s.UserRepo.FindByAccount(account); err == nil {
-		return &models.User{}, fmt.Errorf("account %s already exists", account)
+		return &models.User{}, fmt.Errorf("賬號已存在")
 	}
 	if _, err := s.UserRepo.FindByEmail(email); err == nil {
-		return &models.User{}, fmt.Errorf("email %s already exists", email)
+		return &models.User{}, fmt.Errorf("郵箱已被使用過")
 	}
 
 	// 密碼加密
 	hashedPassword, err := util.HashPassword(password)
 	if err != nil {
-		return nil, fmt.Errorf("failed to hash password: %v", err)
+		return nil, fmt.Errorf("密碼加密失敗")
 	}
 
 	user := models.User{
@@ -54,13 +54,18 @@ func (s *UserService) Register(account, password, email string) (*models.User, e
 	// 存進資料庫
 	err = s.UserRepo.Create(&user)
 	if err != nil {
-		return &models.User{}, err
+		return &models.User{}, fmt.Errorf("用戶創建失敗")
 	}
 
 	// 發驗證短信
-	err = s.verificationService.SendVerifyCode(models.CodeData{CodeMode: 1, UserID: &user.ID, Email: user.Email})
+
+	// err = s.messageService.SendEmailMessage(user.Email, "驗證碼", fmt.Sprintf("您的驗證碼是: %s", code))
+	// if err != nil {
+	// return nil, fmt.Errorf("郵件發送失敗", err)
+	// }
+	_, err = s.SendVerifyEmailCode(user.Email)
 	if err != nil {
-		return &models.User{}, err
+		return nil, err
 	}
 
 	s.log.WithFields(logrus.Fields{
@@ -71,30 +76,57 @@ func (s *UserService) Register(account, password, email string) (*models.User, e
 	return &user, nil
 }
 
+func (s *UserService) SendVerifyEmailCode(email string) (*string, error) {
+	// 檢查郵箱是否存在
+	existsUser, err := s.UserRepo.FindByEmail(email)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, fmt.Errorf("郵箱不存在")
+		}
+		return nil, fmt.Errorf("failed to query email: %v", err)
+	}
+
+	code := s.verificationService.GenerateCode(models.CodeData{CodeMode: 1, UserID: &existsUser.ID, Email: existsUser.Email})
+
+	// 發驗證碼
+	// err = s.messageService.SendEmailMessage(existsUser.Email, "驗證碼", fmt.Sprintf("您的驗證碼是: %s", code))
+	// if err != nil {
+	// 	return nil, fmt.Errorf("郵件發送失敗")
+	// }
+
+	fmt.Println("驗證碼:", code)
+
+	s.log.WithFields(logrus.Fields{
+		"email": existsUser.Email,
+	}).Info("Verification code sent successfully")
+
+	return &code, nil
+}
+
 func (s *UserService) Login(account, password string) (*models.User, *string, error) {
 	// 先檢查賬戶是否存在
 	existsUser, err := s.UserRepo.FindByAccount(account)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, nil, fmt.Errorf("invalid account or password") // 統一錯誤訊息
+			return nil, nil, fmt.Errorf("找不到賬號") // 統一錯誤訊息
 		}
 		return nil, nil, fmt.Errorf("failed to query account: %v", err)
 	}
 
 	// 檢查密碼是否正確
 	if !util.CheckPasswordHash(password, existsUser.Password) {
-		return nil, nil, fmt.Errorf("invalid account or password")
+		return nil, nil, fmt.Errorf("密碼錯誤")
 	}
 
 	// 若未驗證則需先驗證
 	if !existsUser.IsVerified {
-		return nil, nil, fmt.Errorf("account not verified")
+		return nil, nil, fmt.Errorf("該賬號還未驗證")
 	}
 
 	// 若已驗證則發 JWT token
 	token, err := s.authService.GenerateToken(existsUser.ID)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to generate token: %v", err)
+		return nil, nil, fmt.Errorf("token 生成失敗")
 	}
 
 	existsUser.Password = "" // 清除密碼
@@ -102,7 +134,7 @@ func (s *UserService) Login(account, password string) (*models.User, *string, er
 	// 發送 LINE 訊息
 	err = s.messageService.SendLineMessage(fmt.Sprintf("%s,您已登入app", *existsUser.Name), *existsUser.LineID)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("LINE 訊息發送失敗")
 	}
 
 	s.log.WithFields(logrus.Fields{

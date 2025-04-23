@@ -33,3 +33,8 @@ type UserUpdateRequest struct {
 	Female      uint   `json:"female" binding:"required"`
 	IsSubscribe bool   `json:"subscribe"`
 }
+
+type UserVerifyEMailRequest struct {
+	Email string `json:"email" binding:"required,email"`
+	Code  string `json:"code" binding:"required"`
+}

@@ -15,31 +15,84 @@ import (
 )
 
 type UserHandler struct {
-	userService service.UserService
-	authService service.AuthService
+	userService         *service.UserService
+	authService         *service.AuthService
+	verificationService *service.VerificationService
 }
 
-func NewUserHandler(userService service.UserService, authService *service.AuthService) *UserHandler {
+func NewUserHandler(userService *service.UserService, authService *service.AuthService, verificationService *service.VerificationService) *UserHandler {
 	return &UserHandler{
-		userService: userService,
-		authService: *authService,
+		userService:         userService,
+		authService:         authService,
+		verificationService: verificationService,
 	}
 }
 
 func (h *UserHandler) Register(c *gin.Context) {
 	var req dto.UserRegisterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusOK, dto.DTO{
+			StatusCode: 400, Message: "請求參數錯誤", Data: err.Error(),
+		})
 		return
 	}
 
 	User, err := h.userService.Register(req.Account, req.Password, req.Email)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusOK, dto.DTO{
+			StatusCode: 400, Message: err.Error(), Data: err.Error(),
+		})
 		return
 	}
 
-	c.JSON(http.StatusCreated, User)
+	resp := dto.DTO{
+		StatusCode: 200,
+		Message:    "註冊成功",
+		Data:       User,
+	}
+
+	c.JSON(http.StatusCreated, resp)
+}
+
+func (h *UserHandler) VerifyEmail(c *gin.Context) {
+	var req dto.UserVerifyEMailRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusOK, dto.DTO{
+			StatusCode: 400, Message: "驗證碼不能為空", Data: err.Error(),
+		})
+		return
+	}
+
+	verify, _ := h.verificationService.VerifyCode(req.Code, req.Email)
+
+	if !verify {
+		c.JSON(http.StatusOK, dto.DTO{
+			StatusCode: 500, Message: "驗證碼錯誤", Data: verify,
+		})
+		return
+	}
+
+	user, _ := h.userService.UserRepo.FindByEmail(req.Email)
+	user.IsVerified = true
+	h.userService.UserRepo.Save(user)
+
+	c.JSON(http.StatusOK, dto.DTO{
+		StatusCode: 200, Message: "驗證成功", Data: verify})
+}
+
+func (h *UserHandler) SendVerifyEmail(c *gin.Context) {
+	email := c.Param("email")
+	_, err := h.userService.SendVerifyEmailCode(email)
+	if err != nil {
+		c.JSON(http.StatusOK, dto.DTO{
+			StatusCode: 500, Message: "發送驗證碼失敗", Data: err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, dto.DTO{
+		StatusCode: 200, Message: "驗證碼發送成功", Data: nil,
+	})
 }
 
 func (h *UserHandler) Login(c *gin.Context) {
@@ -51,11 +104,26 @@ func (h *UserHandler) Login(c *gin.Context) {
 
 	user, token, err := h.userService.Login(req.Account, req.Password)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
-		return
+		if err.Error() == "該賬號還未驗證" {
+			c.JSON(http.StatusOK, dto.DTO{
+				StatusCode: 401, Message: "該賬號還未驗證", Data: user.Email,
+			})
+			return
+		} else {
+			c.JSON(http.StatusOK, dto.DTO{
+				StatusCode: 400, Message: err.Error(), Data: err.Error(),
+			})
+			return
+		}
 	}
 
-	c.JSON(http.StatusOK, gin.H{"user": ToUserResp(user), "token": token})
+	resp := dto.DTO{
+		StatusCode: 200,
+		Message:    "登入成功",
+		Data:       map[string]interface{}{"token": token, "user": ToUserResp(user)},
+	}
+
+	c.JSON(http.StatusOK, resp)
 }
 
 func (h *UserHandler) UpdateProfile(c *gin.Context) {

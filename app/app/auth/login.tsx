@@ -1,4 +1,4 @@
-import { loginApi } from '@/src/api/userApi';
+import { loginApi, LoginResponse } from '@/src/api/userApi';
 import { COLORS } from '@/src/utils/colors';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -29,52 +29,40 @@ export default function Login() {
   const [account, setAccount] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const route = useRouter();
+  const router = useRouter();
 
   const dispatch = useDispatch<AppDispatch>();
 
   const handleLogin = async () => {
     setIsLoading(true); // <--- 開始載入
-    try {
-      const result = await loginApi({ account: account, password: password });
-      // 確保 result 和 result.user, result.token 存在
-      if (result && result.user && typeof result.token === 'string') {
-        dispatch(login(result.user)); // 假設 login action 存在於 userSlice
-        dispatch(setAuthToken(result.token));
-        // writeConfig 現在會保存包含新 token 的整個 config
-        await dispatch(writeConfig()); // 等待保存完成可能更穩妥
-        route.replace('/home');
-      } else {
-        // API 回傳的資料結構不符合預期
-        throw new Error("登入失敗，伺服器回傳資料錯誤");
-      }
-    } catch (err: any) {
-      // 顯示更具體的錯誤訊息
-      const errorMessage = err?.response?.data?.message || err?.message || "登入時發生未知錯誤";
-      Alert.alert("登入失敗", errorMessage);
-    } finally {
-      setIsLoading(false); // <--- 結束載入 (無論成功或失敗)
+
+    const result = await loginApi({ account: account, password: password });
+    
+    if (result.status_code == 200) {
+      router.replace('/home');
+      const loginResponse = result.data as LoginResponse;
+      dispatch(login(loginResponse.user)); // 假設 login action 存在於 userSlice
+      dispatch(setAuthToken(loginResponse.token));
+    } else if (result.status_code == 401) {
+      Alert.alert("該賬號還未驗證", "請先驗證郵箱")
+      router.push(`/auth/verify/${result.data}`)
+    } else {
+      Alert.alert("登入失敗", result.message);
     }
-  };
+
+    setIsLoading(false)
+  }
 
   const handleVisitorLogin = () => {
-    route.replace("/home")
+    router.replace("/home")
   };
 
   const handleForgotPassword = () => {
-    route.navigate("/auth/forgetPassword")
-  };
-
-  const handleGoogleLogin = () => {
-    Alert.alert("Google 登入", "處理 Google 登入邏輯...");
-  };
-
-  const handleFacebookLogin = () => {
-    Alert.alert("Facebook 登入", "處理 Facebook 登入邏輯...");
+    router.navigate("/auth/forgetPassword")
   };
 
   const handleCreateAccount = () => {
-    route.navigate("/auth/register")
+    router.navigate("/auth/register")
   };
 
 
@@ -148,26 +136,12 @@ export default function Login() {
           <Text style={styles.visitorLoginText}>訪客登入</Text>
         </TouchableOpacity>
 
-        {/* --- 其他登入方式 --- */}
-        <View style={styles.otherLoginContainer}>
-          <Text style={styles.otherLoginText}>其他登入方式</Text>
-          <View style={styles.socialButtonContainer}>
-            {/* Google 登入按鈕 */}
-            <TouchableOpacity style={styles.socialButton} onPress={handleGoogleLogin}>
-              <Ionicons name="logo-google" size={20} color="#fff" />
-            </TouchableOpacity>
-            {/* Facebook 登入按鈕 */}
-            <TouchableOpacity style={styles.socialButton} onPress={handleFacebookLogin}>
-              <Ionicons name="logo-facebook" size={20} color="#fff" />
-            </TouchableOpacity>
-          </View>
-          <Text style={styles.orText}>or</Text>
-        </View>
 
-        {/* --- 創建帳號連結 --- */}
         <TouchableOpacity onPress={handleCreateAccount}>
           <Text style={styles.createAccountText}>創建帳號</Text>
         </TouchableOpacity>
+
+
       </View>
     </ScrollView>
   );
@@ -248,7 +222,6 @@ const styles = StyleSheet.create({
     color: '#666', // 文字顏色
     fontSize: 14,
     marginTop: 5, // 與上方按鈕的微小間距
-    marginBottom: 40, // 與下方分隔區的間距
   },
   otherLoginContainer: {
     alignItems: 'center', // 內容居中
@@ -281,6 +254,7 @@ const styles = StyleSheet.create({
     marginBottom: 0, // 與下方創建帳號連結的間距
   },
   createAccountText: {
+    marginTop: 5,
     color: '#666',
     fontSize: 14,
   },

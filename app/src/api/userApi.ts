@@ -17,16 +17,22 @@ export interface RegisterRequest {
     password: string;
 }
 
+export interface ResponseType {
+    status_code: number
+    message: string
+    data: any
+}
+
 // 保留 login 和 register
-export async function loginApi(credentials: LoginRequest): Promise<LoginResponse> {
-    return apiFetch<LoginResponse>(`/auth/login`, {
+export async function loginApi(credentials: LoginRequest): Promise<ResponseType> {
+    return apiFetch<ResponseType>(`/auth/login`, {
         method: 'POST',
         body: JSON.stringify(credentials),
     });
 }
 
-export async function registerApi(userData: RegisterRequest): Promise<User> {
-    return apiFetch<User>(`/auth/register`, {
+export async function registerApi(userData: RegisterRequest): Promise<ResponseType> {
+    return apiFetch<ResponseType>(`/auth/register`, {
         method: 'POST',
         body: JSON.stringify(userData),
     });
@@ -48,4 +54,20 @@ export async function getLineLoginUrl(token: string): Promise<string> {
             "Authorization": `Bearer ${token}`
         }
     });
+}
+
+export async function verifyCodeApi(email: string, code: string): Promise<ResponseType> {
+    return apiFetch<ResponseType>("/auth/verify", {
+        method: "POST",
+        body: JSON.stringify({
+            email: email,
+            code: code
+        })
+    })
+}
+
+export async function sendVerifyCodeApi(email:string) {
+    return apiFetch<ResponseType>(`/auth/send-verify/${email}`, {
+        method: "POST",
+    })
 }

@@ -36,7 +36,7 @@ func NewVerificationService(userRepository *repository.UserRerpository, messageS
 }
 
 // GenerateCode 生成驗證碼
-func (vs *VerificationService) GenerateCode(data models.CodeData) (string, error) {
+func (vs *VerificationService) GenerateCode(data models.CodeData) string {
 	// 生成隨機驗證碼
 	const (
 		englishChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ" // 大寫英文
@@ -65,50 +65,34 @@ func (vs *VerificationService) GenerateCode(data models.CodeData) (string, error
 	vs.codes[code] = vc
 	vs.mutex.Unlock()
 
-	return code, nil
+	return code
 }
 
-func (vs *VerificationService) VerifyCode(code, email string) bool {
+func (vs *VerificationService) VerifyCode(code, email string) (bool, *models.CodeData) {
 	vs.mutex.RLock()
 	vc, exists := vs.codes[code]
 	vs.mutex.RUnlock()
 
 	if !exists {
-		return false
+		return false, nil
 	}
 
 	// 檢查是否過期
 	if time.Now().After(vc.ExpiresAt) {
 		vs.deleteCode(code)
-		return false
+		return false, nil
 	}
 
 	if vc.Data.Email != email {
 		// 驗證碼與郵件不匹配
-		return false
-	}
-
-	if vc.Data.CodeMode == 1 {
-		println("驗證碼模式為註冊，檢查用戶是否存在")
-		user, err := vs.userRepository.FindByEmail(email)
-		if err != nil {
-			return false
-		}
-		user.IsVerified = true
-		vs.userRepository.Save(user)
-		// 驗證碼模式為登錄，檢查用戶是否存在
-	}
-
-	if vc.Data.CodeMode == 2 {
-		// 驗證碼模式為家庭驗證，檢查家庭ID是否存在
-		println("驗證碼模式為家庭驗證，檢查家庭ID是否存在")
+		return false, nil
 	}
 
 	// 驗證成功，刪除驗證碼
 	vs.mutex.Lock()
 	delete(vs.codes, code)
 	vs.mutex.Unlock()
-	return true
+	return true, &vc.Data
 }
 
 func (vs *VerificationService) deleteCode(code string) {
@@ -153,10 +137,7 @@ func (vs *VerificationService) cleanupExpiredCodes() {
 }
 
 func (vs *VerificationService) SendVerifyCode(data models.CodeData) error {
-	code, err := vs.GenerateCode(data)
-	if err != nil {
-		return err
-	}
+	code := vs.GenerateCode(data)
 
 	vs.messageService.SendEmailMessage(data.Email, "驗證碼", "您的驗證碼是: "+code)
 
