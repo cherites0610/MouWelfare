@@ -1,0 +1,38 @@
+package database
+
+import (
+	"Mou-Welfare/internal/config"
+	"Mou-Welfare/internal/models"
+	"fmt"
+	"os"
+
+	"github.com/sirupsen/logrus"
+	"gorm.io/driver/mysql"
+	"gorm.io/gorm"
+)
+
+var db *gorm.DB
+
+func SetupDatabase(cfg config.Config) (*gorm.DB, error) {
+	user := os.Getenv("DATABASE_user")
+	password := os.Getenv("DATABASE_password")
+	url := os.Getenv("DATABASE_url")
+	dbname := os.Getenv("DATABASE_dbname")
+
+	dsn := fmt.Sprintf("%s:%s@tcp(%s)/%s?charset=utf8mb4&parseTime=True&loc=Local", user, password, url, dbname)
+	DB, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
+	db = DB
+	if err != nil {
+		return nil, err
+	}
+	logrus.Info("連接到數據庫")
+
+	db.SetupJoinTable(&models.User{}, "Families", &models.UserFamily{})
+	if err := db.AutoMigrate(&models.Identity{}, &models.Category{}, &models.Location{}, &models.Family{}, &models.SearchRecord{}, &models.User{}, &models.NickName{}, &models.Welfare{}); err != nil {
+		logrus.Fatalf("AutoMigrate failed: %s", err)
+		return nil, err
+	}
+
+	logrus.Info("遷移成功")
+	return db, nil
+}

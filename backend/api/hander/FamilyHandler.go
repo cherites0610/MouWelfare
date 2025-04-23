@@ -1,0 +1,231 @@
+package handler
+
+import (
+	"Mou-Welfare/api/dto"
+	"Mou-Welfare/internal/models"
+	"Mou-Welfare/internal/repository"
+	"Mou-Welfare/internal/service"
+	"net/http"
+	"strconv"
+
+	"github.com/gin-gonic/gin"
+)
+
+type FamilyHandler struct {
+	FamilyService service.FamilyService
+	UserRepo      repository.UserRerpository
+}
+
+func NewFamilyHandler(familyService service.FamilyService, userRepo repository.UserRerpository) *FamilyHandler {
+	return &FamilyHandler{FamilyService: familyService, UserRepo: userRepo}
+}
+
+func (h *FamilyHandler) CreateFamily(c *gin.Context) {
+	var req dto.CreateFamilyRequest
+
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "無法獲取用戶 ID"})
+		return
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	family, err := h.FamilyService.CreateFamily(req.Name, userID.(uint))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusCreated, family)
+}
+
+func (h *FamilyHandler) DeleteFamily(c *gin.Context) {
+	id := c.Param("id")
+
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "無法獲取用戶 ID"})
+		return
+	}
+
+	parsedID, err := strconv.ParseUint(id, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "無效的家庭 ID"})
+		return
+	}
+
+	err = h.FamilyService.DeleteFamily(uint(parsedID), userID.(uint))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "家庭刪除成功"})
+}
+
+func (h *FamilyHandler) GetFamily(c *gin.Context) {
+	id := c.Param("id")
+	parsedID, err := strconv.ParseUint(id, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "無效的家庭 ID"})
+		return
+	}
+
+	family, err := h.FamilyService.GetFamily(uint(parsedID))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, ToFamilyResponse(family, h.UserRepo))
+}
+
+func (h *FamilyHandler) JoinFamily(c *gin.Context) {
+	id := c.Param("id")
+	parsedID, err := strconv.ParseUint(id, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "無效的家庭 ID"})
+		return
+	}
+
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "無法獲取用戶 ID"})
+		return
+	}
+
+	err = h.FamilyService.JoinFamily(userID.(uint), uint(parsedID), 3) // 3 是代表成員
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "成功加入家庭"})
+}
+
+func (h *FamilyHandler) ExitFamily(c *gin.Context) {
+	id := c.Param("id")
+	parsedID, err := strconv.ParseUint(id, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "無效的家庭 ID"})
+		return
+	}
+
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "無法獲取用戶 ID"})
+		return
+	}
+
+	err = h.FamilyService.ExitFamily(userID.(uint), uint(parsedID))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "成功退出家庭"})
+}
+
+func (h *FamilyHandler) GetUserFamily(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "無法獲取用戶 ID"})
+		return
+	}
+
+	families, err := h.FamilyService.GetFamilyByUser(userID.(uint))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	var familyResponses []dto.FamilyResponse
+	for _, family := range families {
+		familyResponses = append(familyResponses, ToFamilyResponse(&family, h.UserRepo))
+	}
+	c.JSON(http.StatusOK, familyResponses)
+}
+
+func (h *FamilyHandler) UpdateFamily(c *gin.Context) {
+	id := c.Param("id")
+	parsedID, err := strconv.ParseUint(id, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "無效的家庭 ID"})
+		return
+	}
+
+	var req dto.UpdateFamilyRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "無法獲取用戶 ID"})
+		return
+	}
+
+	err = h.FamilyService.UpdateFamilyName(uint(parsedID), userID.(uint), req.Name)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "家庭名稱更新成功"})
+}
+
+func (h *FamilyHandler) UpdataMember(c *gin.Context) {
+	id := c.Param("id")
+	parsedID, err := strconv.ParseUint(id, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "無效的家庭 ID"})
+		return
+	}
+
+	var req dto.UpdateFamilyMemberRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "無法獲取用戶 ID"})
+		return
+	}
+
+	err = h.FamilyService.UpdataMemberRole(userID.(uint), req.UserID, uint(parsedID), req.Role)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "成員權限更新成功"})
+}
+
+func ToFamilyResponse(family *models.Family, userRepo repository.UserRerpository) dto.FamilyResponse {
+	response := dto.FamilyResponse{
+		ID:   family.ID,
+		Name: family.Name,
+	}
+
+	for _, member := range family.Members {
+		user, err := userRepo.FindByID(member.UserID)
+		if err != nil {
+			// 處理錯誤，例如用戶不存在
+			continue
+		}
+		response.Members = append(response.Members, dto.UserFamilyResponse{
+			ID:       member.UserID,
+			NickName: *user.Name,
+			Role:     member.Role,
+		})
+	}
+
+	return response
+}

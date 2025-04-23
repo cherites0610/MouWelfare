@@ -1,0 +1,7 @@
+ngrok.exe
+
+**/.env
+*/google-services.json
+*/GoogleService-Info.plist
+*/bunfig.npmrc
+data
