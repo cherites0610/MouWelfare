@@ -21,7 +21,7 @@ export default function WelfareItem({ location, category, title, lightStatus }: 
     return (
         <View style={styles.container}>
             <View style={styles.textContainer}>
-                <Text style={styles.subTitle}>{location} / {category}</Text>
+                <Text style={styles.subTitle}>{location} / {category.pop()}</Text>
                 <Text style={styles.title}>{title}</Text>
             </View>
             <View style={[styles.circle, { backgroundColor: getCircleColor() }]} />

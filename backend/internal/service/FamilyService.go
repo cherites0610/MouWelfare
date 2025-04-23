@@ -4,14 +4,17 @@ import (
 	"Mou-Welfare/internal/models"
 	"Mou-Welfare/internal/repository"
 	"fmt"
+
+	"github.com/sirupsen/logrus"
 )
 
 type FamilyService struct {
 	FamilyRepo *repository.FamilyRerpository
+	log        *logrus.Logger
 }
 
-func NewFamilyService(familyRepo *repository.FamilyRerpository) *FamilyService {
-	return &FamilyService{FamilyRepo: familyRepo}
+func NewFamilyService(familyRepo *repository.FamilyRerpository, log *logrus.Logger) *FamilyService {
+	return &FamilyService{FamilyRepo: familyRepo, log: log}
 }
 
 func (s *FamilyService) HasUser(userID, familyID uint) bool {
@@ -44,6 +47,8 @@ func (s *FamilyService) CreateFamily(name string, createUserID uint) (*models.Fa
 		return nil, err
 	}
 
+	logrus.Infof("用戶 %d 創建了家庭 %s", createUserID, family.Name)
+
 	return family, nil // 返回新創建的家庭
 }
 
@@ -73,6 +78,8 @@ func (s *FamilyService) JoinFamily(userID, familyId, role uint) error {
 		return err
 	}
 
+	logrus.Infof("用戶 %d 加入了家庭 %s", userID, family.Name)
+
 	return nil
 }
 
@@ -95,6 +102,8 @@ func (s *FamilyService) ExitFamily(userID, familyID uint) error {
 		// 處理錯誤，例如刪除失敗
 		return err
 	}
+
+	logrus.Infof("用戶 %d 離開了家庭 %d", userID, familyID)
 
 	return nil
 }
@@ -134,6 +143,8 @@ func (s *FamilyService) UpdateFamilyName(familyID, userID uint, name string) err
 		return err
 	}
 
+	logrus.Infof("用戶 %d 更新了家庭 %d 的名稱為 %s", userID, familyID, name)
+
 	return nil
 }
 
@@ -155,6 +166,9 @@ func (s *FamilyService) DeleteFamily(id uint, deleteUserID uint) error {
 		// 處理錯誤
 		return err
 	}
+
+	logrus.Infof("用戶 %d 刪除了家庭 %d", deleteUserID, id)
+
 	return nil
 }
 
@@ -205,5 +219,8 @@ func (s *FamilyService) UpdataMemberRole(SetterUserID, TargetUserID, familyID, r
 	if err != nil {
 		return err
 	}
+
+	logrus.Infof("用戶 %d 更新了家庭 %d 的成員 %d 的角色為 %d", SetterUserID, familyID, TargetUserID, role)
+
 	return nil
 }

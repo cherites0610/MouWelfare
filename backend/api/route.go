@@ -3,24 +3,27 @@ package api
 import (
 	handler "Mou-Welfare/api/hander"
 	"Mou-Welfare/api/middleware"
+	"Mou-Welfare/internal/config"
 	"Mou-Welfare/internal/repository"
 	"Mou-Welfare/internal/service"
 
 	"github.com/gin-gonic/gin"
+	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
 )
 
-func SetupRoutes(r *gin.Engine, db *gorm.DB) {
+func SetupRoutes(r *gin.Engine, db *gorm.DB, cfg *config.Config, log *logrus.Logger) {
 	// 初始化 Repository
 	userRepo := repository.NewUserRepository(db)
 	familyRepo := repository.NewFamilyRerpository(db)
 	welfareRepo := repository.NewWelfareRepo(db)
 
 	// 初始化 Service
-	verificationService := service.NewVerificationService(userRepo)
-	authService := service.NewAuthService(userRepo)
-	userService := service.NewUserService(userRepo, verificationService, authService)
-	familyService := service.NewFamilyService(familyRepo)
+	messageService := service.NewMessageService(userRepo, cfg, log)
+	verificationService := service.NewVerificationService(userRepo, messageService, cfg)
+	authService := service.NewAuthService(userRepo, cfg)
+	userService := service.NewUserService(userRepo, verificationService, authService, messageService, cfg, log)
+	familyService := service.NewFamilyService(familyRepo, log)
 	welfareService := service.NewWelfareService(welfareRepo)
 
 	// 初始化 Handler

@@ -1,6 +1,7 @@
 package service
 
 import (
+	"Mou-Welfare/internal/config"
 	"Mou-Welfare/internal/models"
 	"Mou-Welfare/internal/repository"
 	"Mou-Welfare/internal/util"
@@ -12,6 +13,7 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
 )
 
@@ -19,20 +21,23 @@ type UserService struct {
 	UserRepo            *repository.UserRerpository
 	verificationService *VerificationService
 	authService         *AuthService
+	messageService      *MessageService
+	cfg                 *config.Config
+	log                 *logrus.Logger
 }
 
-func NewUserService(userRepo *repository.UserRerpository, verificationService *VerificationService, authService *AuthService) *UserService {
-	return &UserService{UserRepo: userRepo, verificationService: verificationService, authService: authService}
+func NewUserService(userRepo *repository.UserRerpository, verificationService *VerificationService, authService *AuthService, messageService *MessageService, cfg *config.Config, log *logrus.Logger) *UserService {
+	return &UserService{UserRepo: userRepo, verificationService: verificationService, authService: authService, messageService: messageService, cfg: cfg, log: log}
 }
 
 func (s *UserService) Register(account, password, email string) (*models.User, error) {
 	// 檢查郵箱，賬號是否存在
-	// if _, err := s.UserRepo.FindByAccount(account); err == nil {
-	// 	return &models.User{}, fmt.Errorf("account %s already exists", account)
-	// }
-	// if _, err := s.UserRepo.FindByEmail(email); err == nil {
-	// 	return &models.User{}, fmt.Errorf("email %s already exists", email)
-	// }
+	if _, err := s.UserRepo.FindByAccount(account); err == nil {
+		return &models.User{}, fmt.Errorf("account %s already exists", account)
+	}
+	if _, err := s.UserRepo.FindByEmail(email); err == nil {
+		return &models.User{}, fmt.Errorf("email %s already exists", email)
+	}
 
 	// 密碼加密
 	hashedPassword, err := util.HashPassword(password)
@@ -57,6 +62,11 @@ func (s *UserService) Register(account, password, email string) (*models.User, e
 	if err != nil {
 		return &models.User{}, err
 	}
+
+	s.log.WithFields(logrus.Fields{
+		"account": user.Account,
+		"email":   user.Email,
+	}).Info("User registered successfully")
 
 	return &user, nil
 }
@@ -88,6 +98,16 @@ func (s *UserService) Login(account, password string) (*models.User, *string, er
 	}
 
 	existsUser.Password = "" // 清除密碼
+
+	// 發送 LINE 訊息
+	err = s.messageService.SendLineMessage(fmt.Sprintf("%s,您已登入app", *existsUser.Name), *existsUser.LineID)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	s.log.WithFields(logrus.Fields{
+		"account": existsUser.Account,
+	}).Info("User logged in successfully")
 
 	return existsUser, &token, nil
 }
@@ -141,7 +161,7 @@ func (s UserService) GetLineProfileByAccessToken(accessToken string) (string, er
 	httpClient := &http.Client{}
 
 	// 創建 GET 請求
-	req, err := http.NewRequest("GET", "https://api.line.me/v2/profile", nil)
+	req, err := http.NewRequest("GET", s.cfg.LINE_USER_PROFILE_APIURL, nil)
 	if err != nil {
 		return "", fmt.Errorf("failed to create request: %w", err)
 	}
@@ -178,15 +198,15 @@ func (s UserService) GetLineAccessTokenByAuthCode(authCode string) (string, erro
 	data := url.Values{}
 	data.Set("grant_type", "authorization_code")
 	data.Set("code", authCode)
-	data.Set("client_id", "2007306117")
-	data.Set("client_secret", "7e5406e1b1d55ebc089f59849b49b0d4")
-	data.Set("redirect_uri", "https://9845-118-169-236-110.ngrok-free.app/api/LineLoginCallback")
+	data.Set("client_id", s.cfg.LINE_CLIENT_ID)
+	data.Set("client_secret", s.cfg.LINE_CHANNEL_SECRET)
+	data.Set("redirect_uri", fmt.Sprintf("%s/api/LineLoginCallback", s.cfg.DOMAIN))
 
 	// 創建 HTTP 客戶端
 	httpClient := &http.Client{}
 
 	// 創建 POST 請求
-	req, err := http.NewRequest("POST", "https://api.line.me/oauth2/v2.1/token", strings.NewReader(data.Encode()))
+	req, err := http.NewRequest("POST", s.cfg.LINE_TOKEN_APIURL, strings.NewReader(data.Encode()))
 	if err != nil {
 		return "", fmt.Errorf("failed to create request: %w", err)
 	}

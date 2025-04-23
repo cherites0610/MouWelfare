@@ -1,7 +1,9 @@
 ngrok.exe
 
-**/.env
+.env
 */google-services.json
+.venv
 */GoogleService-Info.plist
 */bunfig.npmrc
 data
+*.log

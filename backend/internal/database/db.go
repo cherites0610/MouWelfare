@@ -13,7 +13,7 @@ import (
 
 var db *gorm.DB
 
-func SetupDatabase(cfg config.Config) (*gorm.DB, error) {
+func SetupDatabase(cfg config.Config, log *logrus.Logger) (*gorm.DB, error) {
 	user := os.Getenv("DATABASE_user")
 	password := os.Getenv("DATABASE_password")
 	url := os.Getenv("DATABASE_url")
@@ -25,14 +25,14 @@ func SetupDatabase(cfg config.Config) (*gorm.DB, error) {
 	if err != nil {
 		return nil, err
 	}
-	logrus.Info("連接到數據庫")
+	log.Info("連接到數據庫")
 
 	db.SetupJoinTable(&models.User{}, "Families", &models.UserFamily{})
 	if err := db.AutoMigrate(&models.Identity{}, &models.Category{}, &models.Location{}, &models.Family{}, &models.SearchRecord{}, &models.User{}, &models.NickName{}, &models.Welfare{}); err != nil {
-		logrus.Fatalf("AutoMigrate failed: %s", err)
+		log.Fatalf("AutoMigrate failed: %s", err)
 		return nil, err
 	}
 
-	logrus.Info("遷移成功")
+	log.Info("遷移成功")
 	return db, nil
 }

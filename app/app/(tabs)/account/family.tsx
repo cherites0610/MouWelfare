@@ -22,7 +22,7 @@ export default function Family() {
 
   const handlerClickCard = (index: number) => {
     // Handle card click here, e.g., navigate to family details
-    console.log(`Family card ${index} clicked`)
+    // console.log(`Family card ${index} clicked`)
     route.navigate(("/account/"+index) as any)
   }
 

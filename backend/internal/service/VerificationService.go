@@ -1,6 +1,7 @@
 package service
 
 import (
+	"Mou-Welfare/internal/config"
 	"Mou-Welfare/internal/models"
 	"Mou-Welfare/internal/repository"
 	"math/rand"
@@ -20,13 +21,15 @@ type VerificationService struct {
 	mutex          sync.RWMutex
 	expiration     time.Duration
 	userRepository *repository.UserRerpository
+	messageService *MessageService
 }
 
-func NewVerificationService(userRepository *repository.UserRerpository) *VerificationService {
+func NewVerificationService(userRepository *repository.UserRerpository, messageService *MessageService, cfg *config.Config) *VerificationService {
 	vs := &VerificationService{
 		codes:          make(map[string]*VerificationCode),
-		expiration:     5 * time.Minute, // 驗證碼有效期
+		expiration:     time.Duration(cfg.VERIFICATION_CODE_EXPIRES_IN) * time.Minute, // 驗證碼有效期
 		userRepository: userRepository,
+		messageService: messageService,
 	}
 	go vs.cleanupExpiredCodes()
 	return vs
@@ -132,21 +135,18 @@ func (vs *VerificationService) deleteCode(code string) {
 func (vs *VerificationService) cleanupExpiredCodes() {
 	ticker := time.NewTicker(time.Minute)
 	for range ticker.C {
-		println("開始清理過期驗證碼")
 		vs.mutex.RLock()
 		var expiredCodes []string
 		now := time.Now()
 
 		for code, vc := range vs.codes {
 			if now.After(vc.ExpiresAt) {
-				// println("驗證碼過期:", code)
 				expiredCodes = append(expiredCodes, code)
 			}
 		}
 		vs.mutex.RUnlock()
 
 		for _, code := range expiredCodes {
-			println("刪除過期驗證碼:", code)
 			vs.deleteCode(code)
 		}
 	}
@@ -157,9 +157,8 @@ func (vs *VerificationService) SendVerifyCode(data models.CodeData) error {
 	if err != nil {
 		return err
 	}
-	println("驗證碼:", code)
-	// 傳email給data.email
-	// util.SendEmail(data.Email, "驗證碼", fmt.Sprintf("您的驗證碼是：%s", code))
+
+	vs.messageService.SendEmailMessage(data.Email, "驗證碼", "您的驗證碼是: "+code)
 
 	return nil
 }

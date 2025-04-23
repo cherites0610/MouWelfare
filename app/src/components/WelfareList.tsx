@@ -46,7 +46,7 @@ export default function WelfareList({ listData, refreshing, onRefresh }: Welfare
             try {
                 const result = await Share.share({
                     message:
-                        item.title,
+                        `哞福利向您送來了福利!\n ${item.title} \n 原文鏈接:${item.url}`,
                 });
                 if (result.action === Share.sharedAction) {
                     if (result.activityType) {

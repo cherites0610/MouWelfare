@@ -1,6 +1,7 @@
 package service
 
 import (
+	"Mou-Welfare/internal/config"
 	"Mou-Welfare/internal/models"
 	"Mou-Welfare/internal/repository"
 	"errors"
@@ -17,11 +18,11 @@ type AuthService struct {
 	tokenExpiry time.Duration // token 有效期
 }
 
-func NewAuthService(userRepo *repository.UserRerpository) *AuthService {
+func NewAuthService(userRepo *repository.UserRerpository, cfg *config.Config) *AuthService {
 	return &AuthService{
 		repo:        userRepo,
-		secretKey:   []byte("your-secret-key"), // 應從環境變量加載
-		tokenExpiry: 72 * time.Hour,
+		secretKey:   []byte(cfg.TOKEN_SERCRET), // 應從環境變量加載
+		tokenExpiry: (time.Duration(cfg.VERIFICATION_CODE_EXPIRES_IN)) * time.Hour,
 	}
 }
 

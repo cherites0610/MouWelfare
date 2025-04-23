@@ -1,11 +1,11 @@
-const BASE_URL = 'http://192.168.0.100:8080';
+const BASE_URL = "http://172.20.10.2:8080";
 
 export interface ApiError {
     message: string;
 }
 
 export async function apiFetch<T>(url: string, options: RequestInit = {}): Promise<T> {
-    try {        
+    try {            
         const response = await fetch(`${BASE_URL}${url}`, {
             ...options,
             headers: {
