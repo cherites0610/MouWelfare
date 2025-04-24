@@ -24,7 +24,7 @@ export default function Settings() {
             <View style={styles.container}>
                 <View style={styles.profileSection}>
                     <Image
-                        source={require('../../../assets/images/logo.png')}
+                        source={{uri:user?.avatar_url}}
                         style={styles.avatar}
                     />
                     <Text style={styles.profileText}>

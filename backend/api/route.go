@@ -27,11 +27,14 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB, cfg *config.Config, log *logrus.Log
 	welfareService := service.NewWelfareService(welfareRepo)
 
 	// 初始化 Handler
-	userHandler := handler.NewUserHandler(userService, authService, verificationService)
+	userHandler := handler.NewUserHandler(userService, authService, verificationService, cfg)
 	familyHandler := handler.NewFamilyHandler(*familyService, *userRepo, verificationService)
 	welfareHandler := handler.NewWelfareHandler(welfareService)
 
+	r.Static("/uploads", "./uploads")
+
 	r.GET("/api/fqa", handler.GetFQAHandler)
+	r.GET("/api/avatar/:id", userHandler.GetAvatar) // 獲取用戶頭像
 	r.GET("/api/LineLoginCallback", userHandler.LineLoginCallback)
 
 	welfare := r.Group("/api/welfare")
@@ -51,6 +54,8 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB, cfg *config.Config, log *logrus.Log
 	// 受保護路由
 	api := r.Group("/api").Use(middleware.JWTAuth(cfg))
 	{
+		api.POST("/avatar-upload", userHandler.UploadAvatar) // 上傳頭像
+
 		api.GET("/profile", userHandler.GetUserProfile) // 獲取用戶資料
 		api.PUT("/profile", userHandler.UpdateProfile)  // 更新用戶資料
 

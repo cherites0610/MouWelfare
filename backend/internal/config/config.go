@@ -21,6 +21,7 @@ type Config struct {
 	LINE_SEND_MESSAGE_APIURL     string
 	LINE_TOKEN_APIURL            string
 	LINE_USER_PROFILE_APIURL     string
+	LINE_AUTHORIZATION_APIURL    string
 	SMTP_HOST                    string
 	SMTP_PORT                    string
 	SMTP_USER                    string
@@ -51,6 +52,7 @@ func LoadConfig() *Config {
 		LINE_SEND_MESSAGE_APIURL:     getEnv("LINE_SEND_MESSAGE_APIURL", "https://api.line.me/v2/bot/message/push"),
 		LINE_TOKEN_APIURL:            getEnv("LINE_TOKEN_APIURL", "https://api.line.me/oauth2/v2.1/token"),
 		LINE_USER_PROFILE_APIURL:     getEnv("LINE_USER_PROFILE_APIURL", "https://api.line.me/v2/profile"),
+		LINE_AUTHORIZATION_APIURL:    getEnv("LINE_AUTHORIZATION_APIURL", "https://access.line.me/oauth2/v2.1/authorize"),
 		SMTP_HOST:                    getEnv("SMTP_HOST", "smtp.example.com"),
 		SMTP_PORT:                    getEnv("SMTP_PORT", "587"),
 		SMTP_USER:                    getEnv("SMTP_USER", ""),

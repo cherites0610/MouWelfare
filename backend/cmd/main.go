@@ -5,6 +5,7 @@ import (
 	"Mou-Welfare/internal/config"
 	"Mou-Welfare/internal/database"
 	"Mou-Welfare/internal/logger"
+	"os"
 
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
@@ -20,6 +21,11 @@ func main() {
 	db, err := database.SetupDatabase(*cfg, log)
 	if err != nil {
 		logrus.Fatal("SetUp Database fail", err)
+	}
+
+	// 檢查 uploads 目錄是否存在，若不存在則創建
+	if _, err := os.Stat("uploads"); os.IsNotExist(err) {
+		os.Mkdir("uploads", 0755)
 	}
 
 	// 設置路由

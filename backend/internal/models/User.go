@@ -32,4 +32,5 @@ type User struct {
 	Families     *[]Family       `json:"families" gorm:"many2many:user_families;"`
 	SearchRecord *[]SearchRecord `json:"search_record" gorm:"foreignKey:UserID;references:ID"`
 	LineID       *string         `json:"line_id" gorm:"type:varchar(50);unique"`
+	AvatarURL    *string         `json:"avatar_url" gorm:"type:varchar(255)"`
 }

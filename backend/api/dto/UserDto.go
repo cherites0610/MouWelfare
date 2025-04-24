@@ -10,6 +10,7 @@ type UserResp struct {
 	Identity    []string `json:"identities"`
 	IsSubscribe bool     `json:"subscribe"`
 	LineID      *string  `json:"line_id"` // LINE ID
+	AvatarURL   *string  `json:"avatar_url"`
 }
 
 // UserRegisterRequest 註冊請求體

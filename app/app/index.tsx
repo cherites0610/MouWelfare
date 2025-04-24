@@ -5,7 +5,6 @@ import { RootState, AppDispatch } from '@/src/store'
 import { incrementAppLaunchCount, loadConfig, writeConfig } from '@/src/store/slices/configSlice'
 import { fetchUser } from '@/src/store/slices/userSlice'
 import { View, Text } from 'react-native'
-import AsyncStorage from '@react-native-async-storage/async-storage'
 
 export default function Index() {
   const dispatch = useDispatch<AppDispatch>();

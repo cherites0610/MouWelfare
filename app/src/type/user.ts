@@ -11,7 +11,7 @@ export interface User {
     subscribe: boolean;
     email: string;
     line_id?: string;
-    avatar?: string; // 可選字段
+    avatar_url?: string; // 可選字段
 }
 
 export interface UserState {

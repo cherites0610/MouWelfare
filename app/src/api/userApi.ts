@@ -71,3 +71,18 @@ export async function sendVerifyCodeApi(email:string) {
         method: "POST",
     })
 }
+
+export async function updateAvatarApi(token:string,data:FormData) {
+    return apiFetch<ResponseType>("/api/avatar-upload", {
+        method: "POST",
+        headers: {
+            "Authorization": `Bearer ${token}`,
+        },
+        body:data
+        
+    })
+}
+
+export async function getAvatarApi(userID:string) {
+    return apiFetch<ResponseType>("/api/get")
+}

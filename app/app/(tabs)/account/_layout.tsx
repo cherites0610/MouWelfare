@@ -17,6 +17,7 @@ export default function SettingsLayout() {
       <Stack.Screen name="profile" options={{ title: "賬戶資料設定" }} />
       <Stack.Screen name="family" options={{ title: "家庭" }} />
       <Stack.Screen name="fqa" options={{ title: "常見問題" }} />
+      <Stack.Screen name="edit-profile" options={{title:"編輯資料"}} />
 
       <Stack.Screen name="[familyid]" options={{title:"家庭設定"}} />
     </Stack>

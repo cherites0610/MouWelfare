@@ -2,14 +2,15 @@
 import { AppDispatch, RootState } from '@/src/store';
 import { fetchUser } from '@/src/store/slices/userSlice';
 import { COLORS } from '@/src/utils/colors';
-import { Redirect } from 'expo-router';
+import { Redirect, useRouter } from 'expo-router';
 import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, Button, ActivityIndicator } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 
 export default function Profile() {
   const { user, status, error } = useSelector((state: RootState) => state.user)
-
+  
+  const router = useRouter();
   return (
     <View style={styles.container}>
       <View style={styles.container}>
@@ -17,7 +18,7 @@ export default function Profile() {
         <View style={styles.content}>
           {/* 頭像 */}
           <Image
-            source={require('@/assets/images/logo.png')}
+            source={{uri:user?.avatar_url}}
             style={styles.avatar}
           />
 
@@ -48,7 +49,7 @@ export default function Profile() {
         <TouchableOpacity
           style={styles.editButton}
           activeOpacity={0.8}
-          onPress={() => console.log('Edit pressed')}
+          onPress={() => router.navigate("/account/edit-profile")}
         >
           <Text style={styles.bottomButtonText}>編輯</Text>
         </TouchableOpacity>

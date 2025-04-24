@@ -2,13 +2,17 @@ package handler
 
 import (
 	"Mou-Welfare/api/dto"
+	"Mou-Welfare/internal/config"
 	"Mou-Welfare/internal/models"
 	"Mou-Welfare/internal/service"
 	constants "Mou-Welfare/pkg/constans"
 	"fmt"
 	"net/http"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -18,13 +22,15 @@ type UserHandler struct {
 	userService         *service.UserService
 	authService         *service.AuthService
 	verificationService *service.VerificationService
+	cfg                 *config.Config
 }
 
-func NewUserHandler(userService *service.UserService, authService *service.AuthService, verificationService *service.VerificationService) *UserHandler {
+func NewUserHandler(userService *service.UserService, authService *service.AuthService, verificationService *service.VerificationService, cfg *config.Config) *UserHandler {
 	return &UserHandler{
 		userService:         userService,
 		authService:         authService,
 		verificationService: verificationService,
+		cfg:                 cfg,
 	}
 }
 
@@ -120,7 +126,7 @@ func (h *UserHandler) Login(c *gin.Context) {
 	resp := dto.DTO{
 		StatusCode: 200,
 		Message:    "登入成功",
-		Data:       map[string]interface{}{"token": token, "user": ToUserResp(user)},
+		Data:       map[string]interface{}{"token": token, "user": h.ToUserResp(user)},
 	}
 
 	c.JSON(http.StatusOK, resp)
@@ -139,7 +145,7 @@ func (h *UserHandler) UpdateProfile(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, ToUserResp(user))
+	c.JSON(http.StatusOK, h.ToUserResp(user))
 }
 
 func (h *UserHandler) GetUserProfile(c *gin.Context) {
@@ -167,7 +173,108 @@ func (h *UserHandler) GetUserProfile(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"user": ToUserResp(user), "token": token})
+	c.JSON(http.StatusOK, gin.H{"user": h.ToUserResp(user), "token": token})
+}
+
+func (h *UserHandler) UploadAvatar(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusOK, dto.DTO{
+			StatusCode: 401, Message: "無法獲取用戶 ID", Data: nil,
+		})
+		return
+	}
+	// 獲取上傳的文件
+	file, err := c.FormFile("avatar")
+	if err != nil {
+		c.JSON(http.StatusOK, dto.DTO{
+			StatusCode: 400, Message: "請求參數錯誤", Data: err.Error(),
+		})
+		return
+	}
+
+	// 檢查文件類型（僅允許圖片）
+	ext := filepath.Ext(file.Filename)
+	if ext != ".jpg" && ext != ".jpeg" && ext != ".png" {
+		c.JSON(http.StatusOK, dto.DTO{
+			StatusCode: 400, Message: "僅允許上傳 jpg、jpeg 或 png 格式的圖片", Data: nil,
+		})
+		return
+	}
+
+	file.Filename = fmt.Sprintf("%v_%s_%s", userID, file.Filename, time.Now().Format("20060102150405")) + ext
+
+	// 儲存文件
+	filePath := filepath.Join("uploads", fmt.Sprintf("%v_%s", userID, file.Filename))
+	if err := c.SaveUploadedFile(file, filePath); err != nil {
+		c.JSON(http.StatusOK, dto.DTO{
+			StatusCode: 500, Message: "文件上傳失敗", Data: err.Error(),
+		})
+		return
+	}
+
+	// 更新用戶資料庫中的圖片路徑
+	user, err := h.userService.UserRepo.FindByID(userID.(uint))
+	if err != nil {
+		c.JSON(http.StatusOK, dto.DTO{
+			StatusCode: 404, Message: "用戶不存在", Data: err.Error(),
+		})
+		return
+	}
+
+	// 刪除舊的頭像文件（如果存在）
+	if user.AvatarURL != nil {
+		oldAvatarPath := filepath.Join("uploads", *user.AvatarURL)
+		if err := os.Remove(oldAvatarPath); err != nil {
+			c.JSON(http.StatusOK, dto.DTO{
+				StatusCode: 500, Message: "刪除舊頭像失敗", Data: err.Error(),
+			})
+			return
+		}
+	}
+
+	avatarURL := fmt.Sprintf("/uploads/%v_%s", userID, file.Filename)
+	user.AvatarURL = &avatarURL
+	if err := h.userService.UserRepo.Save(user); err != nil {
+		c.JSON(http.StatusOK, dto.DTO{
+			StatusCode: 500, Message: "更新用戶資料失敗", Data: err.Error(),
+		})
+		return
+	}
+
+	respUrl := fmt.Sprintf("%s/uploads/%v_%s", "http://172.20.10.2:8080", userID, file.Filename)
+
+	c.JSON(http.StatusOK, dto.DTO{
+		StatusCode: 200, Message: "頭像上傳成功", Data: respUrl,
+	})
+}
+
+func (h *UserHandler) GetAvatar(c *gin.Context) {
+	userID := c.Param("id")
+	parsedUserID, err := strconv.ParseUint(userID, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		return
+	}
+
+	user, err := h.userService.UserRepo.FindByID(uint(parsedUserID))
+	if err != nil {
+		c.JSON(http.StatusOK, dto.DTO{
+			StatusCode: 404, Message: "用戶不存在", Data: fmt.Sprintf("%s%s", h.cfg.DOMAIN, "/uploads/default_avatar.png"),
+		})
+		return
+	}
+
+	if user.AvatarURL == nil {
+		c.JSON(http.StatusOK, dto.DTO{
+			StatusCode: 200, Message: "頭像不存在", Data: fmt.Sprintf("%s%s", h.cfg.DOMAIN, "/uploads/default_avatar.png"),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, dto.DTO{
+		StatusCode: 200, Message: "頭像獲取成功", Data: fmt.Sprintf("%s%s", h.cfg.DOMAIN, *user.AvatarURL)},
+	)
 }
 
 func (h *UserHandler) GetLineLoginUrl(c *gin.Context) {
@@ -177,9 +284,9 @@ func (h *UserHandler) GetLineLoginUrl(c *gin.Context) {
 		return
 	}
 
-	baseUrl := "https://access.line.me/oauth2/v2.1/authorize"
-	clientID := "2007306117"
-	redirect_uri := "https://9845-118-169-236-110.ngrok-free.app/api/LineLoginCallback"
+	baseUrl := h.cfg.LINE_AUTHORIZATION_APIURL
+	clientID := h.cfg.LINE_CLIENT_ID
+	redirect_uri := fmt.Sprintf("%s/api/LineLoginCallback", h.cfg.DOMAIN)
 	state := userID // 隨機生成的狀態字符串
 	scope := "profile openid"
 	nonce := userID // 隨機生成的 nonce 字符串
@@ -232,7 +339,7 @@ func (h *UserHandler) LineLoginCallback(c *gin.Context) {
 
 }
 
-func ToUserResp(user *models.User) dto.UserResp {
+func (h *UserHandler) ToUserResp(user *models.User) dto.UserResp {
 	identityID := []uint{}
 	if user.Identities == nil {
 		user.Identities = &[]models.Identity{}
@@ -251,5 +358,6 @@ func ToUserResp(user *models.User) dto.UserResp {
 		Location:    constants.LocationToString(*user.LocationID),
 		Identity:    constants.IdentityToString(identityID),
 		LineID:      user.LineID,
+		AvatarURL:   func() *string { url := fmt.Sprintf("%s%s", h.cfg.DOMAIN, *user.AvatarURL); return &url }(),
 	}
 }
