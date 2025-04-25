@@ -1,16 +1,20 @@
 import { View, Image, TextInput, StyleSheet, TouchableOpacity } from 'react-native'
-import React from 'react'
+import React, { useState } from 'react'
 import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../utils/colors';
 import { useRouter } from 'expo-router';
 
-export default function Search() {
+interface SearchProps {
+  onSearch: (query: string) => void; // 回調函數，傳遞搜尋文字給父組件
+}
+
+export default function Search({ onSearch}:SearchProps) {
   const route = useRouter()
+  const [query, setQuery] = useState(''); // 管理 TextInput 的狀態
 
   return (
     <View style={styles.SearchBar}>
       <Image
-        // Replace with your actual avatar source or a placeholder
         source={require('../../assets/images/logo.png')}
         style={styles.avatar}
       />
@@ -18,6 +22,11 @@ export default function Search() {
         returnKeyType="search"
         enablesReturnKeyAutomatically={true}
         style={styles.input}
+        onChangeText={(text) => {
+          setQuery(text);
+          onSearch(text); // 實時傳遞
+        }}
+        value={query}
         placeholder="Ex. 兒童福利"
         placeholderTextColor="#888"
       />

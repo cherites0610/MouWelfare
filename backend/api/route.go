@@ -6,6 +6,9 @@ import (
 	"Mou-Welfare/internal/config"
 	"Mou-Welfare/internal/repository"
 	"Mou-Welfare/internal/service"
+	"net/http"
+	"os"
+	"path/filepath"
 
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
@@ -28,10 +31,8 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB, cfg *config.Config, log *logrus.Log
 
 	// 初始化 Handler
 	userHandler := handler.NewUserHandler(userService, authService, verificationService, cfg)
-	familyHandler := handler.NewFamilyHandler(*familyService, *userRepo, verificationService)
+	familyHandler := handler.NewFamilyHandler(familyService, userRepo, verificationService, cfg)
 	welfareHandler := handler.NewWelfareHandler(welfareService)
-
-	r.Static("/uploads", "./uploads")
 
 	r.GET("/api/fqa", handler.GetFQAHandler)
 	r.GET("/api/avatar/:id", userHandler.GetAvatar) // 獲取用戶頭像
@@ -73,4 +74,27 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB, cfg *config.Config, log *logrus.Log
 
 		api.GET("/lineLoginUrl", userHandler.GetLineLoginUrl)
 	}
+
+	r.GET("/uploads/*filepath", func(c *gin.Context) {
+		// 獲取請求的文件路徑
+		filePath := c.Param("filepath")
+		// 構建完整的文件路徑（相對於 ./uploads）
+		fullPath := filepath.Join("./uploads", filePath)
+
+		// 檢查文件是否存在
+		if _, err := os.Stat(fullPath); os.IsNotExist(err) {
+			// 如果文件不存在，返回默認資源
+			defaultFile := "./uploads/default_avatar.png" // 假設默認資源是 default.png
+			if _, err := os.Stat(defaultFile); err == nil {
+				c.File(defaultFile)
+				return
+			}
+			// 如果默認文件也不存在，返回 404
+			c.String(http.StatusNotFound, "Default file not found")
+			return
+		}
+
+		// 如果文件存在，直接返回該文件
+		c.File(fullPath)
+	})
 }

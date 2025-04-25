@@ -16,7 +16,7 @@ func NewWelfareRepo(db *gorm.DB) *WelfareRepo {
 
 func (r *WelfareRepo) FindByID(id uint) (*models.Welfare, error) {
 	var welfare models.Welfare
-	err := r.db.Where("id = ?", id).First(&welfare).Error
+	err := r.db.Preload("Identities").Preload("Categories").Preload("Location").Where("id = ?", id).First(&welfare).Error
 	return &welfare, err
 }
 

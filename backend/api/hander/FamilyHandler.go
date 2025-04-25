@@ -2,9 +2,11 @@ package handler
 
 import (
 	"Mou-Welfare/api/dto"
+	"Mou-Welfare/internal/config"
 	"Mou-Welfare/internal/models"
 	"Mou-Welfare/internal/repository"
 	"Mou-Welfare/internal/service"
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -12,16 +14,18 @@ import (
 )
 
 type FamilyHandler struct {
-	FamilyService       service.FamilyService
-	UserRepo            repository.UserRerpository
+	FamilyService       *service.FamilyService
+	UserRepo            *repository.UserRerpository
 	VerificationService *service.VerificationService
+	cfg                 *config.Config
 }
 
-func NewFamilyHandler(familyService service.FamilyService, userRepo repository.UserRerpository, VerificationService *service.VerificationService) *FamilyHandler {
+func NewFamilyHandler(familyService *service.FamilyService, userRepo *repository.UserRerpository, VerificationService *service.VerificationService, cfg *config.Config) *FamilyHandler {
 	return &FamilyHandler{
 		FamilyService:       familyService,
 		UserRepo:            userRepo,
 		VerificationService: VerificationService,
+		cfg:                 cfg,
 	}
 }
 
@@ -86,7 +90,7 @@ func (h *FamilyHandler) GetFamily(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, ToFamilyResponse(family, h.UserRepo))
+	c.JSON(http.StatusOK, h.ToFamilyResponse(family, h.UserRepo))
 }
 
 func (h *FamilyHandler) JoinFamily(c *gin.Context) {
@@ -148,10 +152,11 @@ func (h *FamilyHandler) GetUserFamily(c *gin.Context) {
 		return
 	}
 
-	var familyResponses []dto.FamilyResponse
+	familyResponses := make([]dto.FamilyResponse, 0)
 	for _, family := range families {
-		familyResponses = append(familyResponses, ToFamilyResponse(&family, h.UserRepo))
+		familyResponses = append(familyResponses, h.ToFamilyResponse(&family, h.UserRepo))
 	}
+
 	c.JSON(http.StatusOK, familyResponses)
 }
 
@@ -250,7 +255,7 @@ func (h *FamilyHandler) JoinFamilyByCode(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "成功加入家庭"})
 }
 
-func ToFamilyResponse(family *models.Family, userRepo repository.UserRerpository) dto.FamilyResponse {
+func (h *FamilyHandler) ToFamilyResponse(family *models.Family, userRepo *repository.UserRerpository) dto.FamilyResponse {
 	response := dto.FamilyResponse{
 		ID:   family.ID,
 		Name: family.Name,
@@ -262,10 +267,25 @@ func ToFamilyResponse(family *models.Family, userRepo repository.UserRerpository
 			// 處理錯誤，例如用戶不存在
 			continue
 		}
+
+		if user.Name == nil {
+			user.Name = &user.Account // 如果用戶名稱為空，則使用賬號作為名稱
+		}
+
+		var avatarURL *string
+		if user.AvatarURL != nil {
+			url := fmt.Sprintf("%s%s", h.cfg.DOMAIN, *user.AvatarURL)
+			avatarURL = &url
+		} else {
+			url := fmt.Sprintf("%s%s", h.cfg.DOMAIN, "/uploads/default_avatar.png")
+			avatarURL = &url
+		}
+
 		response.Members = append(response.Members, dto.UserFamilyResponse{
-			ID:       member.UserID,
-			NickName: *user.Name,
-			Role:     member.Role,
+			ID:        member.UserID,
+			NickName:  *user.Name,
+			Role:      member.Role,
+			AvatarURL: *avatarURL,
 		})
 	}
 

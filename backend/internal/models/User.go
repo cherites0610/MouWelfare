@@ -1,22 +1,6 @@
 package models
 
 type User struct {
-	// ID              uint      `json:"id" gorm:"primaryKey"`
-	// Name            *string   `json:"name"`
-	// Account         string    `json:"account"`
-	// Password        string    `json:"password"`
-	// Email           string    `json:"email"`
-	// Birthday        *string   `json:"birthday"`
-	// Female          *uint     `json:"fale"`
-	// Location        *Location `json:"location"`
-	// LocationID      *uint
-	// Identities      *[]Identity `json:"identities" gorm:"many2many:user_identities"`
-	// IsVerified      bool        `json:"is_verified" gorm:"default:false"`
-	// IsSubscribe     bool        `json:"is_subscribe" gorm:"default:false"`
-	// Families        *[]Family   `json:"fmailies" gorm:"many2many:user_familys;"`
-	// SetNickNames    *[]NickName `gorm:"foreignKey:SetterUserID"`
-	// TargetNickNames *[]NickName `gorm:"foreignKey:TargetUserID"`
-
 	ID           uint            `json:"id" gorm:"primaryKey;autoIncrement"`
 	Name         *string         `json:"name" gorm:"type:varchar(10)"`
 	Account      string          `json:"account" gorm:"type:varchar(20);not null;unique"`

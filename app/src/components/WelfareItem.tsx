@@ -8,17 +8,17 @@ export default function WelfareItem({ location, category, title, lightStatus }: 
     const [currentCategoryIndex, setCurrentCategoryIndex] = useState(0);
 
   // Carousel effect: Cycle through categories every 3 seconds
-  useEffect(() => {
-    if (category.length > 1) {
-      const interval = setInterval(() => {
-        setCurrentCategoryIndex((prevIndex) => 
-          prevIndex === category.length - 1 ? 0 : prevIndex + 1
-        );
-      }, 3000); // Change every 3 seconds
+//   useEffect(() => {
+//     if (category.length > 1) {
+//       const interval = setInterval(() => {
+//         setCurrentCategoryIndex((prevIndex) => 
+//           prevIndex === category.length - 1 ? 0 : prevIndex + 1
+//         );
+//       }, 3000); // Change every 3 seconds
 
-      return () => clearInterval(interval); // Cleanup on unmount
-    }
-  }, [category]);
+//       return () => clearInterval(interval); // Cleanup on unmount
+//     }
+//   }, [category]);
 
     const getCircleColor = () => {
         switch (lightStatus) {

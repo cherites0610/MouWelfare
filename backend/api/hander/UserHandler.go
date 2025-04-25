@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -123,6 +124,8 @@ func (h *UserHandler) Login(c *gin.Context) {
 		}
 	}
 
+	user.Password = ""
+
 	resp := dto.DTO{
 		StatusCode: 200,
 		Message:    "登入成功",
@@ -139,7 +142,13 @@ func (h *UserHandler) UpdateProfile(c *gin.Context) {
 		return
 	}
 
-	user, err := h.userService.UpdateProfile(req.UserID, req.Name, req.Birthday, req.Female, req.IsSubscribe)
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "無法獲取用戶 ID"})
+		return
+	}
+
+	user, err := h.userService.UpdateProfile(userID.(uint), req.Name, req.Birthday, req.Female, req.IsSubscribe)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 		return
@@ -224,12 +233,13 @@ func (h *UserHandler) UploadAvatar(c *gin.Context) {
 
 	// 刪除舊的頭像文件（如果存在）
 	if user.AvatarURL != nil {
-		oldAvatarPath := filepath.Join("uploads", *user.AvatarURL)
+		oldAvatarPath := filepath.Join(".", *user.AvatarURL)
 		if err := os.Remove(oldAvatarPath); err != nil {
-			c.JSON(http.StatusOK, dto.DTO{
-				StatusCode: 500, Message: "刪除舊頭像失敗", Data: err.Error(),
-			})
-			return
+			fmt.Println("刪除舊頭像失敗:", err)
+			// c.JSON(http.StatusOK, dto.DTO{
+			// 	StatusCode: 500, Message: "刪除舊頭像失敗", Data: err.Error(),
+			// })
+			// return
 		}
 	}
 
@@ -340,24 +350,68 @@ func (h *UserHandler) LineLoginCallback(c *gin.Context) {
 }
 
 func (h *UserHandler) ToUserResp(user *models.User) dto.UserResp {
-	identityID := []uint{}
-	if user.Identities == nil {
-		user.Identities = &[]models.Identity{}
+	// 預設值
+	var name, birthday, gender, location string
+	var lineID, avatarURL *string
+	identityIDs := []uint{}
+
+	// 處理 Name
+	if user.Name != nil {
+		name = *user.Name
+	} else {
+		name = user.Account // 如果沒有名稱，則使用帳號作為名稱
 	}
-	for _, identity := range *user.Identities {
-		identityID = append(identityID, identity.ID)
+
+	// 處理 Birthday
+	if user.Birthday != nil {
+		parts := strings.Split(*user.Birthday, "T")
+		// 日期部分已經是 YYYY-MM-DD 格式
+		birthday = parts[0]
+	}
+
+	// 處理 Female (Gender)
+	if user.Female != nil {
+		gender = constants.GenderToString(*user.Female)
+	} else {
+		gender = constants.GenderToString(0) // 假設 0 表示未設定
+	}
+
+	// 處理 LocationID
+	if user.LocationID != nil {
+		location = constants.LocationToString(*user.LocationID)
+	} else {
+		location = constants.LocationToString(0) // 假設 0 表示未設定
+	}
+
+	// 處理 Identities
+	if user.Identities != nil {
+		for _, identity := range *user.Identities {
+			identityIDs = append(identityIDs, identity.ID)
+		}
+	}
+
+	// 處理 LineID
+	lineID = user.LineID
+
+	// 處理 AvatarURL
+	if user.AvatarURL != nil {
+		url := fmt.Sprintf("%s%s", h.cfg.DOMAIN, *user.AvatarURL)
+		avatarURL = &url
+	} else {
+		url := fmt.Sprintf("%s%s", h.cfg.DOMAIN, "/uploads/default_avatar.png")
+		avatarURL = &url
 	}
 
 	return dto.UserResp{
 		ID:          user.ID,
-		Name:        *user.Name,
 		Account:     user.Account,
-		Gender:      constants.GenderToString(*user.Female),
+		Name:        name,
+		Gender:      gender,
+		Location:    location,
+		Birthday:    birthday,
+		Identity:    constants.IdentityToString(identityIDs),
 		IsSubscribe: user.IsSubscribe,
-		Birthday:    *user.Birthday,
-		Location:    constants.LocationToString(*user.LocationID),
-		Identity:    constants.IdentityToString(identityID),
-		LineID:      user.LineID,
-		AvatarURL:   func() *string { url := fmt.Sprintf("%s%s", h.cfg.DOMAIN, *user.AvatarURL); return &url }(),
+		LineID:      lineID,
+		AvatarURL:   avatarURL,
 	}
 }

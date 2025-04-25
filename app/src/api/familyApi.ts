@@ -11,7 +11,7 @@ export interface FamilyMember {
     userId: string,
     name: string,
     role: number
-    avatarUrl?: string;
+    avatar_url?: string;
 }
 
 export const fetchUserFamilyApi = async (token: string): Promise<FamilysResponse[]> => {

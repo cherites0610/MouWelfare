@@ -7,9 +7,10 @@ type FamilyResponse struct {
 }
 
 type UserFamilyResponse struct {
-	ID       uint   `json:"userId"`
-	NickName string `json:"name"`
-	Role     uint   `json:"role"`
+	ID        uint   `json:"userId"`
+	NickName  string `json:"name"`
+	AvatarURL string `json:"avatar_url"`
+	Role      uint   `json:"role"`
 }
 
 type CreateFamilyRequest struct {

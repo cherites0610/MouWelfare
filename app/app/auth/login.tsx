@@ -43,6 +43,7 @@ export default function Login() {
       const loginResponse = result.data as LoginResponse;
       dispatch(login(loginResponse.user)); // 假設 login action 存在於 userSlice
       dispatch(setAuthToken(loginResponse.token));
+      dispatch(writeConfig())
     } else if (result.status_code == 401) {
       Alert.alert("該賬號還未驗證", "請先驗證郵箱")
       router.push(`/auth/verify/${result.data}`)

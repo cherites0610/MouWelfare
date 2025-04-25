@@ -11,6 +11,8 @@ export default function Profile() {
   const { user, status, error } = useSelector((state: RootState) => state.user)
   
   const router = useRouter();
+  console.log(user?.avatar_url);
+  
   return (
     <View style={styles.container}>
       <View style={styles.container}>

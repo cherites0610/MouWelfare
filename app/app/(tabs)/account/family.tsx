@@ -1,4 +1,4 @@
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Animated, Modal, TextInput, Platform, Alert } from 'react-native';
+import { Image, View, Text, TouchableOpacity, StyleSheet, ScrollView, Animated, Modal, TextInput, Platform, Alert } from 'react-native';
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { createFamilyApi, FamilysResponse, fetchUserFamilyApi, JoinFamilyApi } from '@/src/api/familyApi';
 // Removed AsyncStorage import as it wasn't used in this component
@@ -26,7 +26,12 @@ export default function Family() {
   const fetchFamily = useCallback(async () => {
     try {
       const fetchedFamilys = await fetchUserFamilyApi(authToken);
-      setFamilys(fetchedFamilys);
+      if (!fetchedFamilys) {
+        setFamilys([]);
+      } else {
+        setFamilys(fetchedFamilys);
+      }
+
     } catch (error) {
       console.error("Failed to fetch families:", error);
       Alert.alert("無法載入家庭列表", "請稍後再試或檢查網路連線。");
@@ -140,8 +145,11 @@ export default function Family() {
               <Text style={styles.familyName}>{family.name || '未知家庭'}</Text>
               {family.members.map((member) => (
                 <View key={member.userId} style={styles.memberRow}>
+                  <Image
+                    source={{ uri: member.avatar_url }}
+                    style={styles.avatar}
+                  />
                   <Text style={styles.memberName}>{member.name || '未知成員'}</Text>
-                  <Ionicons name="arrow-forward-outline" size={20} color="#666" />
                 </View>
               ))}
             </TouchableOpacity>
@@ -167,7 +175,7 @@ export default function Family() {
         <TouchableOpacity onPress={toggleFab} style={styles.fabTouchable}>
           {/* Optional: Animate icon rotation */}
           <Animated.View style={{ transform: [{ rotate }] }}>
-            <Ionicons name={isFabOpen ? 'close' : 'add'} size={30} color="#fff" />
+            <Ionicons name={isFabOpen ? 'add' : 'add'} size={30} color="#fff" />
           </Animated.View>
         </TouchableOpacity>
       </Animated.View>
@@ -199,7 +207,7 @@ export default function Family() {
                     <QrScanner
                       onScan={(data) => {
                         console.log(data);
-                        
+
                         setInputValue(data); // 更新輸入框
                         setScannerActive(false); // 關閉掃描器
                       }} />
@@ -266,6 +274,12 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
     elevation: 2, // Lower elevation
   },
+  avatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 40, // 圓形
+    marginBottom: 10,
+  },
   familyName: {
     fontSize: 18, // Slightly smaller
     fontWeight: '600', // Medium weight
@@ -274,7 +288,6 @@ const styles = StyleSheet.create({
   },
   memberRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: 8,
     borderBottomWidth: 1,
@@ -282,7 +295,8 @@ const styles = StyleSheet.create({
     // Remove border for the last item if needed: lastChild: { borderBottomWidth: 0 }
   },
   memberName: {
-    fontSize: 15,
+    marginLeft: 10,
+    fontSize: 18,
     color: '#555',
   },
   emptyText: {

@@ -28,7 +28,6 @@ type UserLoginRequest struct {
 
 // UserUpdateRequest 更新資料請求體
 type UserUpdateRequest struct {
-	UserID      uint   `json:"id" binding:"required"`
 	Name        string `json:"name" binding:"required"`
 	Birthday    string `json:"birthday" binding:"required"`
 	Female      uint   `json:"female" binding:"required"`

@@ -97,7 +97,7 @@ const FamilySettingsScreen = () => {
                 {family.members.map((item, index) =>
                     <View key={index}>
                         <Image
-                            source={require('@/assets/images/logo.png')} // 提供一個預設圖片
+                            source={{uri: item.avatar_url}} // 提供一個預設圖片
                             style={styles.avatar}
                         />
                         <Text style={styles.userName}>{item.name}</Text>

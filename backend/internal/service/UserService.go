@@ -132,10 +132,10 @@ func (s *UserService) Login(account, password string) (*models.User, *string, er
 	existsUser.Password = "" // 清除密碼
 
 	// 發送 LINE 訊息
-	err = s.messageService.SendLineMessage(fmt.Sprintf("%s,您已登入app", *existsUser.Name), *existsUser.LineID)
-	if err != nil {
-		return nil, nil, fmt.Errorf("LINE 訊息發送失敗")
-	}
+	// err = s.messageService.SendLineMessage(fmt.Sprintf("%s,您已登入app", *existsUser.Name), *existsUser.LineID)
+	// if err != nil {
+	// return nil, nil, fmt.Errorf("LINE 訊息發送失敗")
+	// }
 
 	s.log.WithFields(logrus.Fields{
 		"account": existsUser.Account,
