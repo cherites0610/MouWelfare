@@ -5,6 +5,7 @@ import { RootState, AppDispatch } from '@/src/store'
 import { incrementAppLaunchCount, loadConfig, writeConfig } from '@/src/store/slices/configSlice'
 import { fetchUser } from '@/src/store/slices/userSlice'
 import { View, Text } from 'react-native'
+import { fetchFamily } from '@/src/store/slices/familySlice'
 
 export default function Index() {
   const dispatch = useDispatch<AppDispatch>();
@@ -16,6 +17,7 @@ export default function Index() {
     try {
       await dispatch(loadConfig());
       await dispatch(fetchUser());
+      await dispatch(fetchFamily());
       setIsInitialized(true);
     } catch (error) {
       console.error("Initialization failed:", error);

@@ -25,41 +25,25 @@ export default function Setting() {
     dispatch(writeConfig());
   };
 
-  const onPress = () => {
-    ActionSheetIOS.showActionSheetWithOptions(
-      {
-        options: ['取消', '連接Line', 'Google登錄'],
-        cancelButtonIndex: 0,
-        userInterfaceStyle: 'dark',
-      },
-      buttonIndex => {
-        if (buttonIndex === 0) {
-          // cancel action
-        } else if (buttonIndex === 1) {
-          if (user?.line_id) {
-            Alert.alert("已經連接過Line帳戶了", "請先解除連接");
-            return;
-          }
+  const linkLine = () => {
+    if (user?.line_id) {
+      Alert.alert("已經連接過Line帳戶了", "請先解除連接");
+      return;
+    }
 
-          getLineLoginUrl(authToken)
-            .then((url) => {
-              Linking.openURL(url);
-            })
-        } else if (buttonIndex === 2) {
-          // GoogleSignIn()
-          Alert.alert("功能未開發");
-        }
-      },
-    );
+    getLineLoginUrl(authToken)
+      .then((url) => {
+        Linking.openURL(url);
+      })
   }
 
 
   return (
     <View style={styles.container}>
       {/* 連結帳戶 */}
-      <TouchableOpacity style={styles.row} onPress={onPress}>
+      <TouchableOpacity style={styles.row} onPress={linkLine}>
         <Ionicons name="link" size={iconSize} color="#444" style={styles.icon} />
-        <Text style={styles.text}>連結帳戶</Text>
+        <Text style={styles.text}>連結Line賬戶</Text>
       </TouchableOpacity>
 
       {/* 老人模式 */}

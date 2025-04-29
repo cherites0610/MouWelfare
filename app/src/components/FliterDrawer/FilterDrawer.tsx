@@ -4,6 +4,9 @@ import FilterSection from './FilterSection';
 import FilterFooter from './FilterFooter';
 import { ageOptions, genderOptions, incomeOptions, identityOptions } from './constants';
 import styles from './styles';
+import { useDispatch } from 'react-redux'
+import { AppDispatch } from '@/src/store';
+import { setIdentities } from '@/src/store/slices/filiterSlice';
 
 export default function FilterDrawer({ closeDrawer }: { closeDrawer: Function }) {
   // State Management
@@ -11,6 +14,7 @@ export default function FilterDrawer({ closeDrawer }: { closeDrawer: Function })
   const [selectedGender, setSelectedGender] = useState<string | null>(null);
   const [selectedIncome, setSelectedIncome] = useState<Set<string>>(new Set());
   const [selectedIdentity, setSelectedIdentity] = useState<Set<string>>(new Set());
+  const dispatcher = useDispatch<AppDispatch>()
 
   // Handlers
   const handleSingleSelect = (
@@ -43,12 +47,13 @@ export default function FilterDrawer({ closeDrawer }: { closeDrawer: Function })
   };
 
   const handleConfirm = () => {
-    console.log('篩選條件:', {
-      age: selectedAge,
-      gender: selectedGender,
-      income: Array.from(selectedIncome),
-      identity: Array.from(selectedIdentity),
-    });
+    const income = Array.from(selectedIncome)
+    const identity = Array.from(selectedIdentity)
+    const temp = [];
+    if (selectedAge) temp.push(selectedAge);
+    if (selectedGender) temp.push(selectedGender);
+    temp.push(...income, ...identity);
+    dispatcher(setIdentities(temp))
     closeDrawer();
   };
 

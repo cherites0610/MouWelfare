@@ -7,7 +7,7 @@ ngrok.exe
 data
 *.log
 
-/backend/cmd/uploads/*.jpg
-/backend/cmd/uploads/*.jpeg
-/backend/cmd/uploads/*.png
-!/backend/cmd/uploads/default_avatar.png
+avatar/*.jpg
+avatar/*.jpeg
+avatar/*.png
+!avatar/default_avatar.png

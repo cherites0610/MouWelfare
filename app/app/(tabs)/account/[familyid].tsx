@@ -1,30 +1,28 @@
 import { View, Text, SafeAreaView, ScrollView, Image, TouchableOpacity, Switch, StyleSheet, FlatList, Alert, Modal } from 'react-native'
 import React, { useEffect, useState } from 'react'
-import { useLocalSearchParams } from 'expo-router';
-import { FamilysResponse, fetchFmailyApi, getFmailyCodeApi } from '@/src/api/familyApi';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { deleteFamilyApi, exitFamilyApi, FamilysResponse, fetchFmailyApi, getFmailyCodeApi } from '@/src/api/familyApi';
 import { useDispatch, useSelector } from 'react-redux'
-import { RootState } from '@/src/store';
+import { AppDispatch, RootState } from '@/src/store';
 import QRCode from 'react-native-qrcode-svg';
 import { COLORS } from '@/src/utils/colors';
+import { fetchFamily } from '@/src/store/slices/familySlice';
 
 
 const FamilySettingsScreen = () => {
     const [isNotificationsEnabled, setIsNotificationsEnabled] = useState(true); // 初始值設為 true (如圖所示)
-    const [family, setFamily] = useState<FamilysResponse>()
     const { authToken } = useSelector((state: RootState) => state.config)
+    const { familys } = useSelector((state: RootState) => state.family)
     const { user } = useSelector((state: RootState) => state.user)
     const [code, setCode] = useState<string>()
     const [displayModal, setDisplayModal] = useState<boolean>(false);
     const glob = useLocalSearchParams();
 
-    const fetchFamily = async () => {
-        const result = await fetchFmailyApi(authToken, Number(glob.familyid))
-        setFamily(result)
-    }
+    const familyID = glob.familyid as string
+    const family = familys.find((item) => item.id == familyID) as FamilysResponse
 
-    useEffect(() => {
-        fetchFamily()
-    }, [])
+    const disDispatch = useDispatch<AppDispatch>()
+    const router = useRouter()
 
     const handleGroupNamePress = () => {
         console.log('Navigate to edit group name screen');
@@ -41,13 +39,28 @@ const FamilySettingsScreen = () => {
         // 在這裡加入產生 QR Code 的邏輯
     };
 
-    const handleExitFamilyPress = () => {
-        console.log('Exit Family action');
+    const handleExitFamilyPress = async () => {
+        const result = await exitFamilyApi(authToken, family?.id!)
+        
+        if (result.status_code == 200) {
+            Alert.alert("退出家庭成功")
+            await disDispatch(fetchFamily())
+            router.replace("/account/family")
+        } else {
+            Alert.alert("退出家庭失敗")
+        }
     }
 
-    const handleDeleteFamilyPress = () => {
-        console.log('Delete Family action');
-        // 在這裡加入刪除家庭的邏輯 (可能需要確認對話框)
+    const handleDeleteFamilyPress = async () => {
+        const result = await deleteFamilyApi(authToken, family?.id!)
+        
+        if (result.status_code == 200) {
+            Alert.alert("刪除家庭成功")
+            await disDispatch(fetchFamily())
+            router.replace("/account/family")
+        } else {
+            Alert.alert("刪除家庭失敗")
+        }
     };
 
     if (!family) {
@@ -73,7 +86,7 @@ const FamilySettingsScreen = () => {
         } else if (role == 2) {
             return (
                 <>
-                    <TouchableOpacity style={styles.deleteButton} onPress={handleDeleteFamilyPress}>
+                    <TouchableOpacity style={styles.deleteButton} onPress={handleExitFamilyPress}>
                         <Text style={styles.deleteButtonText}>退出家庭</Text>
                     </TouchableOpacity>
                     <TouchableOpacity style={styles.mangmentDeleteButton} onPress={handleDeleteFamilyPress}>
@@ -83,7 +96,7 @@ const FamilySettingsScreen = () => {
             )
         } else {
             return (
-                <TouchableOpacity style={styles.deleteButton} onPress={handleDeleteFamilyPress}>
+                <TouchableOpacity style={styles.deleteButton} onPress={handleExitFamilyPress}>
                     <Text style={styles.deleteButtonText}>退出家庭</Text>
                 </TouchableOpacity>
             )
@@ -118,7 +131,7 @@ const FamilySettingsScreen = () => {
                     </View>
                 </TouchableOpacity>
                 {/* 開啟通知 */}
-                <View style={styles.listItem}>
+                {/* <View style={styles.listItem}>
                     <Text style={styles.listItemText}>開啟通知</Text>
                     <Switch
                         trackColor={{ false: '#767577', true: '#81b0ff' }} // 可以自訂顏色
@@ -127,7 +140,7 @@ const FamilySettingsScreen = () => {
                         onValueChange={setIsNotificationsEnabled}
                         value={isNotificationsEnabled}
                     />
-                </View>
+                </View> */}
 
                 {/* 產生QRCODE */}
                 <TouchableOpacity style={styles.listItem} onPress={handleGenerateQrCodePress}>

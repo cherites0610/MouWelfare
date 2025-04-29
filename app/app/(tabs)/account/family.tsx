@@ -4,15 +4,15 @@ import { createFamilyApi, FamilysResponse, fetchUserFamilyApi, JoinFamilyApi } f
 // Removed AsyncStorage import as it wasn't used in this component
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useSelector } from 'react-redux';
-import { RootState } from '@/src/store';
+import { useDispatch, useSelector } from 'react-redux';
+import { AppDispatch, RootState } from '@/src/store';
 import QrScanner from '@/src/components/QrScanner'; // Assuming this component exists
+import { fetchFamily } from '@/src/store/slices/familySlice';
 
 // Define modal types more strictly
 type ModalType = 'family' | 'member';
 
 export default function Family() {
-  const [familys, setFamilys] = useState<FamilysResponse[]>([]);
   const [modalType, setModalType] = useState<ModalType | null>(null);
   const [inputValue, setInputValue] = useState('');
   const [isFabOpen, setIsFabOpen] = useState(false);
@@ -20,48 +20,11 @@ export default function Family() {
   const [loading, setLoading] = useState<boolean>(false);
   const [scannerActive, setScannerActive] = useState<boolean>(false);
 
-  const { authToken } = useSelector((state: RootState) => state.config);
+  const { familys } = useSelector((state: RootState) => state.family)
+  const { authToken } = useSelector((state: RootState) => state.config)
+  const disDispatch = useDispatch<AppDispatch>()
+
   const router = useRouter();
-
-  const fetchFamily = useCallback(async () => {
-    try {
-      const fetchedFamilys = await fetchUserFamilyApi(authToken);
-      if (!fetchedFamilys) {
-        setFamilys([]);
-      } else {
-        setFamilys(fetchedFamilys);
-      }
-
-    } catch (error) {
-      console.error("Failed to fetch families:", error);
-      Alert.alert("無法載入家庭列表", "請稍後再試或檢查網路連線。");
-      // Handle error appropriately, maybe set an error state
-    }
-  }, [authToken]);
-
-  useEffect(() => {
-    fetchFamily();
-  }, [fetchFamily]); // fetchFamily is now stable due to useCallback
-
-  const toggleFab = () => {
-    const toValue = isFabOpen ? 0 : 1;
-    Animated.timing(fabAnimation, {
-      toValue,
-      duration: 200,
-      useNativeDriver: true, // Keep true for performance
-    }).start(() => {
-      setIsFabOpen(!isFabOpen); // Update state after animation completes
-    });
-  };
-
-  const openModal = (type: ModalType) => {
-    setModalType(type);
-    setInputValue('');
-    setScannerActive(false);
-    if (isFabOpen) {
-      toggleFab();
-    }
-  };
 
   const handleConfirm = async () => {
     const trimmedValue = inputValue.trim();
@@ -83,7 +46,7 @@ export default function Family() {
       }
 
       if (success) {
-        await fetchFamily();
+        disDispatch(fetchFamily())
         setModalType(null);
         setInputValue('');
         setScannerActive(false);
@@ -97,6 +60,26 @@ export default function Family() {
       success = false;
     } finally {
       setLoading(false);
+    }
+  };
+
+  const toggleFab = () => {
+    const toValue = isFabOpen ? 0 : 1;
+    Animated.timing(fabAnimation, {
+      toValue,
+      duration: 200,
+      useNativeDriver: true, // Keep true for performance
+    }).start(() => {
+      setIsFabOpen(!isFabOpen); // Update state after animation completes
+    });
+  };
+
+  const openModal = (type: ModalType) => {
+    setModalType(type);
+    setInputValue('');
+    setScannerActive(false);
+    if (isFabOpen) {
+      toggleFab();
     }
   };
 
@@ -206,8 +189,6 @@ export default function Family() {
                   <View style={styles.qrScannerContainer}>
                     <QrScanner
                       onScan={(data) => {
-                        console.log(data);
-
                         setInputValue(data); // 更新輸入框
                         setScannerActive(false); // 關閉掃描器
                       }} />

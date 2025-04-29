@@ -1,4 +1,4 @@
-import { View, Text, FlatList, RefreshControl, Share, Alert, TouchableOpacity } from 'react-native'
+import { View, Text, FlatList, RefreshControl, Share, Alert, TouchableOpacity, ActivityIndicator } from 'react-native'
 import React from 'react'
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import Reanimated, {
@@ -12,11 +12,16 @@ import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeabl
 import { COLORS } from '../utils/colors';
 import { useRouter } from 'expo-router';
 import { Welfare } from '../type/welfareType';
+import { addFavoriteAPI } from '../api/welfareApi';
+import { RootState } from '../store';
+import { useSelector } from 'react-redux'
 
 type WelfareListProps = {
     listData: Welfare[];
     refreshing: boolean; // 父組件控制
     onRefresh: () => void; // 父組件提供的刷新方法
+    isLoadingMore: boolean; // 父組件提供的加載更多狀態
+    onLoadMore: () => void; // 父組件提供的加載更多方法
 };
 
 type RightActionProps = {
@@ -25,8 +30,18 @@ type RightActionProps = {
     drag: SharedValue<number>;
 };
 
-export default function WelfareList({ listData, refreshing, onRefresh }: WelfareListProps) {
+export default function WelfareList({ listData, refreshing, onRefresh, isLoadingMore, onLoadMore }: WelfareListProps) {
     const route = useRouter();
+
+    const { authToken } = useSelector((state: RootState) => state.config)
+
+    const handleEndReached = () => {
+        if (!isLoadingMore && !refreshing) {
+            // 觸發下一頁請求
+            // 這裡假設父組件傳入了一個 onLoadMore 回調
+            onLoadMore();
+        }
+    };
 
     const RightAction = ({ item, prog, drag }: RightActionProps) => {
         const styleAnimation = useAnimatedStyle(() => {
@@ -63,8 +78,13 @@ export default function WelfareList({ listData, refreshing, onRefresh }: Welfare
             }
         };
 
-        const handleFavorite = () => {
-            Alert.alert('暫未開發')
+        const handleFavorite = async () => {
+            const reuslt = await addFavoriteAPI(authToken, item.id)
+            if (reuslt.status_code==200) {
+                Alert.alert('添加成功')
+            }else {
+                Alert.alert('添加失敗')
+            }
         };
 
         return (
@@ -110,13 +130,14 @@ export default function WelfareList({ listData, refreshing, onRefresh }: Welfare
                     )}
                 >
                     <TouchableOpacity
-                        onPress={() => {route.navigate(('/home/'+item.id) as any )}}
+                        onPress={() => { route.navigate(('/home/' + item.id) as any) }}
                     >
                         <WelfareItem
                             location={item.location}
                             title={item.title}
                             category={item.categories}
                             lightStatus={item.light_status}
+                            familyMember={item.family_member}
                         />
                     </TouchableOpacity>
 
@@ -131,12 +152,15 @@ export default function WelfareList({ listData, refreshing, onRefresh }: Welfare
                 data={listData} // 數據來源
                 renderItem={renderItem} // 渲染每個項目的函數
                 keyExtractor={(item) => item.id.toString()} // 每個項目的唯一 key
-                initialNumToRender={10}
+                initialNumToRender={20}
                 maxToRenderPerBatch={20}
-                windowSize={100}
+                windowSize={21}
                 refreshControl={
                     <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
                 }
+                onEndReached={handleEndReached}
+                onEndReachedThreshold={0.7}
+                ListFooterComponent={isLoadingMore ? <ActivityIndicator size="small" /> : null}
             />
         </View>
     )

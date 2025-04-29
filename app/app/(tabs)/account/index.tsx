@@ -19,6 +19,7 @@ export default function Settings() {
     const { user, status } = useSelector((state: RootState) => state.user)
     const dispatch = useDispatch<AppDispatch>();
     const route = useRouter();
+
     return (
         <SafeAreaView style={styles.safeArea}>
             <View style={styles.container}>

@@ -3,14 +3,15 @@ import React, { useState } from 'react'
 import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../utils/colors';
 import { useRouter } from 'expo-router';
+import { useDispatch, useSelector } from "react-redux"
+import { AppDispatch, RootState } from '../store';
+import { setSearchQuery } from '../store/slices/filiterSlice';
 
-interface SearchProps {
-  onSearch: (query: string) => void; // 回調函數，傳遞搜尋文字給父組件
-}
 
-export default function Search({ onSearch}:SearchProps) {
+export default function Search() {
   const route = useRouter()
-  const [query, setQuery] = useState(''); // 管理 TextInput 的狀態
+  const dispatch = useDispatch<AppDispatch>();
+  const { searchQuery } = useSelector((state:RootState) => state.filiter)
 
   return (
     <View style={styles.SearchBar}>
@@ -23,15 +24,17 @@ export default function Search({ onSearch}:SearchProps) {
         enablesReturnKeyAutomatically={true}
         style={styles.input}
         onChangeText={(text) => {
-          setQuery(text);
-          onSearch(text); // 實時傳遞
+          dispatch(setSearchQuery(text))
+          console.log(searchQuery);
+          
+          
         }}
-        value={query}
+        value={searchQuery}
         placeholder="Ex. 兒童福利"
         placeholderTextColor="#888"
       />
       <View style={styles.iconContainer}>
-        <TouchableOpacity onPress={() => {route.navigate("/home/favourite")}}>
+        <TouchableOpacity onPress={() => { route.navigate("/home/favourite") }}>
           <Ionicons name="heart-outline" size={24} color="black" style={styles.icon} />
         </TouchableOpacity>
 

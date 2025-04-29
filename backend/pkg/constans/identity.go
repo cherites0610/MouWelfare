@@ -1,29 +1,50 @@
 package constants
 
 const (
-	未設定   = 0
-	低收入戶  = 1
-	中低收入戶 = 2
-	身心障礙  = 3
+	未設定      = 0
+	_20歲以下   = 1
+	_20歲_65歲 = 2
+	_65歲以上   = 3
+	男性       = 4
+	女性       = 5
+	中低收入戶    = 6
+	低收入戶     = 7
+	榮名       = 8
+	身心障礙者    = 9
+	原住民      = 10
+	外籍配偶家庭   = 11
 )
 
-// identityMap 將身份常量映射到字串
-var identityMap = map[uint]string{
-	未設定:   "未設定",
-	低收入戶:  "低收入戶",
-	中低收入戶: "中低收入戶",
-	身心障礙:  "身心障礙",
+// demographicMapping 將人口統計常量映射到字串
+var IdentitiesMapping = map[uint]string{
+	未設定:      "未設定",
+	_20歲以下:   "20歲以下",
+	_20歲_65歲: "20歲-65歲",
+	_65歲以上:   "65歲以上",
+	男性:       "男性",
+	女性:       "女性",
+	中低收入戶:    "中低收入戶",
+	低收入戶:     "低收入戶",
+	榮名:       "榮民",
+	身心障礙者:    "身心障礙者",
+	原住民:      "原住民",
+	外籍配偶家庭:   "外籍配偶家庭",
 }
 
-// IdentityToString 將身份常量切片轉為字串切片
-func IdentityToString(identities []uint) []string {
-	result := make([]string, 0, len(identities)) // 預分配容量
-	for _, identity := range identities {
-		if str, exists := identityMap[identity]; exists {
-			result = append(result, str)
-		} else {
-			result = append(result, "未設定") // 預設值
+// DemographicToString 將人口統計常量轉為字串
+func IdentityToString(identity uint) string {
+	if str, exists := IdentitiesMapping[identity]; exists {
+		return str
+	}
+	return "未設定" // 預設值，處理未定義的輸入
+}
+
+// StringToDemographic 將字串轉為人口統計常量
+func StringToIdentity(identityStr string) uint {
+	for id, str := range IdentitiesMapping {
+		if str == identityStr {
+			return id
 		}
 	}
-	return result
+	return 未設定 // 預設值，處理未定義的輸入
 }

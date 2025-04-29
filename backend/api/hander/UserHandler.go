@@ -211,10 +211,10 @@ func (h *UserHandler) UploadAvatar(c *gin.Context) {
 		return
 	}
 
-	file.Filename = fmt.Sprintf("%v_%s_%s", userID, file.Filename, time.Now().Format("20060102150405")) + ext
+	file.Filename = fmt.Sprintf("%v_%s", userID, time.Now().Format("20060102150405")) + ext
 
 	// 儲存文件
-	filePath := filepath.Join("uploads", fmt.Sprintf("%v_%s", userID, file.Filename))
+	filePath := filepath.Join(h.cfg.AVATAR_PATH, file.Filename)
 	if err := c.SaveUploadedFile(file, filePath); err != nil {
 		c.JSON(http.StatusOK, dto.DTO{
 			StatusCode: 500, Message: "文件上傳失敗", Data: err.Error(),
@@ -233,7 +233,7 @@ func (h *UserHandler) UploadAvatar(c *gin.Context) {
 
 	// 刪除舊的頭像文件（如果存在）
 	if user.AvatarURL != nil {
-		oldAvatarPath := filepath.Join(".", *user.AvatarURL)
+		oldAvatarPath := filepath.Join(h.cfg.AVATAR_PATH, *user.AvatarURL)
 		if err := os.Remove(oldAvatarPath); err != nil {
 			fmt.Println("刪除舊頭像失敗:", err)
 			// c.JSON(http.StatusOK, dto.DTO{
@@ -243,8 +243,7 @@ func (h *UserHandler) UploadAvatar(c *gin.Context) {
 		}
 	}
 
-	avatarURL := fmt.Sprintf("/uploads/%v_%s", userID, file.Filename)
-	user.AvatarURL = &avatarURL
+	user.AvatarURL = &file.Filename
 	if err := h.userService.UserRepo.Save(user); err != nil {
 		c.JSON(http.StatusOK, dto.DTO{
 			StatusCode: 500, Message: "更新用戶資料失敗", Data: err.Error(),
@@ -252,7 +251,7 @@ func (h *UserHandler) UploadAvatar(c *gin.Context) {
 		return
 	}
 
-	respUrl := fmt.Sprintf("%s/uploads/%v_%s", "http://172.20.10.2:8080", userID, file.Filename)
+	respUrl := fmt.Sprintf("%s/%s/%s", h.cfg.DOMAIN, "avatar", file.Filename)
 
 	c.JSON(http.StatusOK, dto.DTO{
 		StatusCode: 200, Message: "頭像上傳成功", Data: respUrl,
@@ -283,7 +282,7 @@ func (h *UserHandler) GetAvatar(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, dto.DTO{
-		StatusCode: 200, Message: "頭像獲取成功", Data: fmt.Sprintf("%s%s", h.cfg.DOMAIN, *user.AvatarURL)},
+		StatusCode: 200, Message: "頭像獲取成功", Data: fmt.Sprintf("%s/%s", h.cfg.DOMAIN, *user.AvatarURL)},
 	)
 }
 
@@ -353,7 +352,7 @@ func (h *UserHandler) ToUserResp(user *models.User) dto.UserResp {
 	// 預設值
 	var name, birthday, gender, location string
 	var lineID, avatarURL *string
-	identityIDs := []uint{}
+	identities := []string{}
 
 	// 處理 Name
 	if user.Name != nil {
@@ -386,7 +385,7 @@ func (h *UserHandler) ToUserResp(user *models.User) dto.UserResp {
 	// 處理 Identities
 	if user.Identities != nil {
 		for _, identity := range *user.Identities {
-			identityIDs = append(identityIDs, identity.ID)
+			identities = append(identities, constants.IdentityToString(identity.ID))
 		}
 	}
 
@@ -395,10 +394,10 @@ func (h *UserHandler) ToUserResp(user *models.User) dto.UserResp {
 
 	// 處理 AvatarURL
 	if user.AvatarURL != nil {
-		url := fmt.Sprintf("%s%s", h.cfg.DOMAIN, *user.AvatarURL)
+		url := fmt.Sprintf("%s/%s/%s", h.cfg.DOMAIN, "avatar", *user.AvatarURL)
 		avatarURL = &url
 	} else {
-		url := fmt.Sprintf("%s%s", h.cfg.DOMAIN, "/uploads/default_avatar.png")
+		url := fmt.Sprintf("%s/%s/%s", h.cfg.DOMAIN, "avatar", "default_avatar.png")
 		avatarURL = &url
 	}
 
@@ -409,7 +408,7 @@ func (h *UserHandler) ToUserResp(user *models.User) dto.UserResp {
 		Gender:      gender,
 		Location:    location,
 		Birthday:    birthday,
-		Identity:    constants.IdentityToString(identityIDs),
+		Identity:    identities,
 		IsSubscribe: user.IsSubscribe,
 		LineID:      lineID,
 		AvatarURL:   avatarURL,

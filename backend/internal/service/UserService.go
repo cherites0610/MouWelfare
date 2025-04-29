@@ -49,6 +49,7 @@ func (s *UserService) Register(account, password, email string) (*models.User, e
 		Account:  account,
 		Password: hashedPassword,
 		Email:    email,
+		Name:     &account,
 	}
 
 	// 存進資料庫
@@ -57,12 +58,6 @@ func (s *UserService) Register(account, password, email string) (*models.User, e
 		return &models.User{}, fmt.Errorf("用戶創建失敗")
 	}
 
-	// 發驗證短信
-
-	// err = s.messageService.SendEmailMessage(user.Email, "驗證碼", fmt.Sprintf("您的驗證碼是: %s", code))
-	// if err != nil {
-	// return nil, fmt.Errorf("郵件發送失敗", err)
-	// }
 	_, err = s.SendVerifyEmailCode(user.Email)
 	if err != nil {
 		return nil, err
@@ -89,10 +84,10 @@ func (s *UserService) SendVerifyEmailCode(email string) (*string, error) {
 	code := s.verificationService.GenerateCode(models.CodeData{CodeMode: 1, UserID: &existsUser.ID, Email: existsUser.Email})
 
 	// 發驗證碼
-	// err = s.messageService.SendEmailMessage(existsUser.Email, "驗證碼", fmt.Sprintf("您的驗證碼是: %s", code))
-	// if err != nil {
-	// 	return nil, fmt.Errorf("郵件發送失敗")
-	// }
+	err = s.messageService.SendEmailMessage(existsUser.Email, "驗證碼", fmt.Sprintf("您的驗證碼是: %s", code))
+	if err != nil {
+		return nil, fmt.Errorf("郵件發送失敗")
+	}
 
 	fmt.Println("驗證碼:", code)
 

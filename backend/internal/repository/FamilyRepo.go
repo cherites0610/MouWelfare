@@ -39,7 +39,7 @@ func (r *FamilyRerpository) CreateFamilyMember(familyMember *models.UserFamily) 
 }
 
 func (r *FamilyRerpository) DeleteFamily(id uint) error {
-	err := r.db.Delete(&models.Family{ID: id}).Error
+	err := r.db.Select("Members", "NickNames").Delete(&models.Family{ID: id}).Error
 	if err != nil {
 		return err
 	}

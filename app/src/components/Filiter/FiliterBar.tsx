@@ -3,52 +3,48 @@ import { View } from 'react-native';
 import FilterButton from './FilterButton';
 import styles from './styles';
 import FilterModal from './FilterModal';
-import { regions, services, familyTypes } from './constants';
+import { AppDispatch, RootState } from '@/src/store';
+import { useSelector, useDispatch } from 'react-redux';
+import { setCategories, setFamilies, setLocations } from '@/src/store/slices/filiterSlice';
+import { getTextByLocation, getTextByService, LocationNum, ServiceNum } from '@/src/utils/getTextByNumber';
 
 interface FilterBarProps {
   openFilterDrawer: () => void;
-  onRegionsChange?: (regions: string[]) => void;
-  onServicesChange?: (services: string[]) => void;
-  onFamiliesChange?: (families: string[]) => void;
 }
 
 const FilterBar: React.FC<FilterBarProps> = React.memo(
-  ({ openFilterDrawer, onRegionsChange, onServicesChange, onFamiliesChange }) => {
+  ({ openFilterDrawer }) => {
+
     const [regionModalVisible, setRegionModalVisible] = useState(false);
     const [serviceModalVisible, setServiceModalVisible] = useState(false);
     const [familyModalVisible, setFamilyModalVisible] = useState(false);
 
-    const [selectedRegions, setSelectedRegions] = useState<string[]>([]);
-    const [selectedServices, setSelectedServices] = useState<string[]>([]);
-    const [selectedFamilies, setSelectedFamilies] = useState<string[]>([]);
+    const dispatch = useDispatch<AppDispatch>();
+    const { familys: FAMILY } = useSelector((state: RootState) => state.family);
+    const { locations, categories, families } = useSelector((state: RootState) => state.filiter)
+    const setLocation = (locations: string[]) => {
+      dispatch(setLocations(locations))
+    }
+    const setCategory = (locations: string[]) => {
+      dispatch(setCategories(locations))
+    }
+    const setFamily = (familyies: string) => {
+      dispatch(setFamilies(familyies))
+    }
 
-    // Memoize static data to prevent recalculation
-    const filterData = useMemo(
-      () => ({
-        regions: { items: regions, selected: selectedRegions, setSelected: setSelectedRegions, onChange: onRegionsChange },
-        services: { items: services, selected: selectedServices, setSelected: setSelectedServices, onChange: onServicesChange },
-        families: { items: familyTypes, selected: selectedFamilies, setSelected: setSelectedFamilies, onChange: onFamiliesChange },
-      }),
-      [
-        selectedRegions,
-        selectedServices,
-        selectedFamilies,
-        onRegionsChange,
-        onServicesChange,
-        onFamiliesChange,
-      ]
-    );
+    const LOCATION: string[] = Array.from({ length: LocationNum - 1 }, (_, i) => getTextByLocation(i + 1));
+    const CATEGORY: string[] = Array.from({ length: ServiceNum - 1 }, (_, i) => getTextByService(i + 1));
 
     // Toggle modal visibility
-    const toggleModal = useCallback((key: keyof typeof filterData, visible: boolean) => {
+    const toggleModal = useCallback((key: "location" | "category" | "family", visible: boolean) => {
       switch (key) {
-        case 'regions':
+        case 'location':
           setRegionModalVisible(visible);
           break;
-        case 'services':
+        case 'category':
           setServiceModalVisible(visible);
           break;
-        case 'families':
+        case 'family':
           setFamilyModalVisible(visible);
           break;
       }
@@ -57,48 +53,48 @@ const FilterBar: React.FC<FilterBarProps> = React.memo(
     return (
       <View style={styles.filterBar}>
         <FilterButton
+        
           label="地區"
-          selectedCount={selectedRegions.length}
-          onPress={() => toggleModal('regions', true)}
+          selectedCount={locations.length}
+          onPress={() => toggleModal('location', true)}
         />
         <FilterButton
           label="服務"
-          selectedCount={selectedServices.length}
-          onPress={() => toggleModal('services', true)}
+          selectedCount={categories.length}
+          onPress={() => toggleModal('category', true)}
         />
         <FilterButton
           label="家庭"
-          selectedCount={selectedFamilies.length}
-          onPress={() => toggleModal('families', true)}
+          selectedCount={families===""?0:1}
+          onPress={() => toggleModal('family', true)}
         />
         <FilterButton label="篩選" onPress={openFilterDrawer} isIconButton />
 
         <FilterModal
           visible={regionModalVisible}
           title="選擇地區"
-          items={filterData.regions.items}
-          selectedItems={filterData.regions.selected}
-          setSelectedItems={filterData.regions.setSelected}
-          onChange={filterData.regions.onChange}
-          onClose={() => toggleModal('regions', false)}
+          items={LOCATION}
+          selectedItems={locations}
+          setSelectedItems={setLocation}
+          onClose={() => toggleModal('location', false)}
         />
         <FilterModal
           visible={serviceModalVisible}
           title="選擇服務"
-          items={filterData.services.items}
-          selectedItems={filterData.services.selected}
-          setSelectedItems={filterData.services.setSelected}
-          onChange={filterData.services.onChange}
-          onClose={() => toggleModal('services', false)}
+          items={CATEGORY}
+          selectedItems={categories}
+          setSelectedItems={setCategory}
+          // onChange={filterData.services.onChange}
+          onClose={() => toggleModal('category', false)}
         />
         <FilterModal
           visible={familyModalVisible}
           title="選擇家庭"
-          items={filterData.families.items}
-          selectedItems={filterData.families.selected}
-          setSelectedItems={filterData.families.setSelected}
-          onChange={filterData.families.onChange}
-          onClose={() => toggleModal('families', false)}
+          items={FAMILY.map((item) => item.name)}
+          selectedItems={families}
+          setSelectedItems={setFamily}
+          // onChange={filterData.families.onChange}
+          onClose={() => toggleModal('family', false)}
         />
       </View>
     );

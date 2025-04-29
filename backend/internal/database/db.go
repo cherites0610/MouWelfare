@@ -28,6 +28,7 @@ func SetupDatabase(cfg config.Config, log *logrus.Logger) (*gorm.DB, error) {
 	log.Info("連接到數據庫")
 
 	db.SetupJoinTable(&models.User{}, "Families", &models.UserFamily{})
+	db.SetupJoinTable(&models.User{}, "Welfares", &models.UserFavorite{})
 	if err := db.AutoMigrate(&models.Identity{}, &models.Category{}, &models.Location{}, &models.Family{}, &models.SearchRecord{}, &models.User{}, &models.NickName{}, &models.Welfare{}); err != nil {
 		log.Fatalf("AutoMigrate failed: %s", err)
 		return nil, err

@@ -1,5 +1,5 @@
 import { User } from "../type/user";
-import { apiFetch } from "./api";
+import { apiFetch,ResponseType } from "./api";
 
 export interface LoginRequest {
     account: string;
@@ -16,13 +16,6 @@ export interface RegisterRequest {
     email: string;
     password: string;
 }
-
-export interface ResponseType {
-    status_code: number
-    message: string
-    data: any
-}
-
 // 保留 login 和 register
 export async function loginApi(credentials: LoginRequest): Promise<ResponseType> {
     return apiFetch<ResponseType>(`/auth/login`, {

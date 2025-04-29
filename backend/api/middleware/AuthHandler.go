@@ -13,7 +13,7 @@ func JWTAuth(cfg *config.Config) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "缺少 token"})
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "lost token"})
 			c.Abort()
 			return
 		}

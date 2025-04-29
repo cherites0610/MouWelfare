@@ -1,24 +1,12 @@
-import { View, Text, StyleSheet } from 'react-native'
+import { View, Text, StyleSheet, Image } from 'react-native'
 import React, { useEffect, useState } from 'react'
 import { COLORS } from '../utils/colors';
+import { welfareFamilyMember } from '../type/welfareType';
 
-type props = { location: string, category: string[], title: string, lightStatus: number }
+type props = { location: string, category: string[], title: string, lightStatus: number, familyMember: welfareFamilyMember[] }
 
-export default function WelfareItem({ location, category, title, lightStatus }: props) {
+export default function WelfareItem({ location, category, title, lightStatus, familyMember }: props) {
     const [currentCategoryIndex, setCurrentCategoryIndex] = useState(0);
-
-  // Carousel effect: Cycle through categories every 3 seconds
-//   useEffect(() => {
-//     if (category.length > 1) {
-//       const interval = setInterval(() => {
-//         setCurrentCategoryIndex((prevIndex) => 
-//           prevIndex === category.length - 1 ? 0 : prevIndex + 1
-//         );
-//       }, 3000); // Change every 3 seconds
-
-//       return () => clearInterval(interval); // Cleanup on unmount
-//     }
-//   }, [category]);
 
     const getCircleColor = () => {
         switch (lightStatus) {
@@ -36,8 +24,22 @@ export default function WelfareItem({ location, category, title, lightStatus }: 
     return (
         <View style={styles.container}>
             <View style={styles.textContainer}>
-                <Text style={styles.subTitle}>{location} / {category[currentCategoryIndex]}</Text>
-                <Text style={styles.title}>{title}</Text>
+                <View>
+                    <Text style={styles.subTitle}>{location} / {category[currentCategoryIndex]}</Text>
+                    <Text style={styles.title}>{title}</Text>
+                </View>
+
+                <View style={styles.avatarContainer}>
+                    {familyMember.map((item, index) => {
+                        return (
+                            <View key={index}>
+                                <Image style={styles.avatar} source={{ uri: item.avatar_url }} />
+                            </View>
+
+                        )
+                    })}
+                </View>
+
             </View>
             <View style={[styles.circle, { backgroundColor: getCircleColor() }]} />
         </View>
@@ -47,19 +49,21 @@ export default function WelfareItem({ location, category, title, lightStatus }: 
 const styles = StyleSheet.create({
     container: {
         backgroundColor: 'white',
-        height: 100,
+        height: 110,
         flexDirection: 'row', // 讓文字和圓形圖標水平排列
         alignItems: 'center', // 垂直居中
         paddingHorizontal: 15, // 左右內邊距
     },
     textContainer: {
         flex: 1, // 讓文字區域佔據剩餘空間
+        justifyContent: 'space-between'
     },
     title: {
         fontSize: 18, // 文字大小
         color: 'black', // 文字顏色
-        marginVertical: 5, // 上下間距
-        fontWeight: "500"
+        marginVertical: 0, // 上下間距
+        fontWeight: "500",
+        height: 30
     },
     subTitle: {
         fontWeight: "thin",
@@ -71,5 +75,15 @@ const styles = StyleSheet.create({
         height: 20, // 圓形圖標的高度
         borderRadius: 15, // 圓形效果
         marginLeft: 10, // 與文字的間距
+    },
+    avatarContainer: {
+        // flex:1,
+        flexDirection: 'row',
+        gap: 5
+    },
+    avatar: {
+        width: 25,
+        height: 25,
+        borderRadius: 50,
     },
 });

@@ -21,6 +21,7 @@ import {
 import { login } from '@/src/store/slices/userSlice';
 import { setAuthToken, updateConfig, writeConfig } from '@/src/store/slices/configSlice';
 import { AppDispatch } from '@/src/store';
+import { fetchFamily } from '@/src/store/slices/familySlice';
 // 獲取螢幕寬度，可用於響應式設計
 const { width } = Dimensions.get('window');
 
@@ -44,6 +45,7 @@ export default function Login() {
       dispatch(login(loginResponse.user)); // 假設 login action 存在於 userSlice
       dispatch(setAuthToken(loginResponse.token));
       dispatch(writeConfig())
+      await dispatch(fetchFamily()) // 獲取家庭資料
     } else if (result.status_code == 401) {
       Alert.alert("該賬號還未驗證", "請先驗證郵箱")
       router.push(`/auth/verify/${result.data}`)

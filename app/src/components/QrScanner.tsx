@@ -31,7 +31,6 @@ export default function QrScanner({ onScan }: QrScannerProps) {
         <View style={styles.container}>
             <CameraView
                 onBarcodeScanned={(result: BarcodeScanningResult) => {
-                    // console.log(result.data);
                     onScan(result.data); // 將掃描結果傳回
                 }}
                 style={styles.camera}

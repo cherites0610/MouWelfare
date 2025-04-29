@@ -6,9 +6,8 @@ interface FilterModalProps {
   visible: boolean;
   title: string;
   items: string[];
-  selectedItems: string[];
-  setSelectedItems: React.Dispatch<React.SetStateAction<string[]>>;
-  onChange?: (items: string[]) => void;
+  selectedItems: string[] | string;
+  setSelectedItems: Function
   onClose: () => void;
 }
 
@@ -18,31 +17,28 @@ const FilterModal: React.FC<FilterModalProps> = ({
   items,
   selectedItems,
   setSelectedItems,
-  onChange,
   onClose,
 }) => {
-  // Optimize toggleSelection
-  const toggleSelection = useCallback(
-    (item: string) => {
-      setSelectedItems((prev) => {
-        const selectedSet = new Set(prev);
-        const isSelected = selectedSet.has(item);
-        if (isSelected) {
-          selectedSet.delete(item);
-        } else {
-          selectedSet.add(item);
-        }
-        const updatedItems = Array.from(selectedSet);
-        setTimeout(() => onChange?.(updatedItems), 0);
-        return updatedItems;
-      });
-    },
-    [setSelectedItems, onChange]
-  );
+  const toggleSelection = (item: string) => {
+    if (Array.isArray(selectedItems)) {
+      const selectedSet = new Set(selectedItems);
+      const isSelected = selectedSet.has(item);
+      if (isSelected) {
+        selectedSet.delete(item);
+      } else {
+        selectedSet.add(item);
+      }
+      const updatedItems = Array.from(selectedSet);
+      setSelectedItems(updatedItems)
+    } else {
+      const updatedItem = selectedItems === item ? '' : item;
+      setSelectedItems(updatedItem);
+    }
+  }
 
   // Optimize renderDropdownItem
-  const renderDropdownItem = useMemo<ListRenderItem<string>>(
-    () => ({ item }) => {
+  const renderDropdownItem = useCallback<ListRenderItem<string>>(
+    ({ item }) => {
       const isSelected = selectedItems.includes(item);
       return (
         <TouchableOpacity
@@ -80,11 +76,13 @@ const FilterModal: React.FC<FilterModalProps> = ({
           <Text style={styles.modalTitle}>{title}</Text>
           <FlatList
             data={items}
-            keyExtractor={(item) => item}
+            keyExtractor={(item, index) => `${item}-${index}`} // 確保 key 唯一
             renderItem={renderDropdownItem}
             getItemLayout={getItemLayout}
             extraData={selectedItems}
             initialNumToRender={10} // Optimize for large lists
+            maxToRenderPerBatch={5} // 限制每批渲染數量
+            windowSize={5} // 優化視窗大小
           />
           <TouchableOpacity style={styles.closeButton} onPress={onClose}>
             <Text style={styles.closeButtonText}>關閉</Text>

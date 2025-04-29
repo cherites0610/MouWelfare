@@ -6,7 +6,7 @@ import { Image } from "react-native";
 import { useSelector } from 'react-redux';
 
 export default function RootLayout() {
-  const { user, status, error } = useSelector((state: RootState) => state.user)
+  const { status } = useSelector((state: RootState) => state.user)
   const route = useRouter()
 
   return (

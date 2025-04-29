@@ -2,7 +2,7 @@ package models
 
 type User struct {
 	ID           uint            `json:"id" gorm:"primaryKey;autoIncrement"`
-	Name         *string         `json:"name" gorm:"type:varchar(10)"`
+	Name         *string         `json:"name" gorm:"type:varchar(20)"`
 	Account      string          `json:"account" gorm:"type:varchar(20);not null;unique"`
 	Password     string          `json:"password" gorm:"type:varchar(255);not null"`
 	Email        string          `json:"email" gorm:"type:varchar(128);not null;unique"`
@@ -17,4 +17,5 @@ type User struct {
 	SearchRecord *[]SearchRecord `json:"search_record" gorm:"foreignKey:UserID;references:ID"`
 	LineID       *string         `json:"line_id" gorm:"type:varchar(50);unique"`
 	AvatarURL    *string         `json:"avatar_url" gorm:"type:varchar(255)"`
+	Favorites    *[]Welfare      `json:"favorite" gorm:"many2many:user_favorites;"`
 }
