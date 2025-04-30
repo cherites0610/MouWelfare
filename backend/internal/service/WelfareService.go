@@ -22,22 +22,31 @@ func (s *WelfareService) GetWelfareAll(page, pageSize int, locations, identities
 
 	categoriesID := []uint{}
 	for _, category := range categories {
-		categoriesID = append(categoriesID, constants.StringToCategory(category))
+		if category != "" {
+			categoriesID = append(categoriesID, constants.StringToCategory(category))
+		}
+
 	}
 	locationsID := []uint{}
 	for _, location := range locations {
-		locationsID = append(locationsID, constants.StringToLocation(location))
+		if location != "" {
+			locationsID = append(locationsID, constants.StringToLocation(location))
+		}
+
 	}
 
 	identitiesID := []uint{}
 	for _, identity := range identities {
-		identitiesID = append(identitiesID, constants.StringToIdentity((identity)))
+		if identity != "" {
+			identitiesID = append(identitiesID, constants.StringToIdentity((identity)))
+		}
+
 	}
 
 	fmt.Println(identitiesID)
 
 	// 查詢分頁數據
-	welfares, total, err := s.welfareRepo.FindWelfares(offset, pageSize, identitiesID, locationsID, categoriesID, search)
+	welfares, total, err := s.welfareRepo.FindWelfares(offset, pageSize, locationsID, categoriesID, search)
 	if err != nil {
 		return nil, 0, err
 	}

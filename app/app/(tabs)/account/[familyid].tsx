@@ -1,7 +1,7 @@
-import { View, Text, SafeAreaView, ScrollView, Image, TouchableOpacity, Switch, StyleSheet, FlatList, Alert, Modal } from 'react-native'
+import { View, Text, SafeAreaView, ScrollView, Image, TouchableOpacity, Switch, StyleSheet, FlatList, Alert, Modal, TextInput, Platform } from 'react-native'
 import React, { useEffect, useState } from 'react'
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { deleteFamilyApi, exitFamilyApi, FamilysResponse, fetchFmailyApi, getFmailyCodeApi } from '@/src/api/familyApi';
+import { deleteFamilyApi, EditFamilyInfApi, exitFamilyApi, FamilysResponse, fetchFmailyApi, getFmailyCodeApi } from '@/src/api/familyApi';
 import { useDispatch, useSelector } from 'react-redux'
 import { AppDispatch, RootState } from '@/src/store';
 import QRCode from 'react-native-qrcode-svg';
@@ -16,18 +16,16 @@ const FamilySettingsScreen = () => {
     const { user } = useSelector((state: RootState) => state.user)
     const [code, setCode] = useState<string>()
     const [displayModal, setDisplayModal] = useState<boolean>(false);
+    const [editNameModal, setEditNameModal] = useState<boolean>(false);
+    const [newFamilyName, setNewFamilyName] = useState<string>('');
     const glob = useLocalSearchParams();
 
+
     const familyID = glob.familyid as string
-    const family = familys.find((item) => item.id == familyID) as FamilysResponse
+    let family = familys.find((item) => item.id == familyID) as FamilysResponse
 
     const disDispatch = useDispatch<AppDispatch>()
     const router = useRouter()
-
-    const handleGroupNamePress = () => {
-        console.log('Navigate to edit group name screen');
-        // 在這裡加入導航或其他處理邏輯
-    };
 
     const handleGenerateQrCodePress = async () => {
         if (family?.id) {
@@ -35,13 +33,12 @@ const FamilySettingsScreen = () => {
             setCode(code)
             setDisplayModal(true)
         }
-
         // 在這裡加入產生 QR Code 的邏輯
     };
 
     const handleExitFamilyPress = async () => {
         const result = await exitFamilyApi(authToken, family?.id!)
-        
+
         if (result.status_code == 200) {
             Alert.alert("退出家庭成功")
             await disDispatch(fetchFamily())
@@ -53,7 +50,7 @@ const FamilySettingsScreen = () => {
 
     const handleDeleteFamilyPress = async () => {
         const result = await deleteFamilyApi(authToken, family?.id!)
-        
+
         if (result.status_code == 200) {
             Alert.alert("刪除家庭成功")
             await disDispatch(fetchFamily())
@@ -62,6 +59,22 @@ const FamilySettingsScreen = () => {
             Alert.alert("刪除家庭失敗")
         }
     };
+
+    const editFamilyNameConfirm = async () => {
+        if (newFamilyName.length==0){
+            setEditNameModal(false)
+            return
+        } 
+        const result = await EditFamilyInfApi(authToken,family?.id!,newFamilyName)
+        if (result.status_code==200) {
+            await disDispatch(fetchFamily())
+            family = familys.find((item) => item.id == familyID) as FamilysResponse
+            setEditNameModal(false)
+            Alert.alert(result.message)
+        }else {
+            Alert.alert("修改失敗",result.message)
+        }
+    }
 
     if (!family) {
         // 如果沒有 family 資料，可以顯示載入中或錯誤訊息
@@ -110,7 +123,7 @@ const FamilySettingsScreen = () => {
                 {family.members.map((item, index) =>
                     <View key={index}>
                         <Image
-                            source={{uri: item.avatar_url}} // 提供一個預設圖片
+                            source={{ uri: item.avatar_url }} // 提供一個預設圖片
                             style={styles.avatar}
                         />
                         <Text style={styles.userName}>{item.name}</Text>
@@ -122,7 +135,7 @@ const FamilySettingsScreen = () => {
             {/* --- 設定選項列表 --- */}
             <View style={styles.settingsList}>
                 {/* 群組名稱 */}
-                <TouchableOpacity style={styles.listItem} onPress={handleGroupNamePress}>
+                <TouchableOpacity style={styles.listItem} onPress={() => { setEditNameModal(true) }}>
                     <Text style={styles.listItemText}>群組名稱</Text>
                     <View style={styles.listItemRight}>
                         <Text style={styles.listItemValue}>{family.name}</Text>
@@ -177,7 +190,32 @@ const FamilySettingsScreen = () => {
                         </TouchableOpacity>
                     </View>
                 </View>
+            </Modal>
 
+            <Modal
+                visible={editNameModal}
+                transparent
+                animationType="fade"
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <Text style={styles.modalTitle}>修改家庭名</Text>
+                        <View style={styles.qrContainer}>
+                            <TextInput
+                                style={styles.input}
+                                onChangeText={setNewFamilyName}
+                                value={newFamilyName}
+                                placeholder='請輸入欲修改的家庭名'
+                            />
+                        </View>
+                        <TouchableOpacity
+                            style={styles.closeButton}
+                            onPress={editFamilyNameConfirm}
+                        >
+                            <Text style={styles.closeButtonText}>{newFamilyName.length==0?"關閉":"確定"}</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
             </Modal>
         </ScrollView>
     );
@@ -195,6 +233,16 @@ const styles = StyleSheet.create({
         backgroundColor: '#ffffff', // 白色背景
         flexDirection: "row",
         gap: 15
+    },
+    input: {
+        borderWidth: 1,
+        borderColor: '#ccc',
+        borderRadius: 8,
+        paddingHorizontal: 15, // More horizontal padding
+        paddingVertical: Platform.OS === 'ios' ? 12 : 10,
+        fontSize: 16,
+        minWidth: 200,
+        marginBottom: 0, // Consistent spacing
     },
     avatar: {
         width: 60,

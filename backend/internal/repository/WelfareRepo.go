@@ -21,7 +21,7 @@ func (r *WelfareRepo) FindByID(id uint) (*models.Welfare, error) {
 	return &welfare, err
 }
 
-func (r *WelfareRepo) FindWelfares(offset, limit int, identities, locations, categories []uint, search string) ([]models.Welfare, int64, error) {
+func (r *WelfareRepo) FindWelfares(offset, limit int, locations, categories []uint, search string) ([]models.Welfare, int64, error) {
 	var welfares []models.Welfare
 	var totalCount int64
 
@@ -30,9 +30,15 @@ func (r *WelfareRepo) FindWelfares(offset, limit int, identities, locations, cat
 		Preload("Identities").
 		Preload("Categories").
 		Preload("Location").
-		Joins("JOIN welfare_categories ON welfare_categories.welfare_id = welfares.id").
-		Where("welfare_categories.category_id IN ?", categories).
-		Where("location_id IN ?", locations)
+		Joins("JOIN welfare_categories ON welfare_categories.welfare_id = welfares.id")
+
+	// 動態添加 WHERE 條件
+	if len(categories) > 0 {
+		query = query.Where("welfare_categories.category_id IN ?", categories)
+	}
+	if len(locations) > 0 {
+		query = query.Where("location_id IN ?", locations)
+	}
 
 	// 計算總數量
 	err := query.Model(&models.Welfare{}).Count(&totalCount).Error
@@ -43,7 +49,7 @@ func (r *WelfareRepo) FindWelfares(offset, limit int, identities, locations, cat
 	// 執行分頁查詢
 	err = query.Offset(offset).Limit(limit).Find(&welfares).Error
 	if err != nil {
-		return nil, 0, fmt.Errorf("failed to query welfares with categories %v: %w", categories, err)
+		return nil, 0, fmt.Errorf("failed to query welfares: %w", err)
 	}
 
 	return welfares, totalCount, nil

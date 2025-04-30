@@ -5,7 +5,6 @@ import (
 	"Mou-Welfare/api/middleware"
 	"Mou-Welfare/internal/config"
 	"Mou-Welfare/internal/di"
-	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -66,12 +65,13 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB, cfg *config.Config, log *logrus.Log
 	}
 
 	// 文件服務
-	r.GET(fmt.Sprintf("%s/*filepath", cfg.AVATAR_PATH), func(c *gin.Context) {
+	r.GET("avatar/*filepath", func(c *gin.Context) {
 		filePath := c.Param("filepath")
 		fullPath := filepath.Join(cfg.AVATAR_PATH, filePath)
 
 		if _, err := os.Stat(fullPath); os.IsNotExist(err) {
-			defaultFile := fmt.Sprintf("%s/default_avatar.png", cfg.AVATAR_PATH)
+			defaultFile := "../../avatar/default_avatar.png"
+
 			if _, err := os.Stat(defaultFile); err == nil {
 				c.File(defaultFile)
 				return

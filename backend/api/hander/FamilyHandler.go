@@ -177,17 +177,17 @@ func (h *FamilyHandler) UpdateFamily(c *gin.Context) {
 
 	userID, exists := c.Get("user_id")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "無法獲取用戶 ID"})
+		c.JSON(http.StatusOK, dto.DTO{StatusCode: 401, Message: "修改失敗", Data: nil})
 		return
 	}
 
 	err = h.FamilyService.UpdateFamilyName(uint(parsedID), userID.(uint), req.Name)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusOK, dto.DTO{StatusCode: 400, Message: err.Error(), Data: nil})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "家庭名稱更新成功"})
+	c.JSON(http.StatusOK, dto.DTO{Message: "修改成功", StatusCode: 200, Data: nil})
 }
 
 func (h *FamilyHandler) UpdataMember(c *gin.Context) {

@@ -90,3 +90,17 @@ export const deleteFamilyApi = async (token: string,familyID: string): Promise<R
 
     return result
 }
+
+export const EditFamilyInfApi = async (token: string,familyID: string,familyName: string): Promise<ResponseType> => {
+    const result = await apiFetch<ResponseType>(`/api/family/${familyID}`, {
+        method: "PUT",
+        headers: {
+            "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({
+            "name": familyName
+        })
+    })
+
+    return result
+}
