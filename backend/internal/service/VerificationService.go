@@ -112,7 +112,9 @@ func (vs *VerificationService) deleteCode(code string) {
 		if vc.Data.CodeMode == 2 {
 			println("驗證碼模式為家庭驗證，刪除家庭ID")
 		}
-
+		if vc.Data.CodeMode == 3 {
+			println("驗證碼模式為二級驗證，刪除該驗證碼")
+		}
 	}
 }
 

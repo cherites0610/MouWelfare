@@ -12,6 +12,8 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
@@ -22,12 +24,29 @@ type UserService struct {
 	verificationService *VerificationService
 	authService         *AuthService
 	messageService      *MessageService
+	userVerifcation     map[uint]*UserVerifcation //二級驗證
 	cfg                 *config.Config
 	log                 *logrus.Logger
+	mutex               sync.RWMutex
+}
+
+type UserVerifcation struct {
+	user      models.User
+	ExpiresAt time.Time
 }
 
 func NewUserService(userRepo *repository.UserRerpository, verificationService *VerificationService, authService *AuthService, messageService *MessageService, cfg *config.Config, log *logrus.Logger) *UserService {
-	return &UserService{UserRepo: userRepo, verificationService: verificationService, authService: authService, messageService: messageService, cfg: cfg, log: log}
+	us := &UserService{
+		UserRepo:            userRepo,
+		verificationService: verificationService,
+		userVerifcation:     make(map[uint]*UserVerifcation),
+		authService:         authService,
+		messageService:      messageService,
+		cfg:                 cfg,
+		log:                 log,
+	}
+	go us.cleanupExpiredUserVerifcation()
+	return us
 }
 
 func (s *UserService) Register(account, password, email string) (*models.User, error) {
@@ -69,6 +88,26 @@ func (s *UserService) Register(account, password, email string) (*models.User, e
 	}).Info("User registered successfully")
 
 	return &user, nil
+}
+
+func (s *UserService) UpdataPassword(id uint, newPassword string) error {
+	verify := s.IsVerify(id)
+	if !verify {
+		return fmt.Errorf("尚未驗證")
+	}
+
+	// 密碼加密
+	hashedPassword, err := util.HashPassword(newPassword)
+	if err != nil {
+		return fmt.Errorf("密碼加密失敗")
+	}
+
+	err = s.UserRepo.UpdataPassword(id, hashedPassword)
+	if err != nil {
+		return fmt.Errorf("密碼更改失敗")
+	}
+
+	return nil
 }
 
 func (s *UserService) SendVerifyEmailCode(email string) (*string, error) {
@@ -173,6 +212,71 @@ func (s *UserService) VerifyToken(token string) (*models.User, error) {
 	return user, nil
 }
 
+// 請求二級驗證
+func (s *UserService) SendVerifyCode(email string) error {
+	err := s.verificationService.SendVerifyCode(models.CodeData{CodeMode: 3, Email: email})
+	return err
+}
+
+// 插入二級驗證
+func (s *UserService) Verify(email, code string) error {
+	verify, data := s.verificationService.VerifyCode(code, email)
+	if !verify {
+		return fmt.Errorf("驗證碼錯誤")
+	}
+
+	user, err := s.UserRepo.FindByEmail(data.Email)
+	if err != nil {
+		return err
+	}
+
+	uv := &UserVerifcation{
+		user:      *user,
+		ExpiresAt: time.Now().Add(5 * time.Minute),
+	}
+
+	s.mutex.Lock()
+	s.userVerifcation[user.ID] = uv
+	s.mutex.Unlock()
+
+	return nil
+}
+
+// 檢查二級驗證
+func (s *UserService) IsVerify(userID uint) bool {
+	_, exists := s.userVerifcation[userID]
+	if !exists {
+		return false
+	}
+
+	s.mutex.Lock()
+	delete(s.userVerifcation, userID)
+	s.mutex.Unlock()
+
+	return true
+}
+
+// 定期清理過期的二級驗證
+func (s *UserService) cleanupExpiredUserVerifcation() {
+	ticker := time.NewTicker(time.Minute)
+	for range ticker.C {
+		s.mutex.RLock()
+		var expiredUser []uint
+		now := time.Now()
+
+		for userId, vc := range s.userVerifcation {
+			if now.After(vc.ExpiresAt) {
+				expiredUser = append(expiredUser, userId)
+			}
+		}
+		s.mutex.RUnlock()
+
+		for _, userID := range expiredUser {
+			delete(s.userVerifcation, userID)
+		}
+	}
+}
+
 type TokenResponse struct {
 	AccessToken      string `json:"access_token"`
 	ExpiresIn        int    `json:"expires_in"`
@@ -183,7 +287,7 @@ type TokenResponse struct {
 	ErrorDescription string `json:"error_description,omitempty"`
 }
 
-func (s UserService) GetLineProfileByAccessToken(accessToken string) (string, error) {
+func (s *UserService) GetLineProfileByAccessToken(accessToken string) (string, error) {
 	// 創建 HTTP 客戶端
 	httpClient := &http.Client{}
 
@@ -220,7 +324,7 @@ func (s UserService) GetLineProfileByAccessToken(accessToken string) (string, er
 	return profileResp.UserID, nil
 }
 
-func (s UserService) GetLineAccessTokenByAuthCode(authCode string) (string, error) {
+func (s *UserService) GetLineAccessTokenByAuthCode(authCode string) (string, error) {
 	// 構建 POST 請求的表單數據
 	data := url.Values{}
 	data.Set("grant_type", "authorization_code")

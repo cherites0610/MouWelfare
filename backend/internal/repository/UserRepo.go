@@ -43,3 +43,7 @@ func (c *UserRerpository) FindByID(id uint) (*models.User, error) {
 func (c *UserRerpository) DeleteByID(id uint) error {
 	return c.db.Delete(&models.User{}, id).Error
 }
+
+func (c *UserRerpository) UpdataPassword(id uint, password string) error {
+	return c.db.Select("Password").Save(&models.User{ID: id, Password: password}).Error
+}
