@@ -1,4 +1,5 @@
-import { registerApi, ResponseType } from '@/src/api/userApi';
+import { ResponseType } from '@/src/api/api';
+import { registerApi } from '@/src/api/userApi';
 import { COLORS } from '@/src/utils/colors';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';

@@ -49,12 +49,13 @@ export async function getLineLoginUrl(token: string): Promise<string> {
     });
 }
 
-export async function verifyCodeApi(email: string, code: string): Promise<ResponseType> {
+export async function verifyCodeApi(email: string, code: string,mode: number): Promise<ResponseType> {
     return apiFetch<ResponseType>("/auth/verify", {
         method: "POST",
         body: JSON.stringify({
             email: email,
-            code: code
+            code: code,
+            mode: mode
         })
     })
 }
@@ -78,4 +79,28 @@ export async function updateAvatarApi(token:string,data:FormData) {
 
 export async function getAvatarApi(userID:string) {
     return apiFetch<ResponseType>("/api/get")
+}
+
+export async function updatePasswordAPI(email:string,password: string) {
+    return apiFetch<ResponseType>("/auth/password", {
+        method: "PUT",
+        body:JSON.stringify({
+            email: email,
+            password: password
+        })
+        
+    })
+}
+
+export async function updateProfileAPI(token:string,profile: Partial<User>) {
+    return apiFetch<ResponseType>("/auth/password", {
+        method: "PUT",
+        headers: {
+            "Authorization": `Bearer ${token}`,
+        },
+        body:JSON.stringify({
+            user: profile
+        })
+        
+    })
 }

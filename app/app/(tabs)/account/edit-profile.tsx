@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
     View,
     Text,
@@ -7,182 +7,279 @@ import {
     Image,
     StyleSheet,
     Alert,
-    Button,
+    Platform,
+    ScrollView,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { useDispatch, useSelector } from "react-redux"
 import { AppDispatch, RootState } from '@/src/store';
-import { User } from '@/src/type/user';
-import { updateAvatarApi } from '@/src/api/userApi';
-import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
+import { updateAvatarApi, updateProfileAPI } from '@/src/api/userApi';
 import { fetchUser } from '@/src/store/slices/userSlice';
+import DropDownPicker from 'react-native-dropdown-picker';
+import { GenderNum, getTextByGender, getTextByIdentity, getTextByLocation, IdentityNum, LocationNum } from '@/src/utils/getTextByNumber';
+import { User } from '@/src/type/user';
 
 export default function EditProfileScreen() {
     const router = useRouter();
-    const [currentUser, setUser] = useState<User | null>(null);
     const [avatar, setAvatar] = useState<string>();
     const [name, setName] = useState<string>();
-    const [birthday, setBirthday] = useState<Date>(new Date(1598051730000));
-    const [gender, setGender] = useState('');
-    const [location, setLocation] = useState('');
-    const [identities, setIdentities] = useState<string[]>([]);
+    const [birthday, setBirthday] = useState<string>(''); // 改為字符串以接受輸入
 
-    const [showDatepicker, setShowDatePicker] = useState<boolean>(false);
+    // 性別下拉選單狀態
+    const [genderOpen, setGenderOpen] = useState(false);
+    const [genderValue, setGenderValue] = useState<string | null>(null);
+    const [genderItems, setGenderItems] = useState(Array.from({ length: GenderNum - 1 }, (_, i) => ({
+        label: getTextByGender(i + 1),
+        value: getTextByGender(i + 1),
+    })));
 
-    const { user } = useSelector((state: RootState) => state.user)
-    const { authToken } = useSelector((state: RootState) => state.config)
-    const dispatch = useDispatch<AppDispatch>()
+    // 地區下拉選單狀態
+    const [locationOpen, setLocationOpen] = useState(false);
+    const [locationValue, setLocationValue] = useState<string | null>(null);
+    const [locationItems, setLocationItems] = useState(Array.from({ length: LocationNum - 1 }, (_, i) => ({
+        label: getTextByLocation(i + 1),
+        value: getTextByLocation(i + 1),
+    })));
 
-    // 假設你從某處（例如 Redux 或 API）獲取當前用戶資料
+    // 身份下拉選單狀態
+    const [identitiesOpen, setIdentitiesOpen] = useState(false);
+    const [identitiesValue, setIdentitiesValue] = useState<string[]>([]);
+    const [identitiesItems, setIdentitiesItems] = useState(Array.from({ length: IdentityNum - 1 }, (_, i) => ({
+        label: getTextByIdentity(i + 1),
+        value: getTextByIdentity(i + 1),
+    })));
+
+    const { user } = useSelector((state: RootState) => state.user);
+    const { authToken } = useSelector((state: RootState) => state.config);
+    const dispatch = useDispatch<AppDispatch>();
+
     useEffect(() => {
         if (user) {
-            setName(user.name)
-            setAvatar(user.avatar_url)
-            // setBirthday(user.birthday)
-            // setGender(user.gender)
+            setName(user.name);
+            setAvatar(user.avatar_url);
+            setGenderValue(user.gender || null);
+            setLocationValue(user.location || null);
+            // 格式化生日為 YYYY/MM/DD
+            setBirthday(user.birthday ? new Date(user.birthday).toLocaleDateString('zh-TW', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit'
+            }).split('/').join('/') : '');
+            setIdentitiesValue(Array.isArray(user.identities) ? user.identities : []);
         }
+    }, [user]);
 
+    const onGenderOpen = useCallback(() => {
+        setLocationOpen(false);
+        setIdentitiesOpen(false);
     }, []);
 
-    // 選擇並上傳頭像
+    const onLocationOpen = useCallback(() => {
+        setGenderOpen(false);
+        setIdentitiesOpen(false);
+    }, []);
+
+    const onIdentitiesOpen = useCallback(() => {
+        setGenderOpen(false);
+        setLocationOpen(false);
+    }, []);
+
     const pickImage = async () => {
         const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (!permissionResult.granted) {
-            Alert.alert('需要相冊權限');
+            Alert.alert('需要相冊訪問權限');
             return;
         }
 
         const result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ["images", "livePhotos"],
+            mediaTypes: ["images"],
             allowsEditing: true,
             aspect: [1, 1],
             quality: 1,
         });
 
-        if (!result.canceled && result.assets[0].uri) {
+        if (!result.canceled && result.assets && result.assets.length > 0 && result.assets[0].uri) {
             const uri = result.assets[0].uri;
+            const filename = uri.split('/').pop() || 'avatar.jpg';
+            const match = /\.(\w+)$/.exec(filename);
+            const type = match ? `image/${match[1]}` : `image`;
 
-            // 上傳頭像到後端
             const formData = new FormData();
             formData.append('avatar', {
-                uri,
-                name: 'avatar.jpg',
-                type: 'image/jpeg',
+                uri: Platform.OS === 'ios' ? uri.replace('file://', '') : uri,
+                name: filename,
+                type,
             } as any);
 
-
-            const resp = await updateAvatarApi(authToken, formData)
-            if (resp.status_code == 200) {
-                Alert.alert("更改成功", resp.message)
-                setAvatar(resp.data)
-
-            } else {
-                Alert.alert("更改失敗", resp.message)
-                setAvatar(resp.data)
+            try {
+                const resp = await updateAvatarApi(authToken, formData);
+                if (resp.status_code === 200) {
+                    Alert.alert("更新成功", resp.message);
+                    setAvatar(resp.data);
+                    dispatch(fetchUser());
+                } else {
+                    Alert.alert("更新失敗", resp.message || "未知錯誤");
+                }
+            } catch (error) {
+                console.error("上傳頭像失敗:", error);
+                Alert.alert("錯誤", "頭像上傳失敗。");
             }
-
-            dispatch(fetchUser())
         }
     };
 
-    // 提交表單
+    const validateBirthday = (input: string): boolean => {
+        const regex = /^\d{4}\/(0[1-9]|1[0-2])\/(0[1-9]|[12]\d|3[01])$/;
+        if (!regex.test(input)) {
+            return false;
+        }
+        const [year, month, day] = input.split('/').map(Number);
+        const date = new Date(year, month - 1, day);
+        return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day;
+    };
+
     const handleSubmit = async () => {
         try {
-            const updatedUser = {
-                name,
-                birthday,
-                gender,
-                location,
-                identities,
-                avatar_url: avatar,
+            // 檢查生日格式
+            if (birthday && !validateBirthday(birthday)) {
+                Alert.alert('錯誤', '生日格式無效，請輸入 YYYY/MM/DD');
+                return;
+            }
+
+            const updatedUserData: Partial<User> = {
+                name: name || '',
+                birthday: birthday ? new Date(birthday).toISOString() : undefined,
+                gender: genderValue ?? undefined,
+                location: locationValue ?? undefined,
+                identities: identitiesValue,
             };
 
-            // await axios.put('http://your-backend/api/user/update', updatedUser, {
-                // headers: { Authorization: 'Bearer your-token' },
-            // });
+            console.log("送出更新資料:", updatedUserData);
 
-            Alert.alert('成功', '資料已更新', [
-                { text: '確定', onPress: () => router.back() },
-            ]);
+            // Alert.alert('成功', '資料已更新', [
+            //     { text: '確定', onPress: () => router.back() },
+            // ]);
+            const result = await updateProfileAPI(authToken, updatedUserData)
+            dispatch(fetchUser());
+            router.replace("/home")
         } catch (error) {
-            Alert.alert('錯誤', '更新失敗');
+            console.error("更新個人資料失敗:", error);
+            Alert.alert('錯誤', '更新失敗，請重試。',);
         }
-    };
-
-    const onChange = (event: DateTimePickerEvent, selectedDate?: Date): void => {
-        if (selectedDate) {
-            setBirthday(selectedDate);
-        }
-        setShowDatePicker(false);
     };
 
     return (
-        <View style={styles.container}>
-            <View style={styles.content}>
-                {/* 頭像 */}
-                <TouchableOpacity onPress={pickImage}>
-                    <Image
-                        source={{ uri: avatar || currentUser?.avatar_url || 'http://your-backend/uploads/default_avatar.png' }}
-                        style={styles.avatar}
-                    />
-                    <Text style={styles.changeAvatarText}>更改頭像</Text>
-                </TouchableOpacity>
+        <ScrollView contentContainerStyle={styles.scrollContainer} keyboardShouldPersistTaps="handled">
+            <View style={styles.container}>
+                <View style={styles.content}>
+                    <TouchableOpacity onPress={pickImage}>
+                        <Image
+                            source={{ uri: avatar || user?.avatar_url || 'https://via.placeholder.com/100' }}
+                            style={styles.avatar}
+                        />
+                        <Text style={styles.changeAvatarText}>更改頭像</Text>
+                    </TouchableOpacity>
 
-                {/* 表單欄位 */}
-                <View style={styles.infoBlock}>
-                    <Text style={styles.label}>姓名：</Text>
-                    <TextInput
-                        style={styles.input}
-                        value={name}
-                        onChangeText={setName}
-                        placeholder="輸入姓名"
-                    />
+                    <View style={[styles.infoBlock, { zIndex: 100 }]}>
+                        <Text style={styles.label}>姓名：</Text>
+                        <TextInput
+                            style={styles.input}
+                            value={name}
+                            onChangeText={setName}
+                            placeholder="輸入姓名"
+                        />
+                    </View>
 
-                    <Text style={styles.label}>生日:</Text>
-                    <DateTimePicker
-                        testID="dateTimePicker"
-                        value={birthday}
-                        mode={'date'}
-                        onChange={onChange}
-                        // style={styles.input}
-                        style={styles.datapick}
-                    />
+                    <View style={[styles.infoBlock, { zIndex: 90 }]}>
+                        <Text style={styles.label}>生日：</Text>
+                        <TextInput
+                            style={styles.input}
+                            value={birthday}
+                            onChangeText={setBirthday}
+                            placeholder="YYYY/MM/DD"
+                            keyboardType="numeric"
+                        />
+                    </View>
 
+                    <View style={[styles.infoBlock, { zIndex: 80 }]}>
+                        <Text style={styles.label}>性別：</Text>
+                        <DropDownPicker
+                            open={genderOpen}
+                            value={genderValue}
+                            items={genderItems}
+                            setOpen={setGenderOpen}
+                            setValue={setGenderValue}
+                            setItems={setGenderItems}
+                            onOpen={onGenderOpen}
+                            placeholder="選擇性別"
+                            containerStyle={styles.dropdownContainer}
+                            style={styles.dropdown}
+                            dropDownContainerStyle={styles.dropdownListStyle}
+                            listMode="SCROLLVIEW"
+                            zIndex={3000}
+                            zIndexInverse={1000}
+                        />
+                    </View>
 
-                    <Text style={styles.label}>性別：</Text>
-                    <TextInput
-                        style={styles.input}
-                        value={gender}
-                        onChangeText={setGender}
-                        placeholder="輸入性別"
-                    />
-                    <Text style={styles.label}>地區：</Text>
-                    <TextInput
-                        style={styles.input}
-                        value={location}
-                        onChangeText={setLocation}
-                        placeholder="輸入地區"
-                    />
-                    <Text style={styles.label}>身份別：</Text>
-                    <TextInput
-                        style={styles.input}
-                        value={identities.join(',')}
-                        onChangeText={(text) => setIdentities(text.split(','))}
-                        placeholder="輸入身份別，用逗號分隔"
-                    />
+                    <View style={[styles.infoBlock, { zIndex: 70 }]}>
+                        <Text style={styles.label}>地區：</Text>
+                        <DropDownPicker
+                            open={locationOpen}
+                            value={locationValue}
+                            items={locationItems}
+                            setOpen={setLocationOpen}
+                            setValue={setLocationValue}
+                            setItems={setLocationItems}
+                            onOpen={onLocationOpen}
+                            placeholder="選擇地區"
+                            containerStyle={styles.dropdownContainer}
+                            style={styles.dropdown}
+                            dropDownContainerStyle={styles.dropdownListStyle}
+                            listMode="SCROLLVIEW"
+                            zIndex={2000}
+                            zIndexInverse={2000}
+                        />
+                    </View>
+
+                    <View style={[styles.infoBlock, { zIndex: 60 }]}>
+                        <Text style={styles.label}>身份：</Text>
+                        <DropDownPicker
+                            multiple={true}
+                            min={0}
+                            open={identitiesOpen}
+                            value={identitiesValue}
+                            items={identitiesItems}
+                            setOpen={setIdentitiesOpen}
+                            setValue={setIdentitiesValue}
+                            setItems={setIdentitiesItems}
+                            onOpen={onIdentitiesOpen}
+                            placeholder="選擇身份"
+                            mode="BADGE"
+                            badgeDotColors={["#e76f51", "#00b4d8", "#e9c46a"]}
+                            containerStyle={styles.dropdownContainer}
+                            style={styles.dropdown}
+                            dropDownContainerStyle={styles.dropdownListStyle}
+                            listMode="SCROLLVIEW"
+                            zIndex={1000}
+                            zIndexInverse={3000}
+                        />
+                    </View>
                 </View>
-            </View>
 
-            {/* 提交按鈕 */}
-            <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
-                <Text style={styles.bottomButtonText}>保存</Text>
-            </TouchableOpacity>
-        </View>
+                <View style={{ height: identitiesOpen || locationOpen || genderOpen ? 200 : 0 }} />
+
+                <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
+                    <Text style={styles.bottomButtonText}>儲存</Text>
+                </TouchableOpacity>
+            </View>
+        </ScrollView>
     );
 }
 
 const styles = StyleSheet.create({
+    scrollContainer: {
+        flexGrow: 1,
+    },
     container: {
         flex: 1,
         padding: 20,
@@ -190,12 +287,14 @@ const styles = StyleSheet.create({
     },
     content: {
         alignItems: 'center',
+        paddingBottom: 80,
     },
     avatar: {
         width: 100,
         height: 100,
         borderRadius: 50,
         marginBottom: 10,
+        backgroundColor: '#cccccc',
     },
     changeAvatarText: {
         color: '#007AFF',
@@ -204,37 +303,49 @@ const styles = StyleSheet.create({
     },
     infoBlock: {
         width: '100%',
+        marginBottom: 15,
     },
     label: {
         fontSize: 16,
         fontWeight: 'bold',
         marginTop: 10,
+        marginBottom: 5,
     },
     input: {
         borderWidth: 1,
         borderColor: '#ccc',
-        borderRadius: 5,
-        padding: 10,
-        marginTop: 5,
+        borderRadius: 8,
+        paddingHorizontal: 15,
+        paddingVertical: 12,
         fontSize: 16,
+        backgroundColor: '#fff',
+        height: 50,
     },
-    datapick: {
-        borderWidth: 1,
+    dropdownContainer: {},
+    dropdown: {
         borderColor: '#ccc',
-        borderRadius: 5,
-        backgroundColor: "white",
-        
+        borderWidth: 1,
+        borderRadius: 8,
+        paddingHorizontal: 15,
+        backgroundColor: '#fff',
+    },
+    dropdownListStyle: {
+        borderColor: '#ccc',
+        borderWidth: 1,
+        borderRadius: 8,
+        backgroundColor: '#fff',
     },
     submitButton: {
         backgroundColor: '#007AFF',
-        padding: 15,
+        paddingVertical: 15,
+        paddingHorizontal: 20,
         borderRadius: 10,
         alignItems: 'center',
-        marginTop: 20,
+        width: '100%',
     },
     bottomButtonText: {
         color: '#fff',
-        fontSize: 16,
+        fontSize: 18,
         fontWeight: 'bold',
     },
 });

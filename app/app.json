@@ -36,6 +36,11 @@
     },
     "android": {
       "package": "com.anonymous.myapp"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "056bab50-3d28-4f31-920e-36766428eb42"
+      }
     }
   },
   "android": {

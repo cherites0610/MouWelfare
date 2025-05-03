@@ -27,7 +27,7 @@ export default function Verify() {
   const [countdown, setCountdown] = useState(0);
 
   const handleVerify = async () => {
-    const result = await verifyCodeApi(email, verificationCode)
+    const result = await verifyCodeApi(email, verificationCode,1)
 
     if (result.status_code != 200) {
       Alert.alert(result.message)

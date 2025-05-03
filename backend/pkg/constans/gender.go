@@ -13,9 +13,9 @@ func GenderToString(gender uint) string {
 	case NotSetting:
 		return "未設置"
 	case GenderMale:
-		return "男"
+		return "男性"
 	case GenderFemale:
-		return "女"
+		return "女性"
 	default:
 		return "未知"
 	}

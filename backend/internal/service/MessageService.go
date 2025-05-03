@@ -7,8 +7,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"net/smtp"
 
+	"github.com/resend/resend-go/v2"
 	"github.com/sirupsen/logrus"
 )
 
@@ -84,26 +84,20 @@ func (m *MessageService) SendLineMessage(message string, LineUserID string) erro
 }
 
 func (m *MessageService) SendEmailMessage(email, subject, body string) error {
-	smtpHost := m.cfg.SMTP_HOST
-	smtpPort := m.cfg.SMTP_PORT
-	from := m.cfg.SMTP_FROM         // 替換為你的發件人郵箱
-	user := m.cfg.SMTP_USER         // 替換為你的 Mailtrap 用戶名
-	password := m.cfg.SMTP_PASSWORD // 你的 Mailtrap 密碼
-	to := []string{email}           // 替換為收件人郵箱
+	apiKey := m.cfg.RESEND_API_KEY
 
-	// 邮件内容
-	msg := []byte("To: " + to[0] + "\r\n" +
-		"Subject: " + subject + "\r\n" +
-		"\r\n" +
-		body + "\r\n")
+	client := resend.NewClient(apiKey)
 
-	// 认证
-	auth := smtp.PlainAuth("", user, password, smtpHost)
+	params := &resend.SendEmailRequest{
+		From:    fmt.Sprintf("Mou <%s>", m.cfg.EMAIL_DOMAIN),
+		To:      []string{email},
+		Html:    fmt.Sprintf("<strong>%s</strong>", body),
+		Subject: subject,
+	}
 
-	// 发送邮件
-	err := smtp.SendMail(smtpHost+":"+smtpPort, auth, from, to, msg)
+	_, err := client.Emails.Send(params)
 	if err != nil {
-		fmt.Println("Error sending email:", err)
+		fmt.Println(err.Error())
 		return err
 	}
 

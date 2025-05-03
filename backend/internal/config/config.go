@@ -22,11 +22,8 @@ type Config struct {
 	LINE_TOKEN_APIURL            string
 	LINE_USER_PROFILE_APIURL     string
 	LINE_AUTHORIZATION_APIURL    string
-	SMTP_HOST                    string
-	SMTP_PORT                    string
-	SMTP_USER                    string
-	SMTP_PASSWORD                string
-	SMTP_FROM                    string
+	RESEND_API_KEY               string
+	EMAIL_DOMAIN                 string
 	TOKEN_EXPIRES_IN             int64
 	VERIFICATION_CODE_EXPIRES_IN int64
 	LOG_LEVEL                    string
@@ -54,11 +51,8 @@ func LoadConfig() *Config {
 		LINE_TOKEN_APIURL:            getEnv("LINE_TOKEN_APIURL", "https://api.line.me/oauth2/v2.1/token"),
 		LINE_USER_PROFILE_APIURL:     getEnv("LINE_USER_PROFILE_APIURL", "https://api.line.me/v2/profile"),
 		LINE_AUTHORIZATION_APIURL:    getEnv("LINE_AUTHORIZATION_APIURL", "https://access.line.me/oauth2/v2.1/authorize"),
-		SMTP_HOST:                    getEnv("SMTP_HOST", "smtp.example.com"),
-		SMTP_PORT:                    getEnv("SMTP_PORT", "587"),
-		SMTP_USER:                    getEnv("SMTP_USER", ""),
-		SMTP_PASSWORD:                getEnv("SMTP_PASSWORD", ""),
-		SMTP_FROM:                    getEnv("SMTP_FROM", ""),
+		RESEND_API_KEY:               getEnv("RESEND_API_KEY", ""),
+		EMAIL_DOMAIN:                 getEnv("EMAIL_DOMAIN", ""),
 		TOKEN_EXPIRES_IN:             parseEnvToInt64("TOKEN_EXPIRES_IN", "3600"),
 		VERIFICATION_CODE_EXPIRES_IN: parseEnvToInt64("VERIFICATION_CODE_EXPIRES_IN", "300"),
 		LOG_LEVEL:                    getEnv("LOG_LEVEL", "debug"),

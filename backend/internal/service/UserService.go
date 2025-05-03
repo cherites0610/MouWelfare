@@ -90,8 +90,13 @@ func (s *UserService) Register(account, password, email string) (*models.User, e
 	return &user, nil
 }
 
-func (s *UserService) UpdataPassword(id uint, newPassword string) error {
-	verify := s.IsVerify(id)
+func (s *UserService) UpdataPassword(email, newPassword string) error {
+	user, err := s.UserRepo.FindByEmail(email)
+	if err != nil {
+		return fmt.Errorf("找不到用戶")
+	}
+
+	verify := s.IsVerify(user.ID)
 	if !verify {
 		return fmt.Errorf("尚未驗證")
 	}
@@ -102,7 +107,7 @@ func (s *UserService) UpdataPassword(id uint, newPassword string) error {
 		return fmt.Errorf("密碼加密失敗")
 	}
 
-	err = s.UserRepo.UpdataPassword(id, hashedPassword)
+	err = s.UserRepo.UpdataPassword(user.ID, hashedPassword)
 	if err != nil {
 		return fmt.Errorf("密碼更改失敗")
 	}
@@ -121,14 +126,12 @@ func (s *UserService) SendVerifyEmailCode(email string) (*string, error) {
 	}
 
 	code := s.verificationService.GenerateCode(models.CodeData{CodeMode: 1, UserID: &existsUser.ID, Email: existsUser.Email})
-
+	fmt.Println("驗證碼:", code)
 	// 發驗證碼
 	err = s.messageService.SendEmailMessage(existsUser.Email, "驗證碼", fmt.Sprintf("您的驗證碼是: %s", code))
 	if err != nil {
 		return nil, fmt.Errorf("郵件發送失敗")
 	}
-
-	fmt.Println("驗證碼:", code)
 
 	s.log.WithFields(logrus.Fields{
 		"email": existsUser.Email,
@@ -212,20 +215,9 @@ func (s *UserService) VerifyToken(token string) (*models.User, error) {
 	return user, nil
 }
 
-// 請求二級驗證
-func (s *UserService) SendVerifyCode(email string) error {
-	err := s.verificationService.SendVerifyCode(models.CodeData{CodeMode: 3, Email: email})
-	return err
-}
-
 // 插入二級驗證
-func (s *UserService) Verify(email, code string) error {
-	verify, data := s.verificationService.VerifyCode(code, email)
-	if !verify {
-		return fmt.Errorf("驗證碼錯誤")
-	}
-
-	user, err := s.UserRepo.FindByEmail(data.Email)
+func (s *UserService) Verify(email string) error {
+	user, err := s.UserRepo.FindByEmail(email)
 	if err != nil {
 		return err
 	}
@@ -238,7 +230,7 @@ func (s *UserService) Verify(email, code string) error {
 	s.mutex.Lock()
 	s.userVerifcation[user.ID] = uv
 	s.mutex.Unlock()
-
+	fmt.Println("已經插入二級驗證", user.ID)
 	return nil
 }
 
@@ -272,6 +264,7 @@ func (s *UserService) cleanupExpiredUserVerifcation() {
 		s.mutex.RUnlock()
 
 		for _, userID := range expiredUser {
+			fmt.Println("已經移除二級驗證", userID)
 			delete(s.userVerifcation, userID)
 		}
 	}

@@ -38,9 +38,7 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB, cfg *config.Config, log *logrus.Log
 		//這是註冊的
 		auth.POST("/verify", container.UserHandler.VerifyEmail)
 		auth.POST("/send-verify/:email", container.UserHandler.SendVerifyEmail)
-		//這是申請二級驗證
-		auth.POST("/send-userverify/:email", container.UserHandler.GetUserVerifyMessage)
-		auth.POST("/userverify", container.UserHandler.Verify)
+		auth.PUT("/password", container.UserHandler.UpdataPassword)
 	}
 
 	// 受保護路由
@@ -52,7 +50,6 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB, cfg *config.Config, log *logrus.Log
 		api.GET("/favorite", container.WelfareHandler.FindFavoritesByUserID)
 		api.POST("/favorite/:id", container.WelfareHandler.AddFavorite)
 		api.DELETE("/favorite/:id", container.WelfareHandler.DeleteFavorite)
-		api.PUT("profile/:password", container.UserHandler.UpdataPassword)
 
 		api.POST("/family", container.FamilyHandler.CreateFamily)
 		api.DELETE("/family/:id", container.FamilyHandler.DeleteFamily)

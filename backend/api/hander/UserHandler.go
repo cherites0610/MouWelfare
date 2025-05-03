@@ -62,7 +62,7 @@ func (h *UserHandler) Register(c *gin.Context) {
 }
 
 func (h *UserHandler) VerifyEmail(c *gin.Context) {
-	var req dto.UserVerifyEMailRequest
+	var req dto.UserVerifyEmailRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusOK, dto.DTO{
 			StatusCode: 400, Message: "驗證碼不能為空", Data: err.Error(),
@@ -79,9 +79,18 @@ func (h *UserHandler) VerifyEmail(c *gin.Context) {
 		return
 	}
 
-	user, _ := h.userService.UserRepo.FindByEmail(req.Email)
-	user.IsVerified = true
-	h.userService.UserRepo.Save(user)
+	if req.Mode == 1 {
+		user, _ := h.userService.UserRepo.FindByEmail(req.Email)
+		user.IsVerified = true
+		h.userService.UserRepo.Save(user)
+	}
+
+	if req.Mode == 2 {
+		if err := h.userService.Verify(req.Email); err != nil {
+			c.JSON(http.StatusOK, dto.DTO{StatusCode: 500, Message: "驗證失敗", Data: nil})
+			return
+		}
+	}
 
 	c.JSON(http.StatusOK, dto.DTO{
 		StatusCode: 200, Message: "驗證成功", Data: verify})
@@ -286,42 +295,16 @@ func (h *UserHandler) GetAvatar(c *gin.Context) {
 	)
 }
 
-func (h *UserHandler) GetUserVerifyMessage(c *gin.Context) {
-	email := c.Param("email")
-	if err := h.userService.SendVerifyCode(email); err != nil {
-		c.JSON(http.StatusOK, dto.DTO{StatusCode: 500, Message: "郵件發送失敗", Data: nil})
-		return
-	}
-	c.JSON(http.StatusOK, dto.DTO{StatusCode: 200, Message: "郵件已發送", Data: nil})
-}
-
-func (h *UserHandler) Verify(c *gin.Context) {
-	var req dto.UserVerifyEMailRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusOK, dto.DTO{
-			StatusCode: 400, Message: "驗證碼不能為空", Data: err.Error(),
-		})
-		return
-	}
-
-	if err := h.userService.Verify(req.Email, req.Code); err != nil {
-		c.JSON(http.StatusOK, dto.DTO{StatusCode: 500, Message: "驗證失敗", Data: nil})
-		return
-	}
-
-	c.JSON(http.StatusOK, dto.DTO{StatusCode: 200, Message: "驗證成功", Data: nil})
-}
-
 func (h *UserHandler) UpdataPassword(c *gin.Context) {
-	userID, exists := c.Get("user_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "無法獲取用戶 ID"})
-		return
+	var req dto.UpdatePasswordRequest
+
+	if err := c.ShouldBindBodyWithJSON(&req); err != nil {
+		c.JSON(http.StatusOK, dto.DTO{
+			StatusCode: 400, Message: "系統繁忙", Data: nil,
+		})
 	}
 
-	password := c.Param("password")
-
-	if err := h.userService.UpdataPassword(userID.(uint), password); err != nil {
+	if err := h.userService.UpdataPassword(req.Email, req.Password); err != nil {
 		c.JSON(http.StatusOK, dto.DTO{
 			StatusCode: 400, Message: err.Error(), Data: nil,
 		})
