@@ -67,9 +67,9 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB, cfg *config.Config, log *logrus.Log
 	}
 
 	// 文件服務
-	r.GET("avatar/*filepath", func(c *gin.Context) {
+	r.GET("/avatar/*filepath", func(c *gin.Context) {
 		filePath := c.Param("filepath")
-		fullPath := filepath.Join(cfg.AVATAR_PATH, filePath)
+		fullPath := filepath.Join("../../avatar", filePath)
 
 		if _, err := os.Stat(fullPath); os.IsNotExist(err) {
 			defaultFile := "../../avatar/default_avatar.png"
@@ -84,4 +84,14 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB, cfg *config.Config, log *logrus.Log
 
 		c.File(fullPath)
 	})
+
+	r.Static("/static", "./web")
+	r.GET("/", func(c *gin.Context) {
+		if _, err := os.Stat("./web/index.html"); os.IsNotExist(err) {
+			c.String(http.StatusNotFound, "index.html not found")
+			return
+		}
+		c.File("./web/index.html")
+	})
+
 }

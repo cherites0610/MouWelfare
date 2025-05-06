@@ -43,5 +43,5 @@ func StringToCategory(categoryStr string) uint {
 			return id
 		}
 	}
-	return 不明 // 預設值，處理未定義的輸入
+	return 未設定 // 預設值，處理未定義的輸入
 }

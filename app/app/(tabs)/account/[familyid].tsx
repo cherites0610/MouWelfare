@@ -49,30 +49,42 @@ const FamilySettingsScreen = () => {
     }
 
     const handleDeleteFamilyPress = async () => {
-        const result = await deleteFamilyApi(authToken, family?.id!)
+        Alert.alert('刪除家庭', '該動作不可復原', [
+            {
+                text: '取消',
+                onPress: () => console.log('Cancel Pressed'),
+                style: 'cancel',
+            },
+            {
+                text: '確認刪除', onPress:  async () => {
+                    const result = await deleteFamilyApi(authToken, family?.id!)
 
-        if (result.status_code == 200) {
-            Alert.alert("刪除家庭成功")
-            await disDispatch(fetchFamily())
-            router.replace("/account/family")
-        } else {
-            Alert.alert("刪除家庭失敗")
-        }
+                    if (result.status_code == 200) {
+                        Alert.alert("刪除家庭成功")
+                        await disDispatch(fetchFamily())
+                        router.replace("/account/family")
+                    } else {
+                        Alert.alert("刪除家庭失敗")
+                    }
+                }
+            },
+        ]);
+
     };
 
     const editFamilyNameConfirm = async () => {
-        if (newFamilyName.length==0){
+        if (newFamilyName.length == 0) {
             setEditNameModal(false)
             return
-        } 
-        const result = await EditFamilyInfApi(authToken,family?.id!,newFamilyName)
-        if (result.status_code==200) {
+        }
+        const result = await EditFamilyInfApi(authToken, family?.id!, newFamilyName)
+        if (result.status_code == 200) {
             await disDispatch(fetchFamily())
             family = familys.find((item) => item.id == familyID) as FamilysResponse
             setEditNameModal(false)
             Alert.alert(result.message)
-        }else {
-            Alert.alert("修改失敗",result.message)
+        } else {
+            Alert.alert("修改失敗", result.message)
         }
     }
 
@@ -212,7 +224,7 @@ const FamilySettingsScreen = () => {
                             style={styles.closeButton}
                             onPress={editFamilyNameConfirm}
                         >
-                            <Text style={styles.closeButtonText}>{newFamilyName.length==0?"關閉":"確定"}</Text>
+                            <Text style={styles.closeButtonText}>{newFamilyName.length == 0 ? "關閉" : "確定"}</Text>
                         </TouchableOpacity>
                     </View>
                 </View>

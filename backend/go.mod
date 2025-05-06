@@ -4,7 +4,7 @@ go 1.23.1
 
 require gorm.io/gorm v1.25.12
 
-require github.com/resend/resend-go/v2 v2.18.0 // indirect
+require github.com/resend/resend-go/v2 v2.18.0
 
 require (
 	github.com/bytedance/sonic v1.11.6 // indirect

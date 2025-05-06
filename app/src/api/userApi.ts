@@ -93,14 +93,14 @@ export async function updatePasswordAPI(email:string,password: string) {
 }
 
 export async function updateProfileAPI(token:string,profile: Partial<User>) {
-    return apiFetch<ResponseType>("/auth/password", {
+    console.log(profile);
+    
+    return apiFetch<ResponseType>("/api/profile", {
         method: "PUT",
         headers: {
             "Authorization": `Bearer ${token}`,
         },
-        body:JSON.stringify({
-            user: profile
-        })
+        body:JSON.stringify(profile)
         
     })
 }

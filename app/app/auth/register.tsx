@@ -34,24 +34,31 @@ export default function Register() {
 
   const handleRegister = async () => {
     setIsLoading(true)
-    if (!account || !password || !email) {
-      Alert.alert("錯誤", "請填寫所有欄位");
-      return;
+
+    try {
+      if (!account || !password || !email) {
+        Alert.alert("錯誤", "請填寫所有欄位");
+        return;
+      }
+
+      const result: ResponseType = await registerApi({
+        account: account, // 將 username 傳遞給 API 的 account 欄位
+        password: password,
+        email: email
+      })
+
+      if (result.status_code != 200) {
+        Alert.alert("註冊出錯", result.message);
+      } else {
+        router.navigate(`/auth/verify/${email}`);
+      }
+    } catch (e: any) {
+      Alert.alert("註冊出錯", "請稍後再試");
+    } finally {
+      setIsLoading(false)
     }
 
-    const result: ResponseType = await registerApi({
-      account: account, // 將 username 傳遞給 API 的 account 欄位
-      password: password,
-      email: email
-    })
 
-    if (result.status_code != 200) {
-      Alert.alert("註冊出錯", result.message);
-      return
-    } else {
-      router.navigate(`/auth/verify/${email}`);
-    }
-    setIsLoading(false)
   };
 
 

@@ -229,7 +229,7 @@ func (h *WelfareHandler) ToWelfareResp(welfare models.Welfare, identities []uint
 		if err == nil && family != nil {
 			welfareResp.FamilyMembers = make([]dto.FamilyMemberWelfareResp, 0, len(family.Members))
 			for _, member := range family.Members {
-				user, err := h.UserService.UserRepo.FindByID(member.UserID)
+				user, err := h.UserService.GetUserByEmailORUserIDORAccount(&member.UserID, nil, nil)
 				if err != nil {
 					continue // 跳過無效用戶
 				}

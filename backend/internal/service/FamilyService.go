@@ -9,17 +9,17 @@ import (
 )
 
 type FamilyService struct {
-	FamilyRepo *repository.FamilyRerpository
+	familyRepo *repository.FamilyRerpository
 	log        *logrus.Logger
 }
 
 func NewFamilyService(familyRepo *repository.FamilyRerpository, log *logrus.Logger) *FamilyService {
-	return &FamilyService{FamilyRepo: familyRepo, log: log}
+	return &FamilyService{familyRepo: familyRepo, log: log}
 }
 
 func (s *FamilyService) HasUser(userID, familyID uint) bool {
 	// 檢查用戶是否已經加入家庭
-	familyMembers, err := s.FamilyRepo.FindMembersByFamilyID(familyID)
+	familyMembers, err := s.familyRepo.FindMembersByFamilyID(familyID)
 	if err != nil {
 		return false
 	}
@@ -36,7 +36,7 @@ func (s *FamilyService) HasUser(userID, familyID uint) bool {
 func (s *FamilyService) CreateFamily(name string, createUserID uint) (*models.Family, error) {
 	// 創建新的家庭
 	family := &models.Family{Name: name}
-	err := s.FamilyRepo.CreateFamily(family)
+	err := s.familyRepo.CreateFamily(family)
 	if err != nil {
 		return nil, err // 返回 nil 或處理錯誤
 	}
@@ -54,7 +54,7 @@ func (s *FamilyService) CreateFamily(name string, createUserID uint) (*models.Fa
 
 func (s *FamilyService) JoinFamily(userID, familyId, role uint) error {
 	// 檢查家庭是否存在
-	family, err := s.FamilyRepo.FindByID(familyId)
+	family, err := s.familyRepo.FindByID(familyId)
 	if err != nil {
 		// 處理錯誤，例如家庭不存在
 		return err
@@ -72,7 +72,7 @@ func (s *FamilyService) JoinFamily(userID, familyId, role uint) error {
 		FamilyID: family.ID,
 		Role:     role,
 	}
-	err = s.FamilyRepo.CreateFamilyMember(familyMember)
+	err = s.familyRepo.CreateFamilyMember(familyMember)
 	if err != nil {
 		// 處理錯誤，例如創建失敗
 		return err
@@ -85,7 +85,7 @@ func (s *FamilyService) JoinFamily(userID, familyId, role uint) error {
 
 func (s *FamilyService) ExitFamily(userID, familyID uint) error {
 	// 檢查用戶是否在家庭中
-	role, err := s.FamilyRepo.GetMemberRole(userID, familyID)
+	role, err := s.familyRepo.GetMemberRole(userID, familyID)
 	if err != nil {
 		// 處理錯誤，例如無法獲取用戶角色
 		return err
@@ -97,7 +97,7 @@ func (s *FamilyService) ExitFamily(userID, familyID uint) error {
 	}
 
 	// 刪除家庭成員關係
-	err = s.FamilyRepo.DeleteFamilyMember(userID, familyID)
+	err = s.familyRepo.DeleteFamilyMember(userID, familyID)
 	if err != nil {
 		// 處理錯誤，例如刪除失敗
 		return err
@@ -110,7 +110,7 @@ func (s *FamilyService) ExitFamily(userID, familyID uint) error {
 
 func (s *FamilyService) GetFamily(id uint) (*models.Family, error) {
 	// 檢查家庭是否存在
-	family, err := s.FamilyRepo.FindByID(id)
+	family, err := s.familyRepo.FindByID(id)
 	if err != nil {
 		// 處理錯誤，例如家庭不存在
 		return nil, err
@@ -122,7 +122,7 @@ func (s *FamilyService) GetFamily(id uint) (*models.Family, error) {
 
 func (s *FamilyService) UpdateFamilyName(familyID, userID uint, name string) error {
 	// 檢查用戶是否在家庭中
-	role, err := s.FamilyRepo.GetMemberRole(userID, familyID)
+	role, err := s.familyRepo.GetMemberRole(userID, familyID)
 	if err != nil {
 		// 處理錯誤，例如無法獲取用戶角色
 		return err
@@ -137,7 +137,7 @@ func (s *FamilyService) UpdateFamilyName(familyID, userID uint, name string) err
 		ID:   familyID,
 		Name: name,
 	}
-	err = s.FamilyRepo.UpdateFamily(family)
+	err = s.familyRepo.UpdateFamily(family)
 	if err != nil {
 		// 處理錯誤，例如更新失敗
 		return err
@@ -150,7 +150,7 @@ func (s *FamilyService) UpdateFamilyName(familyID, userID uint, name string) err
 
 func (s *FamilyService) DeleteFamily(id uint, deleteUserID uint) error {
 	// 還需要檢查權限
-	role, err := s.FamilyRepo.GetMemberRole(deleteUserID, id)
+	role, err := s.familyRepo.GetMemberRole(deleteUserID, id)
 	if err != nil {
 		// 處理錯誤，例如無法獲取用戶角色
 		return err
@@ -161,7 +161,7 @@ func (s *FamilyService) DeleteFamily(id uint, deleteUserID uint) error {
 		return fmt.Errorf("用戶沒有刪除家庭的權限")
 	}
 
-	err = s.FamilyRepo.DeleteFamily(id)
+	err = s.familyRepo.DeleteFamily(id)
 	if err != nil {
 		// 處理錯誤
 		return err
@@ -174,14 +174,14 @@ func (s *FamilyService) DeleteFamily(id uint, deleteUserID uint) error {
 
 func (s *FamilyService) GetFamilyByUser(userID uint) ([]models.Family, error) {
 	// 獲取用戶的家庭成員關係
-	members, err := s.FamilyRepo.FindMembersByUserID(userID)
+	members, err := s.familyRepo.FindMembersByUserID(userID)
 	if err != nil {
 		return nil, err // 返回 nil 或處理錯誤
 	}
 
 	var families []models.Family
 	for _, member := range members {
-		family, err := s.FamilyRepo.FindByID(member.FamilyID)
+		family, err := s.familyRepo.FindByID(member.FamilyID)
 		if err != nil {
 			return nil, err // 返回 nil 或處理錯誤
 		}
@@ -198,7 +198,7 @@ func (s *FamilyService) UpdataMemberRole(SetterUserID, TargetUserID, familyID, r
 	}
 
 	// 檢查用戶是否在家庭中
-	setterRole, err := s.FamilyRepo.GetMemberRole(SetterUserID, familyID)
+	setterRole, err := s.familyRepo.GetMemberRole(SetterUserID, familyID)
 	if err != nil {
 		// 處理錯誤，例如無法獲取用戶角色
 		return err
@@ -215,7 +215,7 @@ func (s *FamilyService) UpdataMemberRole(SetterUserID, TargetUserID, familyID, r
 		Role:     role,
 	}
 
-	err = s.FamilyRepo.UpdateFamilyMemberRole(familyMember)
+	err = s.familyRepo.UpdateFamilyMemberRole(familyMember)
 	if err != nil {
 		return err
 	}

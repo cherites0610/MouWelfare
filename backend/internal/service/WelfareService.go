@@ -55,7 +55,7 @@ func (s *WelfareService) GetWelfareAll(page, pageSize int, locations, identities
 }
 
 func (s *WelfareService) GetWelfareLightStatus(welfareID uint, identities []uint) (LightStatus uint) {
-	return uint(rand.Intn(3)) // 隨機生成
+	return uint(rand.Intn(4)) // 隨機生成
 }
 
 func (s *WelfareService) GetWelfareByID(id uint) (*models.Welfare, error) {

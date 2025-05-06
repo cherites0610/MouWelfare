@@ -9,6 +9,7 @@ import { useDispatch, useSelector } from 'react-redux';
 
 export default function Profile() {
   const { user, status, error } = useSelector((state: RootState) => state.user)
+  console.log(user);
   
   const router = useRouter();
 
@@ -30,6 +31,9 @@ export default function Profile() {
             </Text>
             <Text style={styles.label}>
               帳號：<Text style={styles.value}>{user!.account}</Text>
+            </Text>
+            <Text style={styles.label}>
+              郵箱：<Text style={styles.value}>{user!.email}</Text>
             </Text>
             <Text style={styles.label}>
               生日：<Text style={styles.value}>{user!.birthday}</Text>

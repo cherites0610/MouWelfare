@@ -4,7 +4,6 @@ import (
 	"Mou-Welfare/internal/config"
 	"Mou-Welfare/internal/models"
 	"fmt"
-	"os"
 
 	"github.com/sirupsen/logrus"
 	"gorm.io/driver/mysql"
@@ -14,10 +13,10 @@ import (
 var db *gorm.DB
 
 func SetupDatabase(cfg config.Config, log *logrus.Logger) (*gorm.DB, error) {
-	user := os.Getenv("DATABASE_user")
-	password := os.Getenv("DATABASE_password")
-	url := os.Getenv("DATABASE_url")
-	dbname := os.Getenv("DATABASE_dbname")
+	user := cfg.DBUser
+	password := cfg.DBPassword
+	url := cfg.DBUrl
+	dbname := cfg.DB_DBNAME
 
 	dsn := fmt.Sprintf("%s:%s@tcp(%s)/%s?charset=utf8mb4&parseTime=True&loc=Local", user, password, url, dbname)
 	DB, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})

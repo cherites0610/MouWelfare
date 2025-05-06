@@ -37,26 +37,39 @@ export default function Login() {
   const handleLogin = async () => {
     setIsLoading(true); // <--- 開始載入
 
-    const result = await loginApi({ account: account, password: password });
-    
-    if (result.status_code == 200) {
-      router.replace('/home');
-      const loginResponse = result.data as LoginResponse;
-      dispatch(login(loginResponse.user)); // 假設 login action 存在於 userSlice
-      dispatch(setAuthToken(loginResponse.token));
-      dispatch(writeConfig())
-      await dispatch(fetchFamily()) // 獲取家庭資料
-    } else if (result.status_code == 401) {
-      Alert.alert("該賬號還未驗證", "請先驗證郵箱")
-      router.push(`/auth/verify/${result.data}`)
-    } else {
-      Alert.alert("登入失敗", result.message);
+    try {
+      const result = await loginApi({ account: account, password: password });
+
+      if (result.status_code == 200) {
+        while (router.canGoBack()) {
+          router.back(); // 清空堆疊
+        }
+        router.replace("/home")
+        const loginResponse = result.data as LoginResponse;
+        dispatch(login(loginResponse.user)); // 假設 login action 存在於 userSlice
+        dispatch(setAuthToken(loginResponse.token));
+        dispatch(writeConfig())
+        await dispatch(fetchFamily()) // 獲取家庭資料
+      } else if (result.status_code == 401) {
+        Alert.alert("該賬號還未驗證", "請先驗證郵箱")
+        router.push(`/auth/verify/${result.data}`)
+      } else {
+        Alert.alert("登入失敗", result.message);
+      }
+    } catch (e: any) {
+      Alert.alert("登入失敗", "請稍後再試");
+    } finally {
+      setIsLoading(false)
     }
 
-    setIsLoading(false)
+
+
   }
 
   const handleVisitorLogin = () => {
+    while (router.canGoBack()) {
+      router.back(); // 清空堆疊
+    }
     router.replace("/home")
   };
 
@@ -75,6 +88,7 @@ export default function Login() {
       contentContainerStyle={styles.container}
       scrollEnabled={false}>
       {/* --- Logo 圖片 --- */}
+
       <Image
         source={require('@/assets/images/login.jpg')} // 確認路徑正確
         style={styles.logo}
@@ -91,10 +105,10 @@ export default function Login() {
 
         {/* --- 帳號輸入框 --- */}
         <View style={styles.inputContainer}>
-          <Ionicons name="home" size={20} color="#888" style={styles.inputIcon} />
+          <Ionicons name="person-circle-outline" size={29} color="#888" style={styles.inputIcon} />
           <TextInput
             style={styles.input}
-            placeholder="帳號"
+            placeholder="帳號或郵箱"
             placeholderTextColor="#aaa"
             keyboardType="email-address" // 或 default
             autoCapitalize="none"
@@ -105,7 +119,7 @@ export default function Login() {
 
         {/* --- 密碼輸入框 --- */}
         <View style={styles.inputContainer}>
-          <Ionicons name="home" size={22} color="#888" style={styles.inputIcon} />
+          <Ionicons name="lock-closed-outline" size={29} color="#888" style={styles.inputIcon} />
           <TextInput
             style={styles.input}
             placeholder="密碼"

@@ -20,7 +20,7 @@ import (
 )
 
 type UserService struct {
-	UserRepo            *repository.UserRerpository
+	userRepo            *repository.UserRerpository
 	verificationService *VerificationService
 	authService         *AuthService
 	messageService      *MessageService
@@ -37,7 +37,7 @@ type UserVerifcation struct {
 
 func NewUserService(userRepo *repository.UserRerpository, verificationService *VerificationService, authService *AuthService, messageService *MessageService, cfg *config.Config, log *logrus.Logger) *UserService {
 	us := &UserService{
-		UserRepo:            userRepo,
+		userRepo:            userRepo,
 		verificationService: verificationService,
 		userVerifcation:     make(map[uint]*UserVerifcation),
 		authService:         authService,
@@ -51,11 +51,8 @@ func NewUserService(userRepo *repository.UserRerpository, verificationService *V
 
 func (s *UserService) Register(account, password, email string) (*models.User, error) {
 	// 檢查郵箱，賬號是否存在
-	if _, err := s.UserRepo.FindByAccount(account); err == nil {
+	if _, err := s.GetUserByEmailORUserIDORAccount(nil, &email, &account); err == nil {
 		return &models.User{}, fmt.Errorf("賬號已存在")
-	}
-	if _, err := s.UserRepo.FindByEmail(email); err == nil {
-		return &models.User{}, fmt.Errorf("郵箱已被使用過")
 	}
 
 	// 密碼加密
@@ -72,14 +69,9 @@ func (s *UserService) Register(account, password, email string) (*models.User, e
 	}
 
 	// 存進資料庫
-	err = s.UserRepo.Create(&user)
+	err = s.userRepo.Create(&user)
 	if err != nil {
 		return &models.User{}, fmt.Errorf("用戶創建失敗")
-	}
-
-	_, err = s.SendVerifyEmailCode(user.Email)
-	if err != nil {
-		return nil, err
 	}
 
 	s.log.WithFields(logrus.Fields{
@@ -91,7 +83,7 @@ func (s *UserService) Register(account, password, email string) (*models.User, e
 }
 
 func (s *UserService) UpdataPassword(email, newPassword string) error {
-	user, err := s.UserRepo.FindByEmail(email)
+	user, err := s.userRepo.FindByEmail(email)
 	if err != nil {
 		return fmt.Errorf("找不到用戶")
 	}
@@ -107,7 +99,7 @@ func (s *UserService) UpdataPassword(email, newPassword string) error {
 		return fmt.Errorf("密碼加密失敗")
 	}
 
-	err = s.UserRepo.UpdataPassword(user.ID, hashedPassword)
+	err = s.userRepo.UpdataPassword(user.ID, hashedPassword)
 	if err != nil {
 		return fmt.Errorf("密碼更改失敗")
 	}
@@ -117,7 +109,7 @@ func (s *UserService) UpdataPassword(email, newPassword string) error {
 
 func (s *UserService) SendVerifyEmailCode(email string) (*string, error) {
 	// 檢查郵箱是否存在
-	existsUser, err := s.UserRepo.FindByEmail(email)
+	existsUser, err := s.userRepo.FindByEmail(email)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, fmt.Errorf("郵箱不存在")
@@ -142,7 +134,7 @@ func (s *UserService) SendVerifyEmailCode(email string) (*string, error) {
 
 func (s *UserService) Login(account, password string) (*models.User, *string, error) {
 	// 先檢查賬戶是否存在
-	existsUser, err := s.UserRepo.FindByAccount(account)
+	existsUser, err := s.GetUserByEmailORUserIDORAccount(nil, &account, &account)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil, fmt.Errorf("找不到賬號") // 統一錯誤訊息
@@ -181,9 +173,9 @@ func (s *UserService) Login(account, password string) (*models.User, *string, er
 	return existsUser, &token, nil
 }
 
-func (s *UserService) UpdateProfile(id uint, name, birthday string, female uint, IsSubscribe bool) (*models.User, error) {
+func (s *UserService) UpdateProfile(id uint, name, birthday string, female, location uint, identities []uint, IsSubscribe bool) (*models.User, error) {
 	// 檢查用戶是否存在
-	existsUser, err := s.UserRepo.FindByID(id)
+	existsUser, err := s.userRepo.FindByID(id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, fmt.Errorf("user not found")
@@ -196,8 +188,14 @@ func (s *UserService) UpdateProfile(id uint, name, birthday string, female uint,
 	existsUser.IsSubscribe = IsSubscribe
 	existsUser.Birthday = &birthday
 	existsUser.Female = &female
+	existsUser.LocationID = &location
+	temp := []models.Identity{}
+	for _, item := range identities {
+		temp = append(temp, models.Identity{ID: item})
+	}
+	existsUser.Identities = &temp
 
-	err = s.UserRepo.Save(existsUser)
+	err = s.userRepo.UpdataProfile(existsUser)
 	if err != nil {
 		return nil, fmt.Errorf("failed to update user: %v", err)
 	}
@@ -217,7 +215,7 @@ func (s *UserService) VerifyToken(token string) (*models.User, error) {
 
 // 插入二級驗證
 func (s *UserService) Verify(email string) error {
-	user, err := s.UserRepo.FindByEmail(email)
+	user, err := s.userRepo.FindByEmail(email)
 	if err != nil {
 		return err
 	}
@@ -268,6 +266,35 @@ func (s *UserService) cleanupExpiredUserVerifcation() {
 			delete(s.userVerifcation, userID)
 		}
 	}
+}
+
+func (s *UserService) GetUserByEmailORUserIDORAccount(userID *uint, email, account *string) (*models.User, error) {
+	if email != nil {
+		user, err := s.userRepo.FindByEmail(*email)
+		if err == nil && user != nil {
+			return user, nil
+		}
+	}
+
+	// Try finding by userID
+	if userID != nil {
+		user, err := s.userRepo.FindByID(*userID)
+		if err == nil && user != nil {
+			return user, nil
+		}
+		// Ignore error if not found, continue to next check
+	}
+
+	// Try finding by account
+	if account != nil {
+		user, err := s.userRepo.FindByAccount(*account)
+		if err == nil && user != nil {
+			return user, nil
+		}
+	}
+
+	// Return nil and an error if no user is found
+	return nil, errors.New("user not found")
 }
 
 type TokenResponse struct {
@@ -368,4 +395,8 @@ func (s *UserService) GetLineAccessTokenByAuthCode(authCode string) (string, err
 	}
 
 	return tokenResp.AccessToken, nil
+}
+
+func (s *UserService) Save(user *models.User) error {
+	return s.userRepo.Save(user)
 }

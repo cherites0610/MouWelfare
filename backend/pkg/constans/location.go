@@ -23,11 +23,11 @@ const (
 	連江市 = 20
 	其他  = 21
 	海外  = 22
-	不明  = 23
 )
 
 // locationMap 將地區常量映射到字串
 var locationMap = map[uint]string{
+	未設定: "未設定",
 	臺北市: "臺北市",
 	新北市: "新北市",
 	桃園市: "桃園市",
@@ -50,7 +50,6 @@ var locationMap = map[uint]string{
 	連江市: "連江市",
 	其他:  "其他",
 	海外:  "海外",
-	不明:  "不明",
 }
 
 // LocationToString 將地區常量轉為字串
@@ -68,5 +67,5 @@ func StringToLocation(locationStr string) uint {
 			return id
 		}
 	}
-	return 不明 // 預設值，處理未定義的輸入
+	return 未設定 // 預設值，處理未定義的輸入
 }

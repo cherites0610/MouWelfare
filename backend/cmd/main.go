@@ -24,8 +24,8 @@ func main() {
 	}
 
 	// 檢查 uploads 目錄是否存在，若不存在則創建
-	if _, err := os.Stat(cfg.AVATAR_PATH); os.IsNotExist(err) {
-		os.Mkdir(cfg.AVATAR_PATH, 0755)
+	if _, err := os.Stat("../../avatar"); os.IsNotExist(err) {
+		os.Mkdir("../../avatar", 0755)
 	}
 
 	// 設置路由

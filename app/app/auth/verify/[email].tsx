@@ -34,7 +34,10 @@ export default function Verify() {
       return
     } else {
       Alert.alert(result.message)
-      router.navigate("/home")
+      while (router.canGoBack()) {
+        router.back(); // 清空堆疊
+      }
+      router.replace("/home")
     }
   };
 

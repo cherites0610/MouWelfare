@@ -15,6 +15,7 @@ type Config struct {
 	DBUrl                        string
 	DBUser                       string
 	DBPassword                   string
+	DB_DBNAME                    string
 	LINE_CHANNEL_ACCESS_TOKEN    string
 	LINE_CHANNEL_SECRET          string
 	LINE_CLIENT_ID               string
@@ -28,7 +29,6 @@ type Config struct {
 	VERIFICATION_CODE_EXPIRES_IN int64
 	LOG_LEVEL                    string
 	LOG_FILE_PATH                string
-	AVATAR_PATH                  string
 }
 
 func LoadConfig() *Config {
@@ -44,6 +44,7 @@ func LoadConfig() *Config {
 		DBUrl:                        getEnv("DATABASE_URL", "localhost"),
 		DBUser:                       getEnv("DATABASE_USER", "root"),
 		DBPassword:                   getEnv("DATABASE_PASSWORD", "123456"),
+		DB_DBNAME:                    getEnv("DATABASE_DBNAME", "mouwelfare"),
 		LINE_CHANNEL_ACCESS_TOKEN:    getEnv("LINE_CHANNEL_ACCESS_TOKEN", ""),
 		LINE_CHANNEL_SECRET:          getEnv("LINE_CHANNEL_SECRET", ""),
 		LINE_CLIENT_ID:               getEnv("LINE_CLIENT_ID", ""),
@@ -57,7 +58,6 @@ func LoadConfig() *Config {
 		VERIFICATION_CODE_EXPIRES_IN: parseEnvToInt64("VERIFICATION_CODE_EXPIRES_IN", "300"),
 		LOG_LEVEL:                    getEnv("LOG_LEVEL", "debug"),
 		LOG_FILE_PATH:                getEnv("LOG_FILE_PATH", "app.log"),
-		AVATAR_PATH:                  getEnv("AVATAR_PATH", "../avatar"),
 	}
 }
 

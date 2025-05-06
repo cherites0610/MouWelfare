@@ -80,9 +80,9 @@ func (h *UserHandler) VerifyEmail(c *gin.Context) {
 	}
 
 	if req.Mode == 1 {
-		user, _ := h.userService.UserRepo.FindByEmail(req.Email)
+		user, _ := h.userService.GetUserByEmailORUserIDORAccount(nil, &req.Email, nil)
 		user.IsVerified = true
-		h.userService.UserRepo.Save(user)
+		h.userService.Save(user)
 	}
 
 	if req.Mode == 2 {
@@ -148,6 +148,7 @@ func (h *UserHandler) UpdateProfile(c *gin.Context) {
 	var req dto.UserUpdateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		fmt.Println(err.Error())
 		return
 	}
 
@@ -157,13 +158,18 @@ func (h *UserHandler) UpdateProfile(c *gin.Context) {
 		return
 	}
 
-	user, err := h.userService.UpdateProfile(userID.(uint), req.Name, req.Birthday, req.Female, req.IsSubscribe)
+	userIdentitiesID := []uint{}
+	for _, item := range req.Identities {
+		userIdentitiesID = append(userIdentitiesID, constants.StringToIdentity(item))
+	}
+
+	user, err := h.userService.UpdateProfile(userID.(uint), req.Name, req.Birthday, constants.StringToGender(req.Female), constants.StringToLocation(req.Location), userIdentitiesID, req.IsSubscribe)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, h.ToUserResp(user))
+	c.JSON(http.StatusOK, dto.DTO{StatusCode: 200, Data: h.ToUserResp(user), Message: "更改成功"})
 }
 
 func (h *UserHandler) GetUserProfile(c *gin.Context) {
@@ -175,7 +181,8 @@ func (h *UserHandler) GetUserProfile(c *gin.Context) {
 	}
 
 	// 查詢用戶
-	user, err := h.userService.UserRepo.FindByID(userID.(uint))
+	uid := userID.(uint)
+	user, err := h.userService.GetUserByEmailORUserIDORAccount(&uid, nil, nil)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			c.JSON(http.StatusNotFound, gin.H{"error": "用戶不存在"})
@@ -223,7 +230,7 @@ func (h *UserHandler) UploadAvatar(c *gin.Context) {
 	file.Filename = fmt.Sprintf("%v_%s", userID, time.Now().Format("20060102150405")) + ext
 
 	// 儲存文件
-	filePath := filepath.Join(h.cfg.AVATAR_PATH, file.Filename)
+	filePath := filepath.Join("../../avatar", file.Filename)
 	if err := c.SaveUploadedFile(file, filePath); err != nil {
 		c.JSON(http.StatusOK, dto.DTO{
 			StatusCode: 500, Message: "文件上傳失敗", Data: err.Error(),
@@ -232,7 +239,8 @@ func (h *UserHandler) UploadAvatar(c *gin.Context) {
 	}
 
 	// 更新用戶資料庫中的圖片路徑
-	user, err := h.userService.UserRepo.FindByID(userID.(uint))
+	uid := userID.(uint)
+	user, err := h.userService.GetUserByEmailORUserIDORAccount(&uid, nil, nil)
 	if err != nil {
 		c.JSON(http.StatusOK, dto.DTO{
 			StatusCode: 404, Message: "用戶不存在", Data: err.Error(),
@@ -242,7 +250,7 @@ func (h *UserHandler) UploadAvatar(c *gin.Context) {
 
 	// 刪除舊的頭像文件（如果存在）
 	if user.AvatarURL != nil {
-		oldAvatarPath := filepath.Join(h.cfg.AVATAR_PATH, *user.AvatarURL)
+		oldAvatarPath := filepath.Join("../../avatar", *user.AvatarURL)
 		if err := os.Remove(oldAvatarPath); err != nil {
 			fmt.Println("刪除舊頭像失敗:", err)
 			// c.JSON(http.StatusOK, dto.DTO{
@@ -253,7 +261,7 @@ func (h *UserHandler) UploadAvatar(c *gin.Context) {
 	}
 
 	user.AvatarURL = &file.Filename
-	if err := h.userService.UserRepo.Save(user); err != nil {
+	if err := h.userService.Save(user); err != nil {
 		c.JSON(http.StatusOK, dto.DTO{
 			StatusCode: 500, Message: "更新用戶資料失敗", Data: err.Error(),
 		})
@@ -275,7 +283,8 @@ func (h *UserHandler) GetAvatar(c *gin.Context) {
 		return
 	}
 
-	user, err := h.userService.UserRepo.FindByID(uint(parsedUserID))
+	convertedUserID := uint(parsedUserID)
+	user, err := h.userService.GetUserByEmailORUserIDORAccount(&convertedUserID, nil, nil)
 	if err != nil {
 		c.JSON(http.StatusOK, dto.DTO{
 			StatusCode: 404, Message: "用戶不存在", Data: fmt.Sprintf("%s%s", h.cfg.DOMAIN, "/uploads/default_avatar.png"),
@@ -364,13 +373,15 @@ func (h *UserHandler) LineLoginCallback(c *gin.Context) {
 		return
 	}
 
-	user, err := h.userService.UserRepo.FindByID(uint(id))
+	userID := uint(id)
+	user, err := h.userService.GetUserByEmailORUserIDORAccount(&userID, nil, nil)
+
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
 		return
 	}
 	user.LineID = &LineUserID
-	h.userService.UserRepo.Save(user)
+	h.userService.Save(user)
 
 	c.JSON(http.StatusOK, gin.H{"message": "Line綁定成功，請返回app"})
 
@@ -413,7 +424,9 @@ func (h *UserHandler) ToUserResp(user *models.User) dto.UserResp {
 	// 處理 Identities
 	if user.Identities != nil {
 		for _, identity := range *user.Identities {
-			identities = append(identities, constants.IdentityToString(identity.ID))
+			if identity.ID > 5 {
+				identities = append(identities, constants.IdentityToString(identity.ID))
+			}
 		}
 	}
 
@@ -440,5 +453,6 @@ func (h *UserHandler) ToUserResp(user *models.User) dto.UserResp {
 		IsSubscribe: user.IsSubscribe,
 		LineID:      lineID,
 		AvatarURL:   avatarURL,
+		Email:       user.Email,
 	}
 }

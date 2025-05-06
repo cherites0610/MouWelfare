@@ -14,7 +14,7 @@ import (
 )
 
 type FamilyHandler struct {
-	FamilyService       *service.FamilyService
+	familyService       *service.FamilyService
 	UserRepo            *repository.UserRerpository
 	VerificationService *service.VerificationService
 	cfg                 *config.Config
@@ -22,7 +22,7 @@ type FamilyHandler struct {
 
 func NewFamilyHandler(familyService *service.FamilyService, userRepo *repository.UserRerpository, VerificationService *service.VerificationService, cfg *config.Config) *FamilyHandler {
 	return &FamilyHandler{
-		FamilyService:       familyService,
+		familyService:       familyService,
 		UserRepo:            userRepo,
 		VerificationService: VerificationService,
 		cfg:                 cfg,
@@ -43,7 +43,7 @@ func (h *FamilyHandler) CreateFamily(c *gin.Context) {
 		return
 	}
 
-	family, err := h.FamilyService.CreateFamily(req.Name, userID.(uint))
+	family, err := h.familyService.CreateFamily(req.Name, userID.(uint))
 	if err != nil {
 		c.JSON(http.StatusOK, dto.DTO{StatusCode: 500, Message: "創建家庭失敗", Data: nil})
 		return
@@ -67,7 +67,7 @@ func (h *FamilyHandler) DeleteFamily(c *gin.Context) {
 		return
 	}
 
-	err = h.FamilyService.DeleteFamily(uint(parsedID), userID.(uint))
+	err = h.familyService.DeleteFamily(uint(parsedID), userID.(uint))
 	if err != nil {
 		c.JSON(http.StatusOK, dto.DTO{StatusCode: 500, Message: "刪除家庭失敗", Data: nil})
 		return
@@ -84,7 +84,7 @@ func (h *FamilyHandler) GetFamily(c *gin.Context) {
 		return
 	}
 
-	family, err := h.FamilyService.GetFamily(uint(parsedID))
+	family, err := h.familyService.GetFamily(uint(parsedID))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -107,7 +107,7 @@ func (h *FamilyHandler) JoinFamily(c *gin.Context) {
 		return
 	}
 
-	err = h.FamilyService.JoinFamily(userID.(uint), uint(parsedID), 3) // 3 是代表成員
+	err = h.familyService.JoinFamily(userID.(uint), uint(parsedID), 3) // 3 是代表成員
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -131,7 +131,7 @@ func (h *FamilyHandler) ExitFamily(c *gin.Context) {
 		return
 	}
 
-	err = h.FamilyService.ExitFamily(userID.(uint), uint(parsedID))
+	err = h.familyService.ExitFamily(userID.(uint), uint(parsedID))
 	if err != nil {
 		c.JSON(http.StatusOK, dto.DTO{StatusCode: 500, Message: "退出家庭失敗", Data: nil})
 		return
@@ -147,7 +147,7 @@ func (h *FamilyHandler) GetUserFamily(c *gin.Context) {
 		return
 	}
 
-	families, err := h.FamilyService.GetFamilyByUser(userID.(uint))
+	families, err := h.familyService.GetFamilyByUser(userID.(uint))
 	if err != nil {
 		c.JSON(http.StatusOK, dto.DTO{StatusCode: 500, Message: "獲取家庭失敗", Data: nil})
 		return
@@ -181,7 +181,7 @@ func (h *FamilyHandler) UpdateFamily(c *gin.Context) {
 		return
 	}
 
-	err = h.FamilyService.UpdateFamilyName(uint(parsedID), userID.(uint), req.Name)
+	err = h.familyService.UpdateFamilyName(uint(parsedID), userID.(uint), req.Name)
 	if err != nil {
 		c.JSON(http.StatusOK, dto.DTO{StatusCode: 400, Message: err.Error(), Data: nil})
 		return
@@ -210,7 +210,7 @@ func (h *FamilyHandler) UpdataMember(c *gin.Context) {
 		return
 	}
 
-	err = h.FamilyService.UpdataMemberRole(userID.(uint), req.UserID, uint(parsedID), req.Role)
+	err = h.familyService.UpdataMemberRole(userID.(uint), req.UserID, uint(parsedID), req.Role)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -247,7 +247,7 @@ func (h *FamilyHandler) JoinFamilyByCode(c *gin.Context) {
 		return
 	}
 
-	err := h.FamilyService.JoinFamily(userID.(uint), *data.FmailyID, 3) // 3 是代表成員
+	err := h.familyService.JoinFamily(userID.(uint), *data.FmailyID, 3) // 3 是代表成員
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

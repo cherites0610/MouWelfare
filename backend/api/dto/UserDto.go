@@ -11,6 +11,7 @@ type UserResp struct {
 	IsSubscribe bool     `json:"subscribe"`
 	LineID      *string  `json:"line_id"` // LINE ID
 	AvatarURL   *string  `json:"avatar_url"`
+	Email       string   `json:"email"`
 }
 
 // UserRegisterRequest 註冊請求體
@@ -28,10 +29,12 @@ type UserLoginRequest struct {
 
 // UserUpdateRequest 更新資料請求體
 type UserUpdateRequest struct {
-	Name        string `json:"name" binding:"required"`
-	Birthday    string `json:"birthday" binding:"required"`
-	Female      uint   `json:"female" binding:"required"`
-	IsSubscribe bool   `json:"subscribe"`
+	Name        string   `json:"name" binding:"required"`
+	Birthday    string   `json:"birthday" binding:"required"`
+	Female      string   `json:"gender" binding:"required"`
+	Location    string   `json:"location" binding:"required"`
+	Identities  []string `json:"identities" binding:"required"`
+	IsSubscribe bool     `json:"subscribe"`
 }
 
 type UserVerifyEmailRequest struct {

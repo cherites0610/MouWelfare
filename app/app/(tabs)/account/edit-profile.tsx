@@ -19,6 +19,7 @@ import { fetchUser } from '@/src/store/slices/userSlice';
 import DropDownPicker from 'react-native-dropdown-picker';
 import { GenderNum, getTextByGender, getTextByIdentity, getTextByLocation, IdentityNum, LocationNum } from '@/src/utils/getTextByNumber';
 import { User } from '@/src/type/user';
+import { COLORS } from '@/src/utils/colors';
 
 export default function EditProfileScreen() {
     const router = useRouter();
@@ -45,9 +46,9 @@ export default function EditProfileScreen() {
     // 身份下拉選單狀態
     const [identitiesOpen, setIdentitiesOpen] = useState(false);
     const [identitiesValue, setIdentitiesValue] = useState<string[]>([]);
-    const [identitiesItems, setIdentitiesItems] = useState(Array.from({ length: IdentityNum - 1 }, (_, i) => ({
-        label: getTextByIdentity(i + 1),
-        value: getTextByIdentity(i + 1),
+    const [identitiesItems, setIdentitiesItems] = useState(Array.from({ length: IdentityNum - 6 }, (_, i) => ({
+        label: getTextByIdentity(i + 6),
+        value: getTextByIdentity(i + 6),
     })));
 
     const { user } = useSelector((state: RootState) => state.user);
@@ -146,22 +147,44 @@ export default function EditProfileScreen() {
                 return;
             }
 
+            const parseBirthday = (birthday: string): string | undefined => {
+                const [year, month, day] = birthday.split('/').map(Number);
+                const date = new Date(year, month - 1, day); // Month is 0-based in JavaScript
+                // Check if the date is valid
+                if (
+                    isNaN(date.getTime()) ||
+                    date.getFullYear() !== year ||
+                    date.getMonth() + 1 !== month ||
+                    date.getDate() !== day
+                ) {
+                    return undefined;
+                }
+                return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            };
+
             const updatedUserData: Partial<User> = {
                 name: name || '',
-                birthday: birthday ? new Date(birthday).toISOString() : undefined,
+                // birthday: birthday ? new Date(birthday).toISOString() : undefined,
+                birthday: birthday ? parseBirthday(birthday) : undefined,
                 gender: genderValue ?? undefined,
                 location: locationValue ?? undefined,
                 identities: identitiesValue,
             };
 
-            console.log("送出更新資料:", updatedUserData);
-
-            // Alert.alert('成功', '資料已更新', [
-            //     { text: '確定', onPress: () => router.back() },
-            // ]);
             const result = await updateProfileAPI(authToken, updatedUserData)
-            dispatch(fetchUser());
-            router.replace("/home")
+
+            if (result.status_code == 200) {
+                Alert.alert(result.message)
+                dispatch(fetchUser());
+
+                while (router.canGoBack()) {
+                    router.back();
+                }
+                // 替換到目標頁面
+                router.replace('/home'); // 替換為目標路由，例如 '/login'
+
+            }
+
         } catch (error) {
             console.error("更新個人資料失敗:", error);
             Alert.alert('錯誤', '更新失敗，請重試。',);
@@ -197,7 +220,7 @@ export default function EditProfileScreen() {
                             value={birthday}
                             onChangeText={setBirthday}
                             placeholder="YYYY/MM/DD"
-                            keyboardType="numeric"
+                            keyboardType="default"
                         />
                     </View>
 
@@ -218,6 +241,7 @@ export default function EditProfileScreen() {
                             listMode="SCROLLVIEW"
                             zIndex={3000}
                             zIndexInverse={1000}
+                            dropDownDirection="BOTTOM"
                         />
                     </View>
 
@@ -238,10 +262,11 @@ export default function EditProfileScreen() {
                             listMode="SCROLLVIEW"
                             zIndex={2000}
                             zIndexInverse={2000}
+                            dropDownDirection="BOTTOM"
                         />
                     </View>
 
-                    <View style={[styles.infoBlock, { zIndex: 60 }]}>
+                    <View style={[styles.infoBlock, { zIndex: 60, marginBottom: 0 }]}>
                         <Text style={styles.label}>身份：</Text>
                         <DropDownPicker
                             multiple={true}
@@ -262,11 +287,13 @@ export default function EditProfileScreen() {
                             listMode="SCROLLVIEW"
                             zIndex={1000}
                             zIndexInverse={3000}
+                            dropDownDirection="BOTTOM"
                         />
                     </View>
                 </View>
 
-                <View style={{ height: identitiesOpen || locationOpen || genderOpen ? 200 : 0 }} />
+                <View style={{ height: locationOpen ? 30 : 0 }} />
+                <View style={{ height: identitiesOpen ? 200 : 0 }} />
 
                 <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
                     <Text style={styles.bottomButtonText}>儲存</Text>
@@ -287,7 +314,7 @@ const styles = StyleSheet.create({
     },
     content: {
         alignItems: 'center',
-        paddingBottom: 80,
+        paddingBottom: 30,
     },
     avatar: {
         width: 100,
@@ -336,7 +363,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#fff',
     },
     submitButton: {
-        backgroundColor: '#007AFF',
+        backgroundColor: COLORS.background,
         paddingVertical: 15,
         paddingHorizontal: 20,
         borderRadius: 10,
