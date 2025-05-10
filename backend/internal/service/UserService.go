@@ -5,6 +5,7 @@ import (
 	"Mou-Welfare/internal/models"
 	"Mou-Welfare/internal/repository"
 	"Mou-Welfare/internal/util"
+	constants "Mou-Welfare/pkg/constans"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -189,7 +190,27 @@ func (s *UserService) UpdateProfile(id uint, name, birthday string, female, loca
 	existsUser.Birthday = &birthday
 	existsUser.Female = &female
 	existsUser.LocationID = &location
+
+	birthTime, _ := time.Parse("2006-01-02", birthday)
+	now := time.Now()
+	age := now.Year() - birthTime.Year()
+
 	temp := []models.Identity{}
+
+	if female == constants.GenderMale {
+		temp = append(temp, models.Identity{ID: uint(4)})
+	} else if female == constants.GenderFemale {
+		temp = append(temp, models.Identity{ID: uint(5)})
+	}
+
+	if age < 20 {
+		temp = append(temp, models.Identity{ID: uint(1)})
+	} else if age > 65 {
+		temp = append(temp, models.Identity{ID: uint(3)})
+	} else {
+		temp = append(temp, models.Identity{ID: uint(2)})
+	}
+
 	for _, item := range identities {
 		temp = append(temp, models.Identity{ID: item})
 	}

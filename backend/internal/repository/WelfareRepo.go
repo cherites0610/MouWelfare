@@ -39,6 +39,9 @@ func (r *WelfareRepo) FindWelfares(offset, limit int, locations, categories []ui
 	if len(locations) > 0 {
 		query = query.Where("location_id IN ?", locations)
 	}
+	if search != "" {
+		query = query.Where("title LIKE ?", "%"+search+"%")
+	}
 
 	// 計算總數量
 	err := query.Model(&models.Welfare{}).Count(&totalCount).Error

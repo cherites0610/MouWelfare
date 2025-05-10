@@ -22,6 +22,8 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB, cfg *config.Config, log *logrus.Log
 	r.GET("/api/fqa", handler.GetFQAHandler)
 	r.GET("/api/avatar/:id", container.UserHandler.GetAvatar)
 	r.GET("/api/LineLoginCallback", container.UserHandler.LineLoginCallback)
+	r.GET("/api/constants", container.ConstantsHandelr.GetConstants)
+	r.POST("/api/constants", container.ConstantsHandelr.RefreshConstants)
 
 	// 福利相關路由
 	welfare := r.Group("/api/welfare")

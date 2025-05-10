@@ -12,9 +12,10 @@ import (
 
 // Container 定義依賴容器結構
 type Container struct {
-	UserHandler    *handler.UserHandler
-	FamilyHandler  *handler.FamilyHandler
-	WelfareHandler *handler.WelfareHandler
+	UserHandler      *handler.UserHandler
+	FamilyHandler    *handler.FamilyHandler
+	WelfareHandler   *handler.WelfareHandler
+	ConstantsHandelr *handler.ConstantsHandelr
 }
 
 // NewContainer 初始化依賴容器
@@ -23,23 +24,27 @@ func NewContainer(db *gorm.DB, cfg *config.Config, log *logrus.Logger) *Containe
 	userRepo := repository.NewUserRepository(db)
 	familyRepo := repository.NewFamilyRerpository(db)
 	welfareRepo := repository.NewWelfareRepo(db)
+	constantsRepo := repository.NewConstantsReprostiory(db)
 
 	// 初始化 Service
+	constantsService := service.NewConstantsService(constantsRepo)
 	messageService := service.NewMessageService(userRepo, cfg, log)
 	verificationService := service.NewVerificationService(userRepo, messageService, cfg)
 	authService := service.NewAuthService(userRepo, cfg)
 	userService := service.NewUserService(userRepo, verificationService, authService, messageService, cfg, log)
 	familyService := service.NewFamilyService(familyRepo, log)
-	welfareService := service.NewWelfareService(welfareRepo)
+	welfareService := service.NewWelfareService(welfareRepo, constantsService)
 
 	// 初始化 Handler
-	userHandler := handler.NewUserHandler(userService, authService, verificationService, cfg)
+	constantsHandler := handler.NewConstantsHandelr(constantsService)
+	userHandler := handler.NewUserHandler(userService, authService, verificationService, cfg, constantsService)
 	familyHandler := handler.NewFamilyHandler(familyService, userRepo, verificationService, cfg)
 	welfareHandler := handler.NewWelfareHandler(welfareService, familyService, userService, cfg)
 
 	return &Container{
-		UserHandler:    userHandler,
-		FamilyHandler:  familyHandler,
-		WelfareHandler: welfareHandler,
+		UserHandler:      userHandler,
+		FamilyHandler:    familyHandler,
+		WelfareHandler:   welfareHandler,
+		ConstantsHandelr: constantsHandler,
 	}
 }

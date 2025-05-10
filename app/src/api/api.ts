@@ -1,4 +1,4 @@
-const BASE_URL = "http://192.168.0.100:8085";
+const BASE_URL = "https://mou-welfare.com";
 
 export interface ApiError {
     message: string;

@@ -1,0 +1,46 @@
+{
+  "project_info": {
+    "project_number": "441294493287",
+    "project_id": "mouwelfare",
+    "storage_bucket": "mouwelfare.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:441294493287:android:12b3ab4a29cd1bbe3566c2",
+        "android_client_info": {
+          "package_name": "com.mou.welfare"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "441294493287-tpokiljbg463eg53an7sq91gaib4t3j6.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCkNBoOJRShd8F7iJ-r9qBG6SwZefYqtOo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "441294493287-tpokiljbg463eg53an7sq91gaib4t3j6.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "441294493287-8527f3sg1torhup4hi59kt3vdkl7i001.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "w"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

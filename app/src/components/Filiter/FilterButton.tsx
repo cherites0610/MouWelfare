@@ -17,7 +17,7 @@ const FilterButton: React.FC<FilterButtonProps> = memo(
     >
       <Text style={styles.buttonText}>
         {label}
-        {selectedCount > 0 && !isIconButton ? ` (${selectedCount})` : ''}
+        {selectedCount > 0 ? ` (${selectedCount})` : ''}
       </Text>
       {!isIconButton && <Text style={styles.arrow}>▼</Text>}
     </TouchableOpacity>

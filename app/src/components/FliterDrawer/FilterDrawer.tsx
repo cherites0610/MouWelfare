@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { SafeAreaView, ScrollView } from 'react-native';
 import FilterSection from './FilterSection';
 import FilterFooter from './FilterFooter';
 import { ageOptions, genderOptions, incomeOptions, identityOptions } from './constants';
 import styles from './styles';
-import { useDispatch } from 'react-redux'
-import { AppDispatch } from '@/src/store';
+import { useDispatch, useSelector } from 'react-redux'
+import { AppDispatch, RootState } from '@/src/store';
 import { setIdentities } from '@/src/store/slices/filiterSlice';
 
 export default function FilterDrawer({ closeDrawer }: { closeDrawer: Function }) {
@@ -14,6 +14,8 @@ export default function FilterDrawer({ closeDrawer }: { closeDrawer: Function })
   const [selectedGender, setSelectedGender] = useState<string | null>(null);
   const [selectedIncome, setSelectedIncome] = useState<Set<string>>(new Set());
   const [selectedIdentity, setSelectedIdentity] = useState<Set<string>>(new Set());
+  const { autoFilterUserData } = useSelector((state: RootState) => state.config)
+  const { user } = useSelector((state: RootState) => state.user)
   const dispatcher = useDispatch<AppDispatch>()
 
   // Handlers
@@ -53,9 +55,27 @@ export default function FilterDrawer({ closeDrawer }: { closeDrawer: Function })
     if (selectedAge) temp.push(selectedAge);
     if (selectedGender) temp.push(selectedGender);
     temp.push(...income, ...identity);
+    console.log(temp);
+
     dispatcher(setIdentities(temp))
     closeDrawer();
   };
+
+  useEffect(() => {
+    if (autoFilterUserData && user?.identities?.length) {
+      console.log('Auto-applying user identities:', user.identities);
+
+      // Update local state to reflect user identities in the UI
+      const identities = user.identities;
+      setSelectedAge(identities.find(id => ageOptions.includes(id)) || null);
+      setSelectedGender(identities.find(id => genderOptions.includes(id)) || null);
+      setSelectedIncome(new Set(identities.filter(id => incomeOptions.includes(id))));
+      setSelectedIdentity(new Set(identities.filter(id => identityOptions.includes(id))));
+
+      // Dispatch to Redux store
+      dispatcher(setIdentities(identities));
+    }
+  }, [user, autoFilterUserData, dispatcher, ageOptions, genderOptions, incomeOptions, identityOptions]);
 
   return (
     <SafeAreaView style={styles.safeArea}>

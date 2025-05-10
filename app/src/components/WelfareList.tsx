@@ -79,11 +79,11 @@ export default function WelfareList({ listData, refreshing, onRefresh, isLoading
         };
 
         const handleFavorite = async () => {
-            const reuslt = await addFavoriteAPI(authToken, item.id)
-            if (reuslt.status_code==200) {
+            const result = await addFavoriteAPI(authToken, item.id)
+            if (result.status_code==200) {
                 Alert.alert('添加成功')
             }else {
-                Alert.alert('添加失敗')
+                Alert.alert('添加失敗',result.message)
             }
         };
 

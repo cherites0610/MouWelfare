@@ -1,8 +1,6 @@
 ngrok.exe
 .*
-*/google-services.json
 .venv
-*/GoogleService-Info.plist
 */bunfig.npmrc
 data
 *.log
@@ -11,3 +9,8 @@ avatar/*.jpg
 avatar/*.jpeg
 avatar/*.png
 !avatar/default_avatar.png
+
+*/.vscode
+
+app/android
+*/ios

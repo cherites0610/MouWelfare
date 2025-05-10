@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { View } from 'react-native';
 import FilterButton from './FilterButton';
 import styles from './styles';
@@ -15,6 +15,8 @@ interface FilterBarProps {
 const FilterBar: React.FC<FilterBarProps> = React.memo(
   ({ openFilterDrawer }) => {
 
+    const { autoFilterUserData } = useSelector((state: RootState) => state.config)
+    const { user } = useSelector((state: RootState) => state.user)
     const [regionModalVisible, setRegionModalVisible] = useState(false);
     const [serviceModalVisible, setServiceModalVisible] = useState(false);
     const [familyModalVisible, setFamilyModalVisible] = useState(false);
@@ -31,6 +33,14 @@ const FilterBar: React.FC<FilterBarProps> = React.memo(
     const setFamily = (familyies: string) => {
       dispatch(setFamilies(familyies))
     }
+
+    useEffect(() => {
+      if (user?.location && autoFilterUserData) {
+        setLocation([user.location])
+      }
+    },[user,autoFilterUserData])
+
+    const { identities } = useSelector((state: RootState) => state.filiter)
 
     const LOCATION: string[] = Array.from({ length: LocationNum - 1 }, (_, i) => getTextByLocation(i + 1));
     const CATEGORY: string[] = Array.from({ length: ServiceNum - 1 }, (_, i) => getTextByService(i + 1));
@@ -53,7 +63,7 @@ const FilterBar: React.FC<FilterBarProps> = React.memo(
     return (
       <View style={styles.filterBar}>
         <FilterButton
-        
+
           label="地區"
           selectedCount={locations.length}
           onPress={() => toggleModal('location', true)}
@@ -65,10 +75,10 @@ const FilterBar: React.FC<FilterBarProps> = React.memo(
         />
         <FilterButton
           label="家庭"
-          selectedCount={families===""?0:1}
+          selectedCount={families === "" ? 0 : 1}
           onPress={() => toggleModal('family', true)}
         />
-        <FilterButton label="篩選" onPress={openFilterDrawer} isIconButton />
+        <FilterButton selectedCount={identities.length} label="篩選" onPress={openFilterDrawer} isIconButton />
 
         <FilterModal
           visible={regionModalVisible}

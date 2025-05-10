@@ -24,14 +24,16 @@ type UserHandler struct {
 	authService         *service.AuthService
 	verificationService *service.VerificationService
 	cfg                 *config.Config
+	constantsService    *service.ConstantsService
 }
 
-func NewUserHandler(userService *service.UserService, authService *service.AuthService, verificationService *service.VerificationService, cfg *config.Config) *UserHandler {
+func NewUserHandler(userService *service.UserService, authService *service.AuthService, verificationService *service.VerificationService, cfg *config.Config, constantsService *service.ConstantsService) *UserHandler {
 	return &UserHandler{
 		userService:         userService,
 		authService:         authService,
 		verificationService: verificationService,
 		cfg:                 cfg,
+		constantsService:    constantsService,
 	}
 }
 
@@ -160,10 +162,16 @@ func (h *UserHandler) UpdateProfile(c *gin.Context) {
 
 	userIdentitiesID := []uint{}
 	for _, item := range req.Identities {
-		userIdentitiesID = append(userIdentitiesID, constants.StringToIdentity(item))
+		id, _ := h.constantsService.GetIdentityIDByName(item)
+		userIdentitiesID = append(userIdentitiesID, id)
 	}
 
-	user, err := h.userService.UpdateProfile(userID.(uint), req.Name, req.Birthday, constants.StringToGender(req.Female), constants.StringToLocation(req.Location), userIdentitiesID, req.IsSubscribe)
+	locationID, err := h.constantsService.GetLocationIDByName(req.Location)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "無法獲取用戶 ID"})
+		return
+	}
+	user, err := h.userService.UpdateProfile(userID.(uint), req.Name, req.Birthday, constants.StringToGender(req.Female), locationID, userIdentitiesID, req.IsSubscribe)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 		return
@@ -416,17 +424,16 @@ func (h *UserHandler) ToUserResp(user *models.User) dto.UserResp {
 
 	// 處理 LocationID
 	if user.LocationID != nil {
-		location = constants.LocationToString(*user.LocationID)
+		location, _ = h.constantsService.GetLocationNameByID(*user.LocationID)
 	} else {
-		location = constants.LocationToString(0) // 假設 0 表示未設定
+		location = "未設定"
 	}
 
 	// 處理 Identities
 	if user.Identities != nil {
 		for _, identity := range *user.Identities {
-			if identity.ID > 5 {
-				identities = append(identities, constants.IdentityToString(identity.ID))
-			}
+			identityName, _ := h.constantsService.GetIdentityNameByID(identity.ID)
+			identities = append(identities, identityName)
 		}
 	}
 

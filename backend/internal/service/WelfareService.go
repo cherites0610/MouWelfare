@@ -3,17 +3,20 @@ package service
 import (
 	"Mou-Welfare/internal/models"
 	"Mou-Welfare/internal/repository"
-	constants "Mou-Welfare/pkg/constans"
+	"errors"
 	"fmt"
 	"math/rand"
+
+	"gorm.io/gorm"
 )
 
 type WelfareService struct {
-	welfareRepo *repository.WelfareRepo
+	welfareRepo      *repository.WelfareRepo
+	constantsService *ConstantsService
 }
 
-func NewWelfareService(welfareRepo *repository.WelfareRepo) *WelfareService {
-	return &WelfareService{welfareRepo: welfareRepo}
+func NewWelfareService(welfareRepo *repository.WelfareRepo, constantsService *ConstantsService) *WelfareService {
+	return &WelfareService{welfareRepo: welfareRepo, constantsService: constantsService}
 }
 
 func (s *WelfareService) GetWelfareAll(page, pageSize int, locations, identities, categories []string, search string) ([]models.Welfare, int64, error) {
@@ -23,14 +26,16 @@ func (s *WelfareService) GetWelfareAll(page, pageSize int, locations, identities
 	categoriesID := []uint{}
 	for _, category := range categories {
 		if category != "" {
-			categoriesID = append(categoriesID, constants.StringToCategory(category))
+			id, _ := s.constantsService.GetCategoryIDByName(category)
+			categoriesID = append(categoriesID, id)
 		}
 
 	}
 	locationsID := []uint{}
 	for _, location := range locations {
 		if location != "" {
-			locationsID = append(locationsID, constants.StringToLocation(location))
+			id, _ := s.constantsService.GetLocationIDByName(location)
+			locationsID = append(locationsID, id)
 		}
 
 	}
@@ -38,7 +43,8 @@ func (s *WelfareService) GetWelfareAll(page, pageSize int, locations, identities
 	identitiesID := []uint{}
 	for _, identity := range identities {
 		if identity != "" {
-			identitiesID = append(identitiesID, constants.StringToIdentity((identity)))
+			id, _ := s.constantsService.GetIdentityIDByName(identity)
+			identitiesID = append(identitiesID, id)
 		}
 
 	}
@@ -67,6 +73,10 @@ func (s *WelfareService) GetWelfareByID(id uint) (*models.Welfare, error) {
 }
 
 func (s *WelfareService) AddFavorite(userID, welfareID uint) error {
+	err := s.welfareRepo.AddFavorite(userID, welfareID)
+	if errors.Is(err, gorm.ErrDuplicatedKey) {
+		return fmt.Errorf("該福利已在我的最愛")
+	}
 	return s.welfareRepo.AddFavorite(userID, welfareID)
 }
 

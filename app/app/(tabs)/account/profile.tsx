@@ -1,7 +1,9 @@
 
+import { ageOptions, genderOptions } from '@/src/components/FliterDrawer/constants';
 import { AppDispatch, RootState } from '@/src/store';
 import { fetchUser } from '@/src/store/slices/userSlice';
 import { COLORS } from '@/src/utils/colors';
+import { getIdByIdentityText, getTextByIdentity } from '@/src/utils/getTextByNumber';
 import { Redirect, useRouter } from 'expo-router';
 import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, Button, ActivityIndicator } from 'react-native';
@@ -10,7 +12,7 @@ import { useDispatch, useSelector } from 'react-redux';
 export default function Profile() {
   const { user, status, error } = useSelector((state: RootState) => state.user)
   console.log(user);
-  
+
   const router = useRouter();
 
   return (
@@ -20,7 +22,7 @@ export default function Profile() {
         <View style={styles.content}>
           {/* 頭像 */}
           <Image
-            source={{uri:user?.avatar_url}}
+            source={{ uri: user?.avatar_url }}
             style={styles.avatar}
           />
 
@@ -45,7 +47,14 @@ export default function Profile() {
               地區：<Text style={styles.value}>{user!.location}</Text>
             </Text>
             <Text style={styles.label}>
-              身份別：<Text style={styles.value}>{user!.identities?.join(',')}</Text>
+              身份別：<Text style={styles.value}>{user!.identities?.filter((item) => {
+                if ( (ageOptions.some((age) => age===item) || genderOptions.some((gender) => gender == item) )) {
+                  return false
+                  
+                }else {
+                  return true
+                }
+              }).join(',')}</Text>
             </Text>
           </View>
         </View>

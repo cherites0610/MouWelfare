@@ -129,7 +129,7 @@ func (h *WelfareHandler) AddFavorite(c *gin.Context) {
 
 	err = h.WelfareService.AddFavorite(userIDUint, uint(welfareID))
 	if err != nil {
-		c.JSON(200, dto.DTO{StatusCode: 500, Message: "添加失敗", Data: nil})
+		c.JSON(200, dto.DTO{StatusCode: 500, Message: err.Error(), Data: nil})
 		return
 	}
 
