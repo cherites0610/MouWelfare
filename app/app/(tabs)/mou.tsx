@@ -375,7 +375,7 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 8,
     maxWidth: width * 0.7,
-    marginRight: 8,
+    marginRight: 0,
     fontSize: 16,
   },
   botMessage: {

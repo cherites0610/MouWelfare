@@ -16,6 +16,7 @@ import { Welfare, WelfareApiParams } from '@/src/type/welfareType';
 import { fetchWelfareApi } from '@/src/api/welfareApi';
 import { RootState } from '@/src/store';
 import { useSelector } from 'react-redux';
+import { debounce } from 'lodash';
 
 export default function Index() {
   const drawerRef = useRef<DrawerLayoutMethods>(null);
@@ -103,13 +104,23 @@ export default function Index() {
 
   const handleRefresh = () => {
     setPage(1);
-    // console.log("載入資料（非下一頁）", locations, categories, families, searchQuery)
     fetchWelfareData({ locations, categories, identities, families, searchQuery }, false);
   }
 
+  const debouncedHandleRefresh = useCallback(
+    debounce(() => {
+      handleRefresh();
+    }, 300), // 300ms 延遲
+    [handleRefresh] // 確保 handleRefresh 是穩定的
+  );
+
   useEffect(() => {
-    handleRefresh()
-  }, [locations, categories, identities, families, searchQuery])
+    debouncedHandleRefresh();
+    // 清除 debounce 的計時器，防止記憶體洩漏
+    return () => {
+      debouncedHandleRefresh.cancel();
+    };
+  }, [locations, categories, identities, families, searchQuery]);
 
   useEffect(() => {
     fetchWelfareData({ locations, categories, identities, families, searchQuery }, false);

@@ -6,10 +6,10 @@ import (
 	"Mou-Welfare/internal/models"
 	"Mou-Welfare/internal/service"
 	constants "Mou-Welfare/pkg/constans"
+	"context"
 	"fmt"
 	"net/http"
 	"net/url"
-	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -17,6 +17,10 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
+
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
 
 type UserHandler struct {
@@ -25,15 +29,18 @@ type UserHandler struct {
 	verificationService *service.VerificationService
 	cfg                 *config.Config
 	constantsService    *service.ConstantsService
+	s3Client            *s3.Client
 }
 
 func NewUserHandler(userService *service.UserService, authService *service.AuthService, verificationService *service.VerificationService, cfg *config.Config, constantsService *service.ConstantsService) *UserHandler {
+	s3Client := s3.NewFromConfig(aws.Config{Region: cfg.S3_REGION})
 	return &UserHandler{
 		userService:         userService,
 		authService:         authService,
 		verificationService: verificationService,
 		cfg:                 cfg,
 		constantsService:    constantsService,
+		s3Client:            s3Client,
 	}
 }
 
@@ -217,7 +224,8 @@ func (h *UserHandler) UploadAvatar(c *gin.Context) {
 		})
 		return
 	}
-	// 獲取上傳的文件
+
+	// 獲取上傳檔案
 	file, err := c.FormFile("avatar")
 	if err != nil {
 		c.JSON(http.StatusOK, dto.DTO{
@@ -226,7 +234,7 @@ func (h *UserHandler) UploadAvatar(c *gin.Context) {
 		return
 	}
 
-	// 檢查文件類型（僅允許圖片）
+	// 檢查檔案類型（僅允許圖片）
 	ext := filepath.Ext(file.Filename)
 	if ext != ".jpg" && ext != ".jpeg" && ext != ".png" {
 		c.JSON(http.StatusOK, dto.DTO{
@@ -235,18 +243,44 @@ func (h *UserHandler) UploadAvatar(c *gin.Context) {
 		return
 	}
 
-	file.Filename = fmt.Sprintf("%v_%s", userID, time.Now().Format("20060102150405")) + ext
+	// 生成唯一檔案名稱
+	fileName := fmt.Sprintf("%v_%s%s", userID, time.Now().Format("20060102150405"), ext)
 
-	// 儲存文件
-	filePath := filepath.Join("../../avatar", file.Filename)
-	if err := c.SaveUploadedFile(file, filePath); err != nil {
+	// 開啟上傳檔案
+	f, err := file.Open()
+	if err != nil {
 		c.JSON(http.StatusOK, dto.DTO{
-			StatusCode: 500, Message: "文件上傳失敗", Data: err.Error(),
+			StatusCode: 500, Message: "無法打開上傳檔案", Data: err.Error(),
+		})
+		return
+	}
+	defer f.Close()
+
+	// 檢測檔案 Content-Type
+	buffer := make([]byte, 512)
+	n, _ := f.Read(buffer)
+	contentType := http.DetectContentType(buffer[:n])
+	// 重置檔案指標到開頭
+	f.Seek(0, 0)
+	fmt.Printf("S3 上傳失敗: bucket=%s, key=%s, region=%s, error=%v\n", h.cfg.S3_BUCKET, fileName, h.cfg.S3_REGION, err)
+	// 上傳檔案至 S3
+	uploader := manager.NewUploader(h.s3Client)
+	_, err = uploader.Upload(context.TODO(), &s3.PutObjectInput{
+		Bucket:      aws.String(h.cfg.S3_BUCKET),
+		Key:         aws.String(fileName),
+		Body:        f,
+		ContentType: aws.String(contentType),
+		// 若頭像是公開可讀，設置 public-read
+		// ACL: "public-read",
+	})
+	if err != nil {
+		c.JSON(http.StatusOK, dto.DTO{
+			StatusCode: 500, Message: "檔案上傳到 S3 失敗", Data: err.Error(),
 		})
 		return
 	}
 
-	// 更新用戶資料庫中的圖片路徑
+	// 從資料庫獲取用戶
 	uid := userID.(uint)
 	user, err := h.userService.GetUserByEmailORUserIDORAccount(&uid, nil, nil)
 	if err != nil {
@@ -256,19 +290,20 @@ func (h *UserHandler) UploadAvatar(c *gin.Context) {
 		return
 	}
 
-	// 刪除舊的頭像文件（如果存在）
+	// 刪除舊頭像（若存在）
 	if user.AvatarURL != nil {
-		oldAvatarPath := filepath.Join("../../avatar", *user.AvatarURL)
-		if err := os.Remove(oldAvatarPath); err != nil {
+		_, err := h.s3Client.DeleteObject(context.TODO(), &s3.DeleteObjectInput{
+			Bucket: aws.String(h.cfg.S3_BUCKET),
+			Key:    aws.String(*user.AvatarURL),
+		})
+		if err != nil {
 			fmt.Println("刪除舊頭像失敗:", err)
-			// c.JSON(http.StatusOK, dto.DTO{
-			// 	StatusCode: 500, Message: "刪除舊頭像失敗", Data: err.Error(),
-			// })
-			// return
+			// 繼續執行，不因刪除失敗而終止
 		}
 	}
 
-	user.AvatarURL = &file.Filename
+	// 更新用戶資料中的頭像 URL
+	user.AvatarURL = &fileName
 	if err := h.userService.Save(user); err != nil {
 		c.JSON(http.StatusOK, dto.DTO{
 			StatusCode: 500, Message: "更新用戶資料失敗", Data: err.Error(),
@@ -276,7 +311,8 @@ func (h *UserHandler) UploadAvatar(c *gin.Context) {
 		return
 	}
 
-	respUrl := fmt.Sprintf("%s/%s/%s", h.cfg.DOMAIN, "avatar", file.Filename)
+	// 構建 S3 URL
+	respUrl := fmt.Sprintf("https://%s.s3.%s.amazonaws.com/%s", h.cfg.S3_BUCKET, h.cfg.S3_REGION, fileName)
 
 	c.JSON(http.StatusOK, dto.DTO{
 		StatusCode: 200, Message: "頭像上傳成功", Data: respUrl,
@@ -287,7 +323,7 @@ func (h *UserHandler) GetAvatar(c *gin.Context) {
 	userID := c.Param("id")
 	parsedUserID, err := strconv.ParseUint(userID, 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "無效的用戶 ID"})
 		return
 	}
 
@@ -295,21 +331,24 @@ func (h *UserHandler) GetAvatar(c *gin.Context) {
 	user, err := h.userService.GetUserByEmailORUserIDORAccount(&convertedUserID, nil, nil)
 	if err != nil {
 		c.JSON(http.StatusOK, dto.DTO{
-			StatusCode: 404, Message: "用戶不存在", Data: fmt.Sprintf("%s%s", h.cfg.DOMAIN, "/uploads/default_avatar.png"),
+			StatusCode: 404, Message: "用戶不存在", Data: fmt.Sprintf("https://%s.s3.%s.amazonaws.com/default_avatar.png", h.cfg.S3_BUCKET, h.cfg.S3_REGION),
 		})
 		return
 	}
 
 	if user.AvatarURL == nil {
 		c.JSON(http.StatusOK, dto.DTO{
-			StatusCode: 200, Message: "頭像不存在", Data: fmt.Sprintf("%s%s", h.cfg.DOMAIN, "/uploads/default_avatar.png"),
+			StatusCode: 200, Message: "頭像不存在", Data: fmt.Sprintf("https://%s.s3.%s.amazonaws.com/default_avatar.png", h.cfg.S3_BUCKET, h.cfg.S3_REGION),
 		})
 		return
 	}
 
+	// 構建 S3 URL
+	avatarUrl := fmt.Sprintf("https://%s.s3.%s.amazonaws.com/%s", h.cfg.S3_BUCKET, h.cfg.S3_REGION, *user.AvatarURL)
+
 	c.JSON(http.StatusOK, dto.DTO{
-		StatusCode: 200, Message: "頭像獲取成功", Data: fmt.Sprintf("%s/%s", h.cfg.DOMAIN, *user.AvatarURL)},
-	)
+		StatusCode: 200, Message: "頭像獲取成功", Data: avatarUrl,
+	})
 }
 
 func (h *UserHandler) UpdataPassword(c *gin.Context) {

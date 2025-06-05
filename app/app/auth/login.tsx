@@ -41,9 +41,6 @@ export default function Login() {
       const result = await loginApi({ account: account, password: password });
 
       if (result.status_code == 200) {
-        while (router.canGoBack()) {
-          router.back(); // 清空堆疊
-        }
         router.replace("/home")
         const loginResponse = result.data as LoginResponse;
         dispatch(login(loginResponse.user)); // 假設 login action 存在於 userSlice

@@ -39,7 +39,7 @@ func NewContainer(db *gorm.DB, cfg *config.Config, log *logrus.Logger) *Containe
 	constantsHandler := handler.NewConstantsHandelr(constantsService)
 	userHandler := handler.NewUserHandler(userService, authService, verificationService, cfg, constantsService)
 	familyHandler := handler.NewFamilyHandler(familyService, userRepo, verificationService, cfg)
-	welfareHandler := handler.NewWelfareHandler(welfareService, familyService, userService, cfg)
+	welfareHandler := handler.NewWelfareHandler(welfareService, familyService, userService, constantsService, cfg)
 
 	return &Container{
 		UserHandler:      userHandler,

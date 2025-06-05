@@ -29,6 +29,8 @@ type Config struct {
 	VERIFICATION_CODE_EXPIRES_IN int64
 	LOG_LEVEL                    string
 	LOG_FILE_PATH                string
+	S3_BUCKET                    string
+	S3_REGION                    string
 }
 
 func LoadConfig() *Config {
@@ -58,6 +60,8 @@ func LoadConfig() *Config {
 		VERIFICATION_CODE_EXPIRES_IN: parseEnvToInt64("VERIFICATION_CODE_EXPIRES_IN", "300"),
 		LOG_LEVEL:                    getEnv("LOG_LEVEL", "debug"),
 		LOG_FILE_PATH:                getEnv("LOG_FILE_PATH", "app.log"),
+		S3_BUCKET:                    getEnv("S3_BUCKET", ""),
+		S3_REGION:                    getEnv("S3_REGION", ""),
 	}
 }
 

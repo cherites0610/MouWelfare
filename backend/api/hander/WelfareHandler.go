@@ -15,14 +15,21 @@ import (
 )
 
 type WelfareHandler struct {
-	WelfareService *service.WelfareService
-	FamilyService  *service.FamilyService
-	UserService    *service.UserService
-	cfg            *config.Config
+	WelfareService   *service.WelfareService
+	FamilyService    *service.FamilyService
+	UserService      *service.UserService
+	constantsService *service.ConstantsService
+	cfg              *config.Config
 }
 
-func NewWelfareHandler(welfareService *service.WelfareService, familyService *service.FamilyService, userService *service.UserService, cfg *config.Config) *WelfareHandler {
-	return &WelfareHandler{WelfareService: welfareService, FamilyService: familyService, UserService: userService, cfg: cfg}
+func NewWelfareHandler(welfareService *service.WelfareService, familyService *service.FamilyService, userService *service.UserService, constantsService *service.ConstantsService, cfg *config.Config) *WelfareHandler {
+	return &WelfareHandler{
+		WelfareService:   welfareService,
+		FamilyService:    familyService,
+		UserService:      userService,
+		constantsService: constantsService,
+		cfg:              cfg,
+	}
 }
 
 func (h *WelfareHandler) GetAllWelfares(c *gin.Context) {
@@ -68,8 +75,14 @@ func (h *WelfareHandler) GetAllWelfares(c *gin.Context) {
 		}
 	}
 
+	identityID := []uint{}
+	for _, identity := range identities {
+		id, _ := h.constantsService.GetIdentityIDByName(identity)
+		identityID = append(identityID, id)
+	}
+
 	for _, welfare := range welfares {
-		welfareResp := h.ToWelfareResp(welfare, []uint{}, familyID)
+		welfareResp := h.ToWelfareResp(welfare, identityID, familyID)
 		resp = append(resp, welfareResp)
 	}
 
@@ -103,7 +116,8 @@ func (h *WelfareHandler) GetWelfareByID(c *gin.Context) {
 		return
 	}
 
-	welfareResp := h.ToWelfareResp(*welfare, []uint{}, nil)
+	familyID := uint(8)
+	welfareResp := h.ToWelfareResp(*welfare, []uint{}, &familyID)
 	c.JSON(200, welfareResp)
 }
 
@@ -206,7 +220,7 @@ func (h *WelfareHandler) ToWelfareResp(welfare models.Welfare, identities []uint
 		Status:          welfare.Status,
 		PublicationDate: pubDate.Format("2006-01-02"),
 		Location:        welfare.Location.Name,
-		LightStatus:     h.WelfareService.GetWelfareLightStatus(welfare.ID, identities),
+		LightStatus:     0,
 		Identities:      make([]string, 0, len(welfare.Identities)),
 		Categories:      make([]string, 0, len(welfare.Categories)),
 		Forward:         strings.Fields(strings.ReplaceAll(welfare.Forward, ",", " ")),
@@ -214,7 +228,9 @@ func (h *WelfareHandler) ToWelfareResp(welfare models.Welfare, identities []uint
 	}
 
 	// 填充 Identities
+	welfareIdentitys := []uint{}
 	for _, identity := range welfare.Identities {
+		welfareIdentitys = append(welfareIdentitys, identity.ID)
 		welfareResp.Identities = append(welfareResp.Identities, identity.Name)
 	}
 
@@ -222,6 +238,8 @@ func (h *WelfareHandler) ToWelfareResp(welfare models.Welfare, identities []uint
 	for _, category := range welfare.Categories {
 		welfareResp.Categories = append(welfareResp.Categories, category.Name)
 	}
+
+	welfareResp.LightStatus = h.WelfareService.GetWelfareLightStatus(welfareIdentitys, identities)
 
 	// 處理家庭成員
 	if familyID != nil {
@@ -240,8 +258,9 @@ func (h *WelfareHandler) ToWelfareResp(welfare models.Welfare, identities []uint
 					identities = append(identities, identity.ID)
 				}
 
+				fmt.Println(user.Identities)
 				// 計算 LightStatus
-				lightStatus := h.WelfareService.GetWelfareLightStatus(welfare.ID, identities)
+				lightStatus := h.WelfareService.GetWelfareLightStatus(welfareIdentitys, identities)
 				if lightStatus != 1 {
 					continue
 				}

@@ -1,4 +1,4 @@
-const BASE_URL = "https://mou-welfare.com";
+const BASE_URL = "http://192.168.0.101:8085";
 
 export interface ApiError {
     message: string;
@@ -9,7 +9,6 @@ export interface ResponseType {
     message: string
     data: any
 }
-
 
 export async function apiFetch<T>(url: string, options: RequestInit = {}): Promise<T> {
     try {

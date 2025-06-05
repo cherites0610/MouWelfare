@@ -5,7 +5,6 @@ import (
 	"Mou-Welfare/internal/repository"
 	"errors"
 	"fmt"
-	"math/rand"
 
 	"gorm.io/gorm"
 )
@@ -49,8 +48,6 @@ func (s *WelfareService) GetWelfareAll(page, pageSize int, locations, identities
 
 	}
 
-	fmt.Println(identitiesID)
-
 	// 查詢分頁數據
 	welfares, total, err := s.welfareRepo.FindWelfares(offset, pageSize, locationsID, categoriesID, search)
 	if err != nil {
@@ -60,8 +57,49 @@ func (s *WelfareService) GetWelfareAll(page, pageSize int, locations, identities
 	return welfares, total, nil
 }
 
-func (s *WelfareService) GetWelfareLightStatus(welfareID uint, identities []uint) (LightStatus uint) {
-	return uint(rand.Intn(4)) // 隨機生成
+func (s *WelfareService) GetWelfareLightStatus(welfareIdentities, identities []uint) uint {
+	fmt.Println(welfareIdentities)
+	fmt.Println(identities)
+
+	contains := func(arr []uint, val uint) bool {
+		for _, a := range arr {
+			if a == val {
+				return true
+			}
+		}
+		return false
+	}
+
+	// 規則0：檢查 identities 是否為空或首元素為 0
+	if len(identities) == 0 || identities[0] == 0 {
+		return 2
+	}
+
+	// 規則1：年齡段檢查 (1: <20歲, 2: 20-65歲, 3: >65歲)
+	ageGroups := []uint{1, 2, 3}
+	ageMatches := false
+	hasAgeRequirement := false
+	for _, age := range ageGroups {
+		if contains(welfareIdentities, age) {
+			hasAgeRequirement = true
+			if contains(identities, age) {
+				ageMatches = true
+			}
+		}
+	}
+	if hasAgeRequirement && !ageMatches {
+		return 3
+	}
+
+	// 規則2 & 3：檢查 4 到 11 的任意值
+	for i := uint(4); i <= 11; i++ {
+		if contains(welfareIdentities, i) && !contains(identities, i) {
+			return 3
+		}
+	}
+
+	// 所有條件符合
+	return 1
 }
 
 func (s *WelfareService) GetWelfareByID(id uint) (*models.Welfare, error) {

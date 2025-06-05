@@ -128,20 +128,22 @@ const WelfareInfo = () => {
               <Text style={styles.resultText}>{getCircleText(welfare.light_status)}</Text>
             </View>
 
-            <Text style={styles.sectionTitle}>可獲得福利之家人</Text>
+            {welfare.family_member.length > 0 && (
+              <Text style={styles.sectionTitle}>可獲得福利之家人</Text>
+            )}
             <FlatList
               style={styles.list}
               scrollEnabled={false}
-              data={['羽毛', '猴子', '大哥']} // 假設 API 返回或使用臨時數據
+              data={welfare.family_member} // 假設 API 返回或使用臨時數據
               renderItem={({ item, index }) => (
                 <View
                   style={[
                     styles.listRow,
-                    index === (['羽毛', '猴子', '大哥'].length) - 1 && styles.lastItemRow,
+                    index === (welfare.family_member.length) - 1 && styles.lastItemRow,
                   ]}
                 >
                   <Text style={styles.listIndex}>{index + 1}</Text>
-                  <Text style={styles.listItemText}>{item}</Text>
+                  <Text style={styles.listItemText}>{item.name}</Text>
                 </View>
               )}
               keyExtractor={(item, index) => index.toString()}

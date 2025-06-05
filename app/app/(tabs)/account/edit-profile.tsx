@@ -115,6 +115,8 @@ export default function EditProfileScreen() {
 
             try {
                 const resp = await updateAvatarApi(authToken, formData);
+                console.log(resp);
+                
                 if (resp.status_code === 200) {
                     Alert.alert("更新成功", resp.message);
                     setAvatar(resp.data);
