@@ -15,4 +15,5 @@ avatar/*.png
 app/android
 */ios
 
-api
+api/node_modules
+api/dist
