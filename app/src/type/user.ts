@@ -5,13 +5,13 @@ export interface User {
     account: string;
     password?: string;
     gender?: string;
-    identities?: string[];
+    identities?: { name: string, id: string }[];
     birthday?: string;
-    location?: string;
+    location?: { name: string, id: string };
     subscribe: boolean;
     email: string;
     line_id?: string;
-    avatar_url?: string; // 可選字段
+    avatarUrl?: string; // 可選字段
 }
 
 export interface UserState {

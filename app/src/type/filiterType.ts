@@ -1,7 +1,7 @@
 export interface Filiter {
     locations: string[];
     categories: string[];
-    families: string;
+    family: string;
     identities: string[];
     searchQuery: string;
 }

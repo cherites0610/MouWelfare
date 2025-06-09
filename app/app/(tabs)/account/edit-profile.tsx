@@ -58,16 +58,16 @@ export default function EditProfileScreen() {
     useEffect(() => {
         if (user) {
             setName(user.name);
-            setAvatar(user.avatar_url);
+            setAvatar(user.avatarUrl);
             setGenderValue(user.gender || null);
-            setLocationValue(user.location || null);
+            setLocationValue(user.location?.name || null);
             // 格式化生日為 YYYY/MM/DD
             setBirthday(user.birthday ? new Date(user.birthday).toLocaleDateString('zh-TW', {
                 year: 'numeric',
                 month: '2-digit',
                 day: '2-digit'
             }).split('/').join('/') : '');
-            setIdentitiesValue(Array.isArray(user.identities) ? user.identities : []);
+            setIdentitiesValue(Array.isArray(user.identities) ? user.identities.map((item) => item.name) : []);
         }
     }, [user]);
 
@@ -115,17 +115,12 @@ export default function EditProfileScreen() {
 
             try {
                 const resp = await updateAvatarApi(authToken, formData);
-                console.log(resp);
-                
-                if (resp.status_code === 200) {
-                    Alert.alert("更新成功", resp.message);
-                    setAvatar(resp.data);
-                    dispatch(fetchUser());
-                } else {
-                    Alert.alert("更新失敗", resp.message || "未知錯誤");
-                }
-            } catch (error) {
-                console.error("上傳頭像失敗:", error);
+                Alert.alert("更新成功", resp.message);
+                setAvatar(resp.data);
+                dispatch(fetchUser());
+
+            } catch (error: any) {
+                console.error("上傳頭像失敗:", error.message);
                 Alert.alert("錯誤", "頭像上傳失敗。");
             }
         }
@@ -169,27 +164,25 @@ export default function EditProfileScreen() {
                 // birthday: birthday ? new Date(birthday).toISOString() : undefined,
                 birthday: birthday ? parseBirthday(birthday) : undefined,
                 gender: genderValue ?? undefined,
-                location: locationValue ?? undefined,
-                identities: identitiesValue,
+                location: {
+                    name: locationValue ?? '',
+                    id: ''
+                },
+                identities: identitiesValue.map(name => ({ name, id: '' })),
             };
 
-            const result = await updateProfileAPI(authToken, updatedUserData)
-
-            if (result.status_code == 200) {
+            try {
+                const result = await updateProfileAPI(authToken, updatedUserData)
                 Alert.alert(result.message)
                 dispatch(fetchUser());
-
-                while (router.canGoBack()) {
-                    router.back();
-                }
-                // 替換到目標頁面
-                router.replace('/home'); // 替換為目標路由，例如 '/login'
-
+                router.back()
+            } catch (err: any) {
+                Alert.alert('錯誤', '更新失敗，請重試。',);
             }
 
         } catch (error) {
             console.error("更新個人資料失敗:", error);
-            Alert.alert('錯誤', '更新失敗，請重試。',);
+
         }
     };
 
@@ -199,7 +192,7 @@ export default function EditProfileScreen() {
                 <View style={styles.content}>
                     <TouchableOpacity onPress={pickImage}>
                         <Image
-                            source={{ uri: avatar || user?.avatar_url || 'https://via.placeholder.com/100' }}
+                            source={{ uri: avatar || user?.avatarUrl || 'https://via.placeholder.com/100' }}
                             style={styles.avatar}
                         />
                         <Text style={styles.changeAvatarText}>更改頭像</Text>

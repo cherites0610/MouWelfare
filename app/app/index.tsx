@@ -15,6 +15,7 @@ export default function Index() {
 
   const init = async () => {
     try {
+      
       await dispatch(loadConfig());
       await dispatch(fetchUser());
       await dispatch(fetchFamily());

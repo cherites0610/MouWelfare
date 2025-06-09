@@ -5,6 +5,8 @@ import { User } from './entities/user.entity';
 import { In, Repository } from 'typeorm';
 import * as AWS from 'aws-sdk';
 import * as argon2 from "argon2";
+import * as sharp from 'sharp';
+import * as path from 'path';
 import { Identity } from 'src/common/const-data/entities/identity.entity';
 import { Location } from 'src/common/const-data/entities/location.entity';
 import { Welfare } from 'src/welfare/entities/welfare.entity';
@@ -67,7 +69,6 @@ export class UserService {
     if (!foundUser) {
       throw new UnauthorizedException("找不到賬戶號")
     }
-
     return foundUser;
   }
 
@@ -81,9 +82,9 @@ export class UserService {
     }
 
     // 驗證 locationId（如果提供）
-    if (updateUserDto.locationId !== undefined) {
-      if (updateUserDto.locationId !== null) {
-        const location = await this.locationRepository.findOne({ where: { id: updateUserDto.locationId } });
+    if (updateUserDto.location !== undefined) {
+      if (updateUserDto.location !== null) {
+        const location = await this.locationRepository.findOne({ where: { name: updateUserDto.location } });
         if (!location) {
           throw new BadRequestException('指定的 locationId 不存在');
         }
@@ -97,7 +98,7 @@ export class UserService {
     if (updateUserDto.identities !== undefined) {
       if (updateUserDto.identities) {
         const identities = await this.identityRepository.find({
-          where: { id: In(updateUserDto.identities) }
+          where: { name: In(updateUserDto.identities) }
         });
         if (identities.length !== updateUserDto.identities.length) {
           throw new BadRequestException('一個或多個 identity ID 不存在');
@@ -112,7 +113,7 @@ export class UserService {
     Object.assign(user, {
       name: updateUserDto.name ?? user.name,
       birthday: updateUserDto.birthday ?? user.birthday,
-      female: updateUserDto.female ?? user.female,
+      gender: updateUserDto.gender ?? user.gender,
       isVerified: updateUserDto.isVerified ?? user.isVerified,
       isSubscribe: updateUserDto.isSubscribe ?? user.isSubscribe,
       lineID: updateUserDto.lineID ?? user.lineID,
@@ -126,7 +127,7 @@ export class UserService {
       email: user.email,
       name: user.name,
       birthday: user.birthday,
-      female: user.female,
+      gender: user.gender,
       isVerified: user.isVerified,
       isSubscribe: user.isSubscribe,
       lineID: user.lineID,
@@ -217,22 +218,38 @@ export class UserService {
   async updateAvatar(userId: string, file: Express.Multer.File) {
     const user = await this.findOneByID(userId);
 
-    const fileExt = file.originalname.split('.').pop();
-    const key = `avatars/${uuidv4()}.${fileExt}`;
+    // 壓縮圖片，轉為 JPEG（也可保留原格式）
+    const compressedBuffer = await sharp(file.buffer)
+      .resize(300) // 可調整尺寸，例如寬度 300px
+      .jpeg({ quality: 80 }) // 轉 JPEG，壓縮品質 0~100
+      .toBuffer();
 
-    await this.s3
-      .putObject({
-        Bucket: this.configService.get<string>("AWS_S3_BUCKET_NAME") || "",
-        Key: key,
-        Body: file.buffer,
-        ACL: 'public-read', // 或改成 private，搭配 signed URL
-        ContentType: file.mimetype,
-      })
-      .promise();
+    const key = `avatars/${uuidv4()}.jpeg`;
 
-    const avatarUrl = `https://${process.env.AWS_S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
+    const bucketName = this.configService.get<string>("AWS_S3_BUCKET_NAME") || "";
 
-    
+    // 上傳壓縮後圖片
+    await this.s3.putObject({
+      Bucket: bucketName,
+      Key: key,
+      Body: compressedBuffer,
+      ACL: 'public-read',
+      ContentType: 'image/jpeg',
+    }).promise();
+
+    // 刪除舊圖片（如果存在）
+    if (user.avatarUrl) {
+      const oldKey = user.avatarUrl.split(`.amazonaws.com/`)[1];
+      if (oldKey) {
+        await this.s3.deleteObject({
+          Bucket: bucketName,
+          Key: oldKey,
+        }).promise();
+      }
+    }
+
+    const avatarUrl = `https://${bucketName}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
+
     user.avatarUrl = avatarUrl;
     await this.userRepository.save(user);
 
@@ -246,5 +263,10 @@ export class UserService {
     }
 
     return { avatarUrl: user.avatarUrl };
+  }
+
+  async getFavouriteWelfare(userID:string) {
+    const user = await this.findOneByID(userID)
+    return user.welfares
   }
 }

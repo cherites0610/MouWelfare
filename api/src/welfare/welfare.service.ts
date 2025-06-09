@@ -46,7 +46,8 @@ export class WelfareService {
   async findAll(dto: FindAllDTO) {
     const queryBuilder = this.welfareRepository.createQueryBuilder('welfare')
       .leftJoinAndSelect('welfare.categories', 'categories')
-      .leftJoinAndSelect('welfare.location', 'location');
+      .leftJoinAndSelect('welfare.location', 'location')
+      .leftJoinAndSelect('welfare.identities', 'identities');
 
     if (dto.search) {
       queryBuilder.andWhere('welfare.title LIKE :search', {
@@ -71,15 +72,23 @@ export class WelfareService {
     const [welfares, total] = await queryBuilder.getManyAndCount();
 
     const responseList = welfares.map((item) => this.mapWelfareToDTO(item));
-
     if (dto.userID) {
       const familyID = dto.families?.[0];
-      await this.appendLightAndFamilyInfo(welfares, responseList, dto.userID, familyID);
+      let identities = this.constDataService.getIdentities()
+      identities = identities.filter((item) => {
+        return dto.identities?.includes(item.name)
+      })
+      await this.appendLightAndFamilyInfo(welfares, responseList, dto.userID, identities, familyID);
     }
 
     return {
       data: responseList,
-      pagination: { page, pageSize, total },
+      pagination: {
+        page,
+        pageSize,
+        total,
+        totalPage: Math.ceil(total / pageSize)
+      },
     };
   }
 
@@ -96,7 +105,8 @@ export class WelfareService {
     const response = this.mapWelfareToDTO(welfare);
 
     if (dto?.userID) {
-      await this.appendLightAndFamilyInfo([welfare], [response], dto.userID, dto.familyID);
+      const user = await this.userService.findOneByID(dto.userID)
+      await this.appendLightAndFamilyInfo([welfare], [response], dto.userID, user.identities, dto.familyID);
     }
 
     return response;
@@ -114,6 +124,7 @@ export class WelfareService {
     if (!userIdentities) {
       return LightStatus.NoIdentity
     }
+
     let welfareIdentitiesIDs = welfareIdentities.map((item) => item.id)
     let userIdentitiesIDs = userIdentities.map((item) => item.id)
     const contains = (arr: number[], val: number): boolean => {
@@ -167,7 +178,7 @@ export class WelfareService {
   private mapWelfareToDTO(welfare: Welfare): WelfareResponseDTO {
     return {
       id: welfare.id,
-      titie: welfare.title,
+      title: welfare.title,
       detail: welfare.details,
       summary: welfare.summary,
       link: welfare.link,
@@ -187,10 +198,10 @@ export class WelfareService {
     welfareList: Welfare[],
     dtoList: WelfareResponseDTO[],
     userID: string,
+    identities: Identity[],
     familyID?: string
   ) {
     const user = await this.userService.findOneByID(userID);
-
     let family: Family | null = null;
     let otherFamilyMembers: UserFamily[] = [];
 
@@ -204,17 +215,18 @@ export class WelfareService {
       otherFamilyMembers = family.userFamilies.filter((uf) => uf.user.id !== user.id);
     }
 
+
     for (let i = 0; i < welfareList.length; i++) {
       const welfare = welfareList[i];
       const dto = dtoList[i];
+      dto.lightStatus = welfare.identities.length == 0 ? 2 : this.getWelfareLight(welfare.identities, identities);
 
-      dto.lightStatus = this.getWelfareLight(welfare.identities, user.identities);
-
+      // ✅ 如果有家庭，額外加上 familyMember 陣列
       if (family) {
         dto.familyMember = otherFamilyMembers.map((uf) => ({
           avatarUrl: uf.user.avatarUrl,
           lightStatus: this.getWelfareLight(welfare.identities, uf.user.identities),
-          Name: uf.user.name,
+          name: uf.user.name,
         }));
       }
     }

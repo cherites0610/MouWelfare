@@ -1,13 +1,18 @@
 import { View, Text, StyleSheet, Image } from 'react-native'
 import React, { useEffect, useState } from 'react'
 import { COLORS } from '../utils/colors';
-import { welfareFamilyMember } from '../type/welfareType';
+import { FamilyMember } from '../type/family';
+import { WelfareFamilyMember } from '../type/welfareType';
 
-type props = { location: string, category: string[], title: string, lightStatus: number, familyMember: welfareFamilyMember[] }
+
+type props = { location: string, category: string[], title: string, lightStatus: number, familyMember: WelfareFamilyMember[] }
 
 export default function WelfareItem({ location, category, title, lightStatus, familyMember }: props) {
     const [currentCategoryIndex, setCurrentCategoryIndex] = useState(0);
+    useEffect(() => {
+        console.log("familyMember", familyMember);
 
+    }, [])
     const getCircleColor = () => {
         switch (lightStatus) {
             case 1:
@@ -33,15 +38,15 @@ export default function WelfareItem({ location, category, title, lightStatus, fa
                     {familyMember.map((item, index) => {
                         return (
                             <View key={index}>
-                                <Image style={styles.avatar} source={{ uri: item.avatar_url }} />
+                                <Image style={styles.avatar} source={{ uri: item.avatarUrl }} />
                             </View>
-
                         )
                     })}
                 </View>
-
             </View>
-            <View style={[styles.circle, { backgroundColor: getCircleColor() }]} />
+            {lightStatus && (
+                <View style={[styles.circle, { backgroundColor: getCircleColor() }]} />
+            )}
         </View>
     )
 }

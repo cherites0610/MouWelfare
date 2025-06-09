@@ -27,8 +27,8 @@ export default function Index() {
   const [hasMore, setHasMore] = useState(true);
   const [isFetching, setIsFetching] = useState(false); // 新增
   const { familys: FAMILYS } = useSelector((state: RootState) => state.family); // 獲取家庭類型數據
-  const { locations, categories, identities, families, searchQuery } = useSelector((state: RootState) => state.filiter)
-
+  const { locations, categories, identities, family, searchQuery } = useSelector((state: RootState) => state.filiter)
+  const { user } = useSelector((state: RootState) => state.user)
 
   const fetchWelfareData = (queryParams: Partial<WelfareApiParams>, isNextPage = false) => {
     if (isFetching) return; // 防止重複請求
@@ -53,15 +53,16 @@ export default function Index() {
     // 計算下一頁的頁數
     const nextPage = isNextPage ? page + 1 : page;
 
-    const familyID = FAMILYS.find((item) => item.name === families)?.id;
-    queryParams.families = familyID ?? "";
+    const familyID = FAMILYS.find((item) => item.name === family)?.id;
+    queryParams.familyID = familyID ?? "";
 
     const query: WelfareApiParams = {
       locations: queryParams.locations ?? [],
       categories: queryParams.categories ?? [],
       identities: queryParams.identities ?? [],
-      families: queryParams.families ?? "",
+      familyID: queryParams.familyID ?? "",
       searchQuery: queryParams.searchQuery ?? "",
+      userID: user?.id ?? "",
       page: nextPage ?? 1,
       pageSize: queryParams.pageSize ?? 20
     }
@@ -72,7 +73,7 @@ export default function Index() {
         // 更新數據
         setData((prevData: Welfare[]) => {
           // 如果是下一頁，追加數據；否則替換數據
-          const newData = isNextPage ? [...prevData, ...res.data] : [...res.data];
+          const newData = isNextPage ? [...prevData, ...res.data.data] : [...res.data.data];
           // 去重，根據 id 確保數據唯一
           return Array.from(new Map(newData.map((item) => [item.id, item])).values());
         });
@@ -83,7 +84,7 @@ export default function Index() {
         }
 
         // 更新 hasMore 狀態
-        setHasMore(res.pagination.totalPages - res.pagination.page > 0);
+        setHasMore(res.data.pagination.totalPages - res.data.pagination.page > 0);
       })
       .catch((err) => {
         console.error('獲取資料失敗:', err);
@@ -104,7 +105,7 @@ export default function Index() {
 
   const handleRefresh = () => {
     setPage(1);
-    fetchWelfareData({ locations, categories, identities, families, searchQuery }, false);
+    fetchWelfareData({ locations, categories, identities, familyID: user?.id ?? "", searchQuery }, false);
   }
 
   const debouncedHandleRefresh = useCallback(
@@ -120,15 +121,15 @@ export default function Index() {
     return () => {
       debouncedHandleRefresh.cancel();
     };
-  }, [locations, categories, identities, families, searchQuery]);
+  }, [locations, categories, identities, family, searchQuery]);
 
   useEffect(() => {
-    fetchWelfareData({ locations, categories, identities, families, searchQuery }, false);
+    fetchWelfareData({ locations, categories, identities, familyID: user?.id ?? "", searchQuery }, false);
   }, []);
 
   const onLoadMore = () => {
     if (hasMore && !isFetching) {
-      fetchWelfareData({ locations, categories, identities, families, searchQuery }, true);
+      fetchWelfareData({ locations, categories, identities, familyID: user?.id ?? "", searchQuery }, true);
     }
   }
 

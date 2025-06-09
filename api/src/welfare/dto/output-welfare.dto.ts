@@ -9,7 +9,7 @@ export class WelfarePaginatedResponseDTO<T> {
 
 export class WelfareResponseDTO {
     id: string;
-    titie: string;
+    title: string;
     detail: string;
     summary: string;
     link: string;
@@ -25,5 +25,5 @@ export class WelfareResponseDTO {
 export class welfareFamilyMember {
     avatarUrl: string;
     lightStatus: number;
-    Name: string;
+    name: string;
 }

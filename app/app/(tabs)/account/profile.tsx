@@ -11,8 +11,6 @@ import { useDispatch, useSelector } from 'react-redux';
 
 export default function Profile() {
   const { user, status, error } = useSelector((state: RootState) => state.user)
-  console.log(user);
-
   const router = useRouter();
 
   return (
@@ -22,7 +20,7 @@ export default function Profile() {
         <View style={styles.content}>
           {/* 頭像 */}
           <Image
-            source={{ uri: user?.avatar_url }}
+            source={{ uri: user?.avatarUrl }}
             style={styles.avatar}
           />
 
@@ -32,29 +30,19 @@ export default function Profile() {
               姓名：<Text style={styles.value}>{user!.name}</Text>
             </Text>
             <Text style={styles.label}>
-              帳號：<Text style={styles.value}>{user!.account}</Text>
-            </Text>
-            <Text style={styles.label}>
               郵箱：<Text style={styles.value}>{user!.email}</Text>
             </Text>
             <Text style={styles.label}>
-              生日：<Text style={styles.value}>{user!.birthday}</Text>
+              生日：<Text style={styles.value}>{user!.birthday?.split('T')[0]}</Text>
             </Text>
             <Text style={styles.label}>
               性別：<Text style={styles.value}>{user!.gender}</Text>
             </Text>
             <Text style={styles.label}>
-              地區：<Text style={styles.value}>{user!.location}</Text>
+              地區：<Text style={styles.value}>{user!.location?.name}</Text>
             </Text>
             <Text style={styles.label}>
-              身份別：<Text style={styles.value}>{user!.identities?.filter((item) => {
-                if ( (ageOptions.some((age) => age===item) || genderOptions.some((gender) => gender == item) )) {
-                  return false
-                  
-                }else {
-                  return true
-                }
-              }).join(',')}</Text>
+              身份別：<Text style={styles.value}>{user!.identities?.map((item) => item.name).join(',')}</Text>
             </Text>
           </View>
         </View>
@@ -71,7 +59,14 @@ export default function Profile() {
     </View>
   )
 
+// .filter((item) => {
+//                 if ((ageOptions.some((age) => age === item) || genderOptions.some((gender) => gender == item))) {
+//                   return false
 
+//                 } else {
+//                   return true
+//                 }
+//               })
 }
 
 const styles = StyleSheet.create({

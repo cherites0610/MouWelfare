@@ -1,4 +1,4 @@
-import { Welfare, WelfareApiParams, WelfarePaginatedResp } from "../type/welfareType";
+import { Welfare, WelfareApiParams, WelfarePaginatedResp, WelfareResp } from "../type/welfareType";
 import { apiFetch, ResponseType } from "./api";
 
 export async function fetchWelfareApi(params: WelfareApiParams): Promise<WelfarePaginatedResp> {
@@ -14,8 +14,8 @@ export async function fetchWelfareApi(params: WelfareApiParams): Promise<Welfare
     if (params.identities && params.identities.length > 0) {
         query.append('identities', params.identities.join(','));
     }
-    if (params.families) {
-        query.append('families', params.families);
+    if (params.familyID) {
+        query.append('families', params.familyID);
     }
     if (params.searchQuery) {
         query.append('search', params.searchQuery);
@@ -23,11 +23,14 @@ export async function fetchWelfareApi(params: WelfareApiParams): Promise<Welfare
     if (params.page) {
         query.append('page', params.page.toString());
     }
+    if (params.userID) {
+        query.append('userID', params.userID);
+    }
     if (params.pageSize) {
         query.append('pageSize', params.pageSize.toString());
     }
-
-    const url = `/api/welfare${query.toString() ? `?${query.toString()}` : ''}`;
+    
+    const url = `/welfare${query.toString() ? `?${query.toString()}` : ''}`;
 
     // Using fetch API (you can replace with axios if preferred)
     const response = await apiFetch<WelfarePaginatedResp>(url, {
@@ -41,14 +44,14 @@ export async function fetchWelfareApi(params: WelfareApiParams): Promise<Welfare
     return response;
 }
 
-export async function fetchWelfareByIDAPI(id: number): Promise<Welfare> {
-    return apiFetch<Welfare>(`/api/welfare/${id}`, {
+export async function fetchWelfareByIDAPI(id: string): Promise<WelfareResp> {
+    return apiFetch<WelfareResp>(`/welfare/${id}`, {
         method: 'GET'
     });
 }
 
 export async function addFavoriteAPI(token: string, id: number): Promise<ResponseType> {
-    return apiFetch<ResponseType>(`/api/favorite/${id}`, {
+    return apiFetch<ResponseType>(`/user/welfare/${id}`, {
         method: 'POST',
         headers: {
             "Authorization": `Bearer ${token}`
@@ -57,7 +60,7 @@ export async function addFavoriteAPI(token: string, id: number): Promise<Respons
 }
 
 export async function deleteFavoriteAPI(token: string, id: number): Promise<ResponseType> {
-    return apiFetch<ResponseType>(`/api/favorite/${id}`, {
+    return apiFetch<ResponseType>(`/user/welfare/${id}`, {
         method: 'DELETE',
         headers: {
             "Authorization": `Bearer ${token}`
@@ -66,7 +69,7 @@ export async function deleteFavoriteAPI(token: string, id: number): Promise<Resp
 }
 
 export async function fetchFavoriteAPI(token: string): Promise<ResponseType> {
-    return apiFetch<ResponseType>(`/api/favorite`, {
+    return apiFetch<ResponseType>(`/user/welfare`, {
         method: 'GET',
         headers: {
             "Authorization": `Bearer ${token}`

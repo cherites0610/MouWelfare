@@ -1,4 +1,4 @@
-import { sendVerifyCodeApi, verifyCodeApi } from '@/src/api/userApi';
+import { performAction, sendVerifyCodeApi, verifyCodeApi } from '@/src/api/userApi';
 import { COLORS } from '@/src/utils/colors';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -27,18 +27,17 @@ export default function Verify() {
   const [countdown, setCountdown] = useState(0);
 
   const handleVerify = async () => {
-    const result = await verifyCodeApi(email, verificationCode,1)
-
-    if (result.status_code != 200) {
-      Alert.alert(result.message)
+    try {
+      const result = await verifyCodeApi(email, verificationCode, "verifyAccount")
+      const token = result.data
+      const action = await performAction(token,'verifyAccount')
+      Alert.alert(action.message)
+      router.replace('/auth/login')
       return
-    } else {
-      Alert.alert(result.message)
-      while (router.canGoBack()) {
-        router.back(); // 清空堆疊
-      }
-      router.replace("/home")
+    } catch (err: any) {
+      Alert.alert(err.message)
     }
+
   };
 
   useEffect(() => {
@@ -46,7 +45,7 @@ export default function Verify() {
   }, [])
 
   useEffect(() => {
-    let timer: NodeJS.Timeout;
+    let timer: ReturnType<typeof setInterval>;
     if (countdown > 0) {
       timer = setInterval(() => {
         setCountdown((prev) => prev - 1);
@@ -68,12 +67,11 @@ export default function Verify() {
     setIsSending(true);
     setCountdown(60);
 
-    const result = await sendVerifyCodeApi(email)
-
-    if (result.status_code == 200) {
+    try {
+      const result = await sendVerifyCodeApi(email, "verifyAccount")
       Alert.alert('成功', '驗證碼已發送至您的郵箱');
-    } else {
-      Alert.alert('錯誤', result.message || '無法發送驗證碼');
+    } catch (err: any) {
+      Alert.alert('錯誤', err.message || '無法發送驗證碼');
       setIsSending(false);
       setCountdown(0);
     }

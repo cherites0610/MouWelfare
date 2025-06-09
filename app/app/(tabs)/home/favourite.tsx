@@ -14,26 +14,27 @@ export default function Favourite() {
   const [favourities, setFavourities] = useState<Welfare[]>([]);
 
   const deleteFavourite = async (welfareID: number) => {
-    const result = await deleteFavoriteAPI(authToken, welfareID);
-    if (result.status_code === 200) {
+    try {
+      const result = await deleteFavoriteAPI(authToken, welfareID);
       fetchFavourite();
-    } else {
       Alert.alert(result.message);
+    } catch (err: any) {
+      Alert.alert(err.message);
     }
   };
 
   const fetchFavourite = async () => {
-    const result = await fetchFavoriteAPI(authToken);
-    if (result.status_code === 200) {
+    try {
+      const result = await fetchFavoriteAPI(authToken);
       setFavourities(result.data);
-    } else {
-      Alert.alert(result.message);
+    } catch (err: any) {
+      Alert.alert(err.message);
     }
   };
 
   useEffect(() => {
     if (status != 'succeeded') {
-      route.replace("auth/login")
+      route.replace('/auth/login')
     }
     fetchFavourite();
   }, []);

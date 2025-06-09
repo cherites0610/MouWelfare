@@ -1,5 +1,5 @@
 export enum Gender {
-    Male = 'male',
-    Female = 'female',
-    Other = 'other',
+    Male = '男性',
+    Female = '女性',
+    Other = '其他',
 }

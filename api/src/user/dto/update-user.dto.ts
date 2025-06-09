@@ -10,13 +10,13 @@ export const UpdateUserSchema = z.object({
     .datetime({ message: '生日必須是有效的日期格式 (ISO 8601)' })
     .nullable()
     .optional(),
-  female: z.nativeEnum(Gender).nullable().optional(),
+  gender: z.nativeEnum(Gender).nullable().optional(),
   isVerified: z.boolean().optional(),
   isSubscribe: z.boolean().optional(),
   lineID: z.string().nullable().optional(),
   avatarUrl: z.string().optional(),
-  locationId: z.number().int().positive({ message: 'locationId 必須是正整數' }).nullable().optional(),
-  identities: z.array(z.number()).optional(),
+  location: z.string().optional(),
+  identities: z.array(z.string()).optional(),
 });
 
 export class UpdateUserDto extends createZodDto(UpdateUserSchema) {}

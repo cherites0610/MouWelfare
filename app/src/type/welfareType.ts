@@ -1,33 +1,37 @@
+import { FamilyMember } from "./family";
+
 export interface Welfare {
     id: number;
     title: string;
     detail: string;
-    url: string;
+    link: string;
     location: string;
     publication_date: string;
     identities: string[];
     categories: string[];
     forward: string[];
     status: boolean;
-    light_status: number;
-    family_member: welfareFamilyMember[]
+    lightStatus: number;
+    familyMember: WelfareFamilyMember[]
 }
 
-export interface welfareFamilyMember {
-    avatar_url: string,
-    light_status: number,
+export interface WelfareFamilyMember {
     name: string,
+    avatarUrl: string,
+    lightStatus: number
 }
 
 export interface WelfareApiParams {
     locations: string[];
     categories: string[];
     identities: string[];
-    families: string;
+    familyID?: string;
+    userID?: string;
     searchQuery: string;
     page: number;
     pageSize: number;
 }
+
 export interface Pagination {
     page: number;
     pageSize: number;
@@ -36,6 +40,14 @@ export interface Pagination {
 }
 
 export interface WelfarePaginatedResp {
-    data: Welfare[];
-    pagination: Pagination;
+    message: string,
+    data: {
+        data: Welfare[],
+        pagination: Pagination,
+    }
+}
+
+export interface WelfareResp {
+    message: string,
+    data: Welfare
 }

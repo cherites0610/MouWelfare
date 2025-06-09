@@ -61,7 +61,7 @@ export default function WelfareList({ listData, refreshing, onRefresh, isLoading
             try {
                 const result = await Share.share({
                     message:
-                        `哞福利向您送來了福利!\n ${item.title} \n 原文鏈接:${item.url}`,
+                        `哞福利向您送來了福利!\n ${item.title} \n 原文鏈接:${item.link}`,
                 });
                 if (result.action === Share.sharedAction) {
                     if (result.activityType) {
@@ -79,11 +79,11 @@ export default function WelfareList({ listData, refreshing, onRefresh, isLoading
         };
 
         const handleFavorite = async () => {
-            const result = await addFavoriteAPI(authToken, item.id)
-            if (result.status_code==200) {
-                Alert.alert('添加成功')
-            }else {
-                Alert.alert('添加失敗',result.message)
+            try {
+                const result = await addFavoriteAPI(authToken, item.id)
+                Alert.alert(result.message)
+            } catch (err: any) {
+                Alert.alert('添加失敗', err.message)
             }
         };
 
@@ -136,8 +136,8 @@ export default function WelfareList({ listData, refreshing, onRefresh, isLoading
                             location={item.location}
                             title={item.title}
                             category={item.categories}
-                            lightStatus={item.light_status}
-                            familyMember={item.family_member}
+                            lightStatus={item.lightStatus}
+                            familyMember={item.familyMember}
                         />
                     </TouchableOpacity>
 

@@ -38,26 +38,23 @@ const familySlice = createSlice({
 })
 
 export const fetchFamily = createAsyncThunk<Family[], void, { rejectValue: string, state: GetState<RootState> }>(
-    'family/fetchFamily',
+    'family',
     async (_, { rejectWithValue, getState }) => {
         try {
             const state = getState() as RootState;
             const authToken = state.config.authToken;
-
+            
             if (!authToken) {
                 return rejectWithValue("Don't have token")
             }
-
+            
             const result = await fetchUserFamilyApi(authToken);
-            if (result.status_code !== 200) {
-                return rejectWithValue(result.message);
-            }
+            
             const familyData = result.data as Family[];
 
             return familyData
-        } catch (error) {
-            const message = error instanceof Error ? error.message : "Failed to fetch family data";
-            return rejectWithValue(message);
+        } catch (error:any) {
+            return rejectWithValue(error.message);
         }
     }
 )

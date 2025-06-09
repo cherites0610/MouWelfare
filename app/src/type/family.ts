@@ -1,14 +1,20 @@
+import { User } from "./user";
+
+export interface FamilysResponse {
+    data: Family[],
+    message:string,
+}
+
 export interface Family {
     id: string,
     name: string,
-    members: FamilyMember[]
+    userFamilies: FamilyMember[]
 }
 
 export interface FamilyMember {
-    userId: string,
-    name: string,
-    role: number
-    avatar_url?: string;
+    id: string
+    role: number,
+    user: User
 }
 
 export interface FamilyState {

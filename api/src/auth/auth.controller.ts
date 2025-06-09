@@ -18,7 +18,7 @@ export class AuthController {
   @Public()
   @Post('signup')
   async signup(@Body() dto: SignupDTO) {
-    return await this.authService.signup(dto);
+    return new ResponseDTO("注冊成功",await this.authService.signup(dto));
   }
 
   @Public()
@@ -27,17 +27,20 @@ export class AuthController {
     return { message: "登錄成功", data: await this.authService.login(dto) }
   }
 
+  @Public()
   @Post('send-verification-code')
   async sendVerificationCode(@Body() dto: SendVerificationCodeDto) {
     await this.authService.sendVerificationCode(dto);
     return new ResponseDTO('驗證碼已發送',"");
   }
 
+  @Public()
   @Post('verify-code')
   async verifyCode(@Body() dto: VerifyCodeDto) {
     return new ResponseDTO("驗證成功",await this.authService.verifyCode(dto));
   }
 
+  @Public()
   @Post('perform-action')
   async performAction(@Body() dto: PerformActionDto) {
     await this.authService.performAction(dto);

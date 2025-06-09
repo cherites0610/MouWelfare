@@ -24,7 +24,7 @@ const WelfareInfo = () => {
   const [error, setError] = useState<string | null>(null);
 
   const getCircleColor = () => {
-    switch (welfare?.light_status) {
+    switch (welfare?.lightStatus) {
       case 1:
         return COLORS.light_green;
       case 2:
@@ -51,8 +51,8 @@ const WelfareInfo = () => {
 
   const getWelfare = async () => {
     try {
-      const response = await fetchWelfareByIDAPI(Number(glob.welfareId));
-      setWelfare(response);
+      const response = await fetchWelfareByIDAPI(String(glob.welfareId));
+      setWelfare(response.data);
     } catch (error) {
       console.error('Error fetching welfare data:', error);
       setError('無法加載數據，請稍後重試');
@@ -125,21 +125,21 @@ const WelfareInfo = () => {
               <View
                 style={[styles.circleIndicator, { backgroundColor: getCircleColor() }]}
               />
-              <Text style={styles.resultText}>{getCircleText(welfare.light_status)}</Text>
+              <Text style={styles.resultText}>{getCircleText(welfare.lightStatus)}</Text>
             </View>
 
-            {welfare.family_member.length > 0 && (
+            {welfare.familyMember.length > 0 && (
               <Text style={styles.sectionTitle}>可獲得福利之家人</Text>
             )}
             <FlatList
               style={styles.list}
               scrollEnabled={false}
-              data={welfare.family_member} // 假設 API 返回或使用臨時數據
+              data={welfare.familyMember} // 假設 API 返回或使用臨時數據
               renderItem={({ item, index }) => (
                 <View
                   style={[
                     styles.listRow,
-                    index === (welfare.family_member.length) - 1 && styles.lastItemRow,
+                    index === (welfare.familyMember.length) - 1 && styles.lastItemRow,
                   ]}
                 >
                   <Text style={styles.listIndex}>{index + 1}</Text>
@@ -151,7 +151,7 @@ const WelfareInfo = () => {
 
             <View style={styles.statusRow}>
               <Text style={styles.sectionTitle}>點此前往原文:</Text>
-              <TouchableOpacity onPress={() => openLink(welfare.url)}>
+              <TouchableOpacity onPress={() => openLink(welfare.link)}>
                 <Text style={styles.linkText}>點此前往原文</Text>
               </TouchableOpacity>
             </View>

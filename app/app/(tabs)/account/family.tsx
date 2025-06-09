@@ -1,6 +1,6 @@
 import { Image, View, Text, TouchableOpacity, StyleSheet, ScrollView, Animated, Modal, TextInput, Platform, Alert } from 'react-native';
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { createFamilyApi, FamilysResponse, fetchUserFamilyApi, JoinFamilyApi } from '@/src/api/familyApi';
+import { createFamilyApi, fetchUserFamilyApi, JoinFamilyApi } from '@/src/api/familyApi';
 // Removed AsyncStorage import as it wasn't used in this component
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -52,11 +52,7 @@ export default function Family() {
         setScannerActive(false);
       }
     } catch (e: any) {
-
-      console.error(`Failed to ${modalType === 'family' ? 'create' : 'join'} family:`, e);
-      if (!e?.isAlertShown) {
-        Alert.alert(`${modalType === 'family' ? '創建' : '加入'}家庭失敗`, "請檢查輸入內容或稍後再試。");
-      }
+      Alert.alert(e.message)
       success = false;
     } finally {
       setLoading(false);
@@ -126,13 +122,13 @@ export default function Family() {
               style={styles.card}
             >
               <Text style={styles.familyName}>{family.name || '未知家庭'}</Text>
-              {family.members.map((member) => (
-                <View key={member.userId} style={styles.memberRow}>
+              {family.userFamilies.map((member) => (
+                <View key={member.user.id} style={styles.memberRow}>
                   <Image
-                    source={{ uri: member.avatar_url }}
+                    source={{ uri: member.user.avatarUrl }}
                     style={styles.avatar}
                   />
-                  <Text style={styles.memberName}>{member.name || '未知成員'}</Text>
+                  <Text style={styles.memberName}>{member.user.name || '未知成員'}</Text>
                 </View>
               ))}
             </TouchableOpacity>

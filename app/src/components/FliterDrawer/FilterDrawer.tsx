@@ -55,25 +55,22 @@ export default function FilterDrawer({ closeDrawer }: { closeDrawer: Function })
     if (selectedAge) temp.push(selectedAge);
     if (selectedGender) temp.push(selectedGender);
     temp.push(...income, ...identity);
-    console.log(temp);
-
     dispatcher(setIdentities(temp))
     closeDrawer();
   };
 
   useEffect(() => {
     if (autoFilterUserData && user?.identities?.length) {
-      console.log('Auto-applying user identities:', user.identities);
-
-      // Update local state to reflect user identities in the UI
       const identities = user.identities;
-      setSelectedAge(identities.find(id => ageOptions.includes(id)) || null);
-      setSelectedGender(identities.find(id => genderOptions.includes(id)) || null);
-      setSelectedIncome(new Set(identities.filter(id => incomeOptions.includes(id))));
-      setSelectedIdentity(new Set(identities.filter(id => identityOptions.includes(id))));
+      const foundAge = identities.find(id => ageOptions.includes(id.id));
+      setSelectedAge(foundAge ? foundAge.id : null);
+      const foundGender = identities.find(id => genderOptions.includes(id.id));
+      setSelectedGender(foundGender ? foundGender.id : null);
+      setSelectedIncome(new Set(identities.filter(id => incomeOptions.includes(id.id)).map(i => i.id)));
+      setSelectedIdentity(new Set(identities.filter(id => identityOptions.includes(id.id)).map(i => i.id)));
 
       // Dispatch to Redux store
-      dispatcher(setIdentities(identities));
+      dispatcher(setIdentities(identities.map(i => i.id)));
     }
   }, [user, autoFilterUserData, dispatcher, ageOptions, genderOptions, incomeOptions, identityOptions]);
 

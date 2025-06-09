@@ -5,7 +5,6 @@ export interface ApiError {
 }
 
 export interface ResponseType {
-    status_code: number
     message: string
     data: any
 }

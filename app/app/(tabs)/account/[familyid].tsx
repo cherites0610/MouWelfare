@@ -1,12 +1,13 @@
 import { View, Text, SafeAreaView, ScrollView, Image, TouchableOpacity, Switch, StyleSheet, FlatList, Alert, Modal, TextInput, Platform } from 'react-native'
 import React, { useEffect, useState } from 'react'
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { deleteFamilyApi, EditFamilyInfApi, exitFamilyApi, FamilysResponse, fetchFmailyApi, getFmailyCodeApi } from '@/src/api/familyApi';
+import { deleteFamilyApi, EditFamilyInfApi, exitFamilyApi, fetchFmailyApi, getFmailyCodeApi } from '@/src/api/familyApi';
 import { useDispatch, useSelector } from 'react-redux'
 import { AppDispatch, RootState } from '@/src/store';
 import QRCode from 'react-native-qrcode-svg';
 import { COLORS } from '@/src/utils/colors';
 import { fetchFamily } from '@/src/store/slices/familySlice';
+import { FamilysResponse } from '@/src/type/family';
 
 
 const FamilySettingsScreen = () => {
@@ -22,28 +23,26 @@ const FamilySettingsScreen = () => {
 
 
     const familyID = glob.familyid as string
-    let family = familys.find((item) => item.id == familyID) as FamilysResponse
+    let family = familys.find((item) => item.id === familyID)!
 
     const disDispatch = useDispatch<AppDispatch>()
     const router = useRouter()
 
     const handleGenerateQrCodePress = async () => {
-        if (family?.id) {
-            const code = await getFmailyCodeApi(authToken, family.id);
-            setCode(code)
+        if (family.id) {
+            const result = await getFmailyCodeApi(authToken, family.id);
+            setCode(result.data)
             setDisplayModal(true)
         }
-        // 在這裡加入產生 QR Code 的邏輯
     };
 
     const handleExitFamilyPress = async () => {
-        const result = await exitFamilyApi(authToken, family?.id!)
-
-        if (result.status_code == 200) {
+        try {
+            const result = await exitFamilyApi(authToken, family?.id!)
             Alert.alert("退出家庭成功")
             await disDispatch(fetchFamily())
             router.replace("/account/family")
-        } else {
+        } catch (err: any) {
             Alert.alert("退出家庭失敗")
         }
     }
@@ -56,14 +55,13 @@ const FamilySettingsScreen = () => {
                 style: 'cancel',
             },
             {
-                text: '確認刪除', onPress:  async () => {
-                    const result = await deleteFamilyApi(authToken, family?.id!)
-
-                    if (result.status_code == 200) {
+                text: '確認刪除', onPress: async () => {
+                    try {
+                        const result = await deleteFamilyApi(authToken, family?.id!)
                         Alert.alert("刪除家庭成功")
                         await disDispatch(fetchFamily())
                         router.replace("/account/family")
-                    } else {
+                    } catch (err: any) {
                         Alert.alert("刪除家庭失敗")
                     }
                 }
@@ -77,14 +75,15 @@ const FamilySettingsScreen = () => {
             setEditNameModal(false)
             return
         }
-        const result = await EditFamilyInfApi(authToken, family?.id!, newFamilyName)
-        if (result.status_code == 200) {
+        
+        try {
+            const result = await EditFamilyInfApi(authToken, family?.id!, newFamilyName)
             await disDispatch(fetchFamily())
-            family = familys.find((item) => item.id == familyID) as FamilysResponse
+            family = familys.find((item) => item.id === familyID)!
             setEditNameModal(false)
             Alert.alert(result.message)
-        } else {
-            Alert.alert("修改失敗", result.message)
+        } catch (err: any) {
+            Alert.alert("修改失敗", err.message)
         }
     }
 
@@ -98,8 +97,8 @@ const FamilySettingsScreen = () => {
     }
 
     const renderButton = () => {
-        const role = family.members.find((item) => {
-            return item.userId == user?.id
+        const role = family.userFamilies.find((item) => {
+            return item.user.id == user?.id
         })?.role
 
         if (role == 1) {
@@ -132,13 +131,13 @@ const FamilySettingsScreen = () => {
         <ScrollView style={styles.container}>
             {/* --- 頭像和名稱區 --- */}
             <View style={styles.userInfoSection}>
-                {family.members.map((item, index) =>
+                {family.userFamilies.map((item, index) =>
                     <View key={index}>
                         <Image
-                            source={{ uri: item.avatar_url }} // 提供一個預設圖片
+                            source={{ uri: item.user.avatarUrl }} // 提供一個預設圖片
                             style={styles.avatar}
                         />
-                        <Text style={styles.userName}>{item.name}</Text>
+                        <Text style={styles.userName}>{item.user.name}</Text>
                     </View>
                 )}
 

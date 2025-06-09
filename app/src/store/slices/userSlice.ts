@@ -71,15 +71,11 @@ export const fetchUser = createAsyncThunk<User, void, { rejectValue: string, get
             }
 
             const response = await fetchApi(authToken);
-            if (!response.user || !response.token) {
+            if (!response.data) {
                 return rejectWithValue('Invalid API response');
             }
-            try {
-                await AsyncStorage.setItem('token', response.token);
-            } catch (storageError) {
-                console.warn('Failed to save token:', storageError);
-            }
-            return response.user as User;
+
+            return response.data
         } catch (error: any) {
             return rejectWithValue(error.message || 'Failed to fetch user');
         }

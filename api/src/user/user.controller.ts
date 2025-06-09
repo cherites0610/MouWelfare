@@ -11,8 +11,6 @@ export class UserController {
     private readonly userService: UserService
   ) { }
 
-
-
   @Get('')
   async findOne(@UserID() id: string) {
     const user = await this.userService.findOneByID(id)
@@ -42,9 +40,13 @@ export class UserController {
 
   @Post('avatar')
   @UseInterceptors(FileInterceptor('avatar'))
-  async uploadAvatar(@UploadedFile() file: Express.Multer.File, @Req() req) {
-    const userId = req.user.id; // 假設 JWT 已解析出 user
-    return this.userService.updateAvatar(userId, file);
+  async uploadAvatar(@UploadedFile() file: Express.Multer.File, @UserID() userID) {
+    return this.userService.updateAvatar(userID, file);
+  }
+
+  @Get('welfare')
+  async getFavouriteWelfare(@UserID() userID: string) {
+    return new ResponseDTO("查詢成功", await this.userService.getFavouriteWelfare(userID))
   }
 
   @Get('avatar')

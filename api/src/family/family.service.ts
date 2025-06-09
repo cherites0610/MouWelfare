@@ -31,14 +31,18 @@ export class FamilyService {
   }
 
   async findAllByUserID(userID: string) {
-    const familys = await this.familyRepository.find({
+    const userFamilys = await this.familyRepository.find({
       relations: ['userFamilies', 'userFamilies.user'],
       where: { userFamilies: { user: { id: userID } } }
-    })
+    });
 
-    return familys
+    const families = await Promise.all(
+      userFamilys.map(item => this.findOneByFamilyID(item.id))
+    );
+
+    // 過濾掉 null 或 undefined 的情況（如果可能有）
+    return families.filter(Boolean);
   }
-
   async findOneByFamilyID(id: string) {
     const family = await this.familyRepository.findOne({
       relations: ['userFamilies', 'userFamilies.user'],

@@ -4,7 +4,7 @@ import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 const initialState: Filiter = {
     locations: [],
     categories: [],
-    families: "",
+    family: "",
     identities: [],
     searchQuery: ""
 }
@@ -20,7 +20,7 @@ const filiterSlice = createSlice({
             state.categories = action.payload;
         },
         setFamilies(state, action: PayloadAction<string>) {
-            state.families = action.payload;
+            state.family = action.payload;
         },
         setIdentities(state, action: PayloadAction<string[]>) {
             state.identities = action.payload;
@@ -31,7 +31,7 @@ const filiterSlice = createSlice({
         resetFilters(state) {
             state.locations = [];
             state.categories = [];
-            state.families = "";
+            state.family = "";
             state.identities = [];
             state.searchQuery = '';
         },

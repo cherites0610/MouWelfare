@@ -29,7 +29,7 @@ export class User {
     @Column({
         nullable: true
     })
-    female: Gender
+    gender: Gender
 
     @Column({
         default: false
@@ -47,7 +47,7 @@ export class User {
     lineID: string
 
     @Column({
-        default: ""
+        default: "https://mouwelfare-avatar-test.s3.ap-northeast-1.amazonaws.com/avatars/default_avatar"
     })
     avatarUrl: string
 

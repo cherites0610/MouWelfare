@@ -14,7 +14,6 @@ import {
   ScrollView, // 使用 ScrollView 防止內容超出螢幕
   Dimensions,   // 用於獲取螢幕寬度
   Alert,         // 臨時用於按鈕點擊提示
-  Keyboard
 } from 'react-native';
 
 // 獲取螢幕寬度，可用於響應式設計
@@ -22,7 +21,6 @@ const { width } = Dimensions.get('window');
 
 export default function Register() {
   const [passwordVisible, setPasswordVisible] = useState(false); // 狀態：控制密碼是否可見
-  const [account, setAccount] = useState('');
   const [password, setPassword] = useState('');
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -36,29 +34,22 @@ export default function Register() {
     setIsLoading(true)
 
     try {
-      if (!account || !password || !email) {
+      if (!password || !email) {
         Alert.alert("錯誤", "請填寫所有欄位");
         return;
       }
 
-      const result: ResponseType = await registerApi({
-        account: account, // 將 username 傳遞給 API 的 account 欄位
+      await registerApi({
+        email: email,
         password: password,
-        email: email
       })
 
-      if (result.status_code != 200) {
-        Alert.alert("註冊出錯", result.message);
-      } else {
-        router.navigate(`/auth/verify/${email}`);
-      }
+      router.navigate(`/auth/verify/${email}`);
     } catch (e: any) {
-      Alert.alert("註冊出錯", "請稍後再試");
+      Alert.alert("註冊出錯", e.message);
     } finally {
       setIsLoading(false)
     }
-
-
   };
 
 
@@ -83,17 +74,20 @@ export default function Register() {
           {/* --- 標題 --- */}
           <Text style={styles.title}>Register</Text>
 
-          {/* --- 帳號輸入框 --- */}
+          {/* --- 郵箱輸入框 --- */}
           <View style={styles.inputContainer}>
             <Ionicons name="home" size={20} color="#888" style={styles.inputIcon} />
             <TextInput
               style={styles.input}
-              placeholder="帳號"
+              placeholder="郵箱"
               placeholderTextColor="#aaa"
-              keyboardType="default" // 或 default
+              keyboardType="email-address" // 或 default
               autoCapitalize="none"
-              value={account}
-              onChangeText={setAccount}
+              value={email}
+              onChangeText={(email) => {
+                setEmail(email);
+                router.setParams({ email: email });
+              }}
             />
           </View>
 
@@ -116,23 +110,6 @@ export default function Register() {
                 color="#888"
               />
             </TouchableOpacity>
-          </View>
-
-          {/* --- 郵箱輸入框 --- */}
-          <View style={styles.inputContainer}>
-            <Ionicons name="home" size={20} color="#888" style={styles.inputIcon} />
-            <TextInput
-              style={styles.input}
-              placeholder="郵箱"
-              placeholderTextColor="#aaa"
-              keyboardType="email-address" // 或 default
-              autoCapitalize="none"
-              value={email}
-              onChangeText={(email) => {
-                setEmail(email);
-                router.setParams({ email: email });
-              }}
-            />
           </View>
 
           {/* --- 登入按鈕 --- */}

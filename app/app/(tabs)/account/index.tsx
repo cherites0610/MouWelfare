@@ -25,7 +25,7 @@ export default function Settings() {
             <View style={styles.container}>
                 <View style={styles.profileSection}>
                     <Image
-                        source={{uri:user?.avatar_url}}
+                        source={{uri:user?.avatarUrl}}
                         style={styles.avatar}
                     />
                     <Text style={styles.profileText}>

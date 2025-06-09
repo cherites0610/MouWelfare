@@ -25,9 +25,6 @@ export default function Search() {
         style={styles.input}
         onChangeText={(text) => {
           dispatch(setSearchQuery(text))
-          console.log(searchQuery);
-          
-          
         }}
         value={searchQuery}
         placeholder="Ex. 兒童福利"

@@ -1,4 +1,4 @@
-import { sendVerifyCodeApi, updatePasswordAPI, verifyCodeApi } from '@/src/api/userApi';
+import { performAction, sendVerifyCodeApi, updatePasswordAPI, verifyCodeApi } from '@/src/api/userApi';
 import { COLORS } from '@/src/utils/colors';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -27,31 +27,31 @@ export default function Verify() {
   const [isVerify, setIsVerify] = useState(false)
   const [passwordVisible, setPasswordVisible] = useState(false); // 狀態：控制密碼是否可見
   const [password, setPassword] = useState('');
+  const [token, setToken] = useState('');
 
   const handleVerify = async () => {
-    const result = await verifyCodeApi(email, verificationCode, 2)
-
-    if (result.status_code != 200) {
-      Alert.alert(result.message)
-      return
-    } else {
-      Alert.alert(result.message)
+    try {
+      const result = await verifyCodeApi(email, verificationCode, 'changePassword')
       setIsVerify(true)
+      setToken(result.data)
+      Alert.alert(result.message)
+    } catch (err: any) {
+      Alert.alert(err.message)
     }
   };
 
   const handlerUpdatePassword = async () => {
-    const result = await updatePasswordAPI(email,password)
-    if(result.status_code==200) {
+    try {
+      await performAction(token, 'changePassword', password)
       router.replace("/auth/login")
       Alert.alert("修改成功")
-    }else {
-      Alert.alert(result.message)
+    } catch (err: any) {
+      Alert.alert(err.message)
     }
   }
 
   useEffect(() => {
-    let timer: NodeJS.Timeout;
+    let timer: number;
     if (countdown > 0) {
       timer = setInterval(() => {
         setCountdown((prev) => prev - 1);
@@ -73,12 +73,11 @@ export default function Verify() {
     setIsSending(true);
     setCountdown(60);
 
-    const result = await sendVerifyCodeApi(email)
-
-    if (result.status_code == 200) {
+    try {
+      const result = await sendVerifyCodeApi(email, 'changePassword')
       Alert.alert('成功', '驗證碼已發送至您的郵箱');
-    } else {
-      Alert.alert('錯誤', result.message || '無法發送驗證碼');
+    } catch (err: any) {
+      Alert.alert('錯誤', err.message || '無法發送驗證碼');
       setIsSending(false);
       setCountdown(0);
     }

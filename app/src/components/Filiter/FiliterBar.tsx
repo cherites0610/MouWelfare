@@ -23,7 +23,7 @@ const FilterBar: React.FC<FilterBarProps> = React.memo(
 
     const dispatch = useDispatch<AppDispatch>();
     const { familys: FAMILY } = useSelector((state: RootState) => state.family);
-    const { locations, categories, families } = useSelector((state: RootState) => state.filiter)
+    const { locations, categories, family } = useSelector((state: RootState) => state.filiter)
     const setLocation = (locations: string[]) => {
       dispatch(setLocations(locations))
     }
@@ -36,7 +36,7 @@ const FilterBar: React.FC<FilterBarProps> = React.memo(
 
     useEffect(() => {
       if (user?.location && autoFilterUserData) {
-        setLocation([user.location])
+        setLocation([user.location.name])
       }
     },[user,autoFilterUserData])
 
@@ -75,7 +75,7 @@ const FilterBar: React.FC<FilterBarProps> = React.memo(
         />
         <FilterButton
           label="家庭"
-          selectedCount={families === "" ? 0 : 1}
+          selectedCount={family === "" ? 0 : 1}
           onPress={() => toggleModal('family', true)}
         />
         <FilterButton selectedCount={identities.length} label="篩選" onPress={openFilterDrawer} isIconButton />
@@ -101,7 +101,7 @@ const FilterBar: React.FC<FilterBarProps> = React.memo(
           visible={familyModalVisible}
           title="選擇家庭"
           items={FAMILY.map((item) => item.name)}
-          selectedItems={families}
+          selectedItems={family}
           setSelectedItems={setFamily}
           // onChange={filterData.families.onChange}
           onClose={() => toggleModal('family', false)}

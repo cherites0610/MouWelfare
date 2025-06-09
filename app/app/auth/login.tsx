@@ -1,4 +1,4 @@
-import { loginApi, LoginResponse } from '@/src/api/userApi';
+import { fetchApi, loginApi, LoginResponse } from '@/src/api/userApi';
 import { COLORS } from '@/src/utils/colors';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -38,29 +38,18 @@ export default function Login() {
     setIsLoading(true); // <--- 開始載入
 
     try {
-      const result = await loginApi({ account: account, password: password });
-
-      if (result.status_code == 200) {
-        router.replace("/home")
-        const loginResponse = result.data as LoginResponse;
-        dispatch(login(loginResponse.user)); // 假設 login action 存在於 userSlice
-        dispatch(setAuthToken(loginResponse.token));
-        dispatch(writeConfig())
-        await dispatch(fetchFamily()) // 獲取家庭資料
-      } else if (result.status_code == 401) {
-        Alert.alert("該賬號還未驗證", "請先驗證郵箱")
-        router.push(`/auth/verify/${result.data}`)
-      } else {
-        Alert.alert("登入失敗", result.message);
-      }
+      const result = await loginApi({ email: account, password: password });
+      router.replace("/home")
+      const profile = await fetchApi(result.data.accessToken)
+      dispatch(login(profile.data));
+      dispatch(setAuthToken(result.data.accessToken));
+      dispatch(writeConfig())
+      await dispatch(fetchFamily()) // 獲取家庭資料
     } catch (e: any) {
-      Alert.alert("登入失敗", "請稍後再試");
+      Alert.alert("登入失敗", e.message);
     } finally {
       setIsLoading(false)
     }
-
-
-
   }
 
   const handleVisitorLogin = () => {
