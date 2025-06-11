@@ -18,6 +18,7 @@ import { CacheModule } from '@nestjs/cache-manager';
 import { redisStore } from 'cache-manager-redis-store';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
+import { CrawlerModule } from './crawler/crawler.module';
 
 @Module({
   imports: [
@@ -63,6 +64,7 @@ import { join } from 'path';
     FamilyModule,
     UserFamilyModule,
     NotificationModule,
+    CrawlerModule,
   ],
   controllers: [AppController],
   providers: [

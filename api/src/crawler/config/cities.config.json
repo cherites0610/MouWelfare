@@ -1,0 +1,94 @@
+{
+  "yunling": {
+    "city": "雲林縣",
+    "baseUrl": "https://welfare.yunlin.gov.tw",
+    "startUrl": "https://welfare.yunlin.gov.tw/Home/WelfareList/63?Type=A",
+    "levels": [
+      {
+        "selector": ".group-square a",
+        "getUrlAttr": "href"
+      },
+      {
+        "selector": ".group-square a",
+        "getUrlAttr": "href"
+      }
+    ],
+    "stopSelector": ".to-top",
+    "extractSelectors": {
+      "title": ".pageTitle h2",
+      "date": ".area",
+      "content": ".unit .area "
+    }
+  },
+  "hsinchu": {
+    "city": "新竹縣",
+    "baseUrl": "https://social.hsinchu.gov.tw/",
+    "startUrl": "https://social.hsinchu.gov.tw/cl.aspx?n=202",
+    "levels": [
+      {
+        "selector": ".page-content a",
+        "getUrlAttr": "href"
+      },
+      {
+        "selector": "table a",
+        "getUrlAttr": "href"
+      }
+    ],
+    "stopSelector": "div.p",
+    "extractSelectors": {
+      "title": ".title span",
+      "date": ".page-footer .detail span",
+      "content": "#CCMS_Content > div > div > div > div:nth-child(4) > div > div > div > div > div > div.p"
+    }
+  },
+  "taoyuan": {
+    "city": "桃園市",
+    "baseUrl": "https://sab.tycg.gov.tw/",
+    "startUrl": "https://sab.tycg.gov.tw/cl.aspx?n=7313",
+    "levels": [
+      {
+        "selector": ".content a",
+        "getUrlAttr": "href"
+      },
+      {
+        "selector": ".content a",
+        "getUrlAttr": "href"
+      },
+      {
+        "selector": "table a",
+        "getUrlAttr": "href"
+      }
+    ],
+    "stopSelector": "div.p",
+    "extractSelectors": {
+      "title": "h3:first-child",
+      "date": ".page-footer .detail span",
+      "content": "div.p"
+    }
+  },
+  "keelung": {
+    "city": "基隆市",
+    "baseUrl": "https://www.klcg.gov.tw/",
+    "startUrl": "https://www.klcg.gov.tw/tw/social/2748.html",
+    "levels": [
+      {
+        "selector": ".center_block  .np ul li a",
+        "getUrlAttr": "href"
+      },
+      {
+        "selector": ".center_block  .np ul li a",
+        "getUrlAttr": "href"
+      },
+      {
+        "selector": ".lp ul li a",
+        "getUrlAttr": "href"
+      }
+    ],
+    "stopSelector": ".publish_info",
+    "extractSelectors": {
+      "title": "h2.title",
+      "date": ".publish_info li:first-child",
+      "content": ".cp"
+    }
+  }
+}
