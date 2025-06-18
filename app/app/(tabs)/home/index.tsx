@@ -70,7 +70,6 @@ export default function Index() {
     // 執行 API 請求
     fetchWelfareApi(query)
       .then((res) => {
-        // 更新數據
         setData((prevData: Welfare[]) => {
           // 如果是下一頁，追加數據；否則替換數據
           const newData = isNextPage ? [...prevData, ...res.data.data] : [...res.data.data];
@@ -82,9 +81,9 @@ export default function Index() {
         if (isNextPage) {
           setPage((prevPage: number) => prevPage + 1);
         }
-
+        
         // 更新 hasMore 狀態
-        setHasMore(res.data.pagination.totalPages - res.data.pagination.page > 0);
+        setHasMore(res.data.pagination.totalPage - res.data.pagination.page > 0);
       })
       .catch((err) => {
         console.error('獲取資料失敗:', err);

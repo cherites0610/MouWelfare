@@ -12,7 +12,8 @@ export class FamilyService {
   private readonly logger = new Logger(FamilyService.name)
 
   constructor(
-    @Inject('CACHE_MANAGER') private readonly cacheManager: Cache,
+    @Inject('CACHE_MANAGER') 
+    private readonly cacheManager: Cache,
     private readonly userFamilyService: UserFamilyService,
     @InjectRepository(Family)
     private readonly familyRepository: Repository<Family>

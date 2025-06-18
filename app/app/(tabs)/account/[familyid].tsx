@@ -137,7 +137,7 @@ const FamilySettingsScreen = () => {
                             source={{ uri: item.user.avatarUrl }} // 提供一個預設圖片
                             style={styles.avatar}
                         />
-                        <Text style={styles.userName}>{item.user.name}</Text>
+                        <Text style={styles.userName}>{item.user.name.length > 5 ? item.user.name.slice(0, 5) + '...' : item.user.name}</Text>
                     </View>
                 )}
 

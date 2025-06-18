@@ -12,6 +12,7 @@ export interface Welfare {
     forward: string[];
     status: boolean;
     lightStatus: number;
+    summary: string;
     familyMember: WelfareFamilyMember[]
 }
 
@@ -36,7 +37,7 @@ export interface Pagination {
     page: number;
     pageSize: number;
     total: number;
-    totalPages: number;
+    totalPage: number;
 }
 
 export interface WelfarePaginatedResp {

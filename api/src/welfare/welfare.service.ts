@@ -37,10 +37,32 @@ export class WelfareService {
         users: [],
         welfares: []
       })
-
     }
-    await this.welfareRepository.save(welfare)
+
+    welfare.categories = []
+    for (let i of createWelfareDto.categoryID) {
+      welfare.categories.push({
+        id: Number(i),
+        name: '',
+        welfares: []
+      })
+    }
+
+    try {
+      await this.welfareRepository.save(welfare)
+
+    } catch (err: any) {
+      this.logger.debug(err)
+    }
     return welfare;
+  }
+
+  async findAllLink() {
+    const temp = await this.welfareRepository.find({
+      select: ["link"]
+    })
+
+    return temp.map((item) => item.link)
   }
 
   async findAll(dto: FindAllDTO) {
@@ -104,7 +126,7 @@ export class WelfareService {
 
     const response = this.mapWelfareToDTO(welfare);
 
-    if (dto?.userID) {
+    if (dto?.userID && dto.familyID && dto.familyID.length > 0) {
       const user = await this.userService.findOneByID(dto.userID)
       await this.appendLightAndFamilyInfo([welfare], [response], dto.userID, user.identities, dto.familyID);
     }
@@ -221,7 +243,6 @@ export class WelfareService {
       const dto = dtoList[i];
       dto.lightStatus = welfare.identities.length == 0 ? 2 : this.getWelfareLight(welfare.identities, identities);
 
-      // ✅ 如果有家庭，額外加上 familyMember 陣列
       if (family) {
         dto.familyMember = otherFamilyMembers.map((uf) => ({
           avatarUrl: uf.user.avatarUrl,

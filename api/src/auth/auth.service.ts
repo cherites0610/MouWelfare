@@ -1,10 +1,10 @@
-import { BadRequestException, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { SignupDTO } from './dto/sign-up.dto';
 import { LoginDTO } from './dto/login.dto';
 import * as argon2 from "argon2";
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { User } from 'src/user/entities/user.entity';
+import * as crypto from 'crypto';
 import { UserService } from 'src/user/user.service';
 import { JwtService } from '@nestjs/jwt';
 import { NotificationService } from 'src/notification/notification.service';
@@ -13,6 +13,9 @@ import { SendNotificationDto } from 'src/notification/dto/notification.dto';
 import { SendVerificationCodeDto } from './dto/send-verification-code.dto';
 import { VerifyCodeDto } from './dto/verify-code.dto';
 import { PerformActionDto } from './dto/perform-action.dto';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { Cache } from 'cache-manager';
+import { v4 as uuidv4 } from 'uuid';
 
 
 @Injectable()
@@ -25,6 +28,8 @@ export class AuthService {
     private readonly notificationService: NotificationService,
     @InjectRepository(VerificationCode)
     private readonly verificationCodeRepository: Repository<VerificationCode>,
+    @Inject(CACHE_MANAGER)
+    private readonly cacheManager: Cache,
   ) { }
 
   async signup(dto: SignupDTO) {
@@ -51,16 +56,12 @@ export class AuthService {
 
     // 生成 6 位隨機驗證碼
     const code = Math.floor(100000 + Math.random() * 900000).toString();
-    const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 分鐘後過期
+    const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
+    const hashedCode = crypto.createHash('sha256').update(code).digest('hex');
 
-    // 儲存驗證碼
-    const verificationCode = this.verificationCodeRepository.create({
-      userId: user.id,
-      code,
-      action: dto.action,
-      expiresAt,
-    });
-    await this.verificationCodeRepository.save(verificationCode);
+    const cooldownKey = `verify:cooldown:${dto.email}:${dto.action}`;
+    const isCooling = await this.cacheManager.get(cooldownKey);
+    if (isCooling) throw new BadRequestException('請稍後再試');
 
     // 發送 Email 通知
     const notificationDto: SendNotificationDto = {
@@ -70,12 +71,31 @@ export class AuthService {
     };
     await this.notificationService.sendNotification('email', notificationDto);
 
+    // 儲存驗證碼
+    const verificationCode = this.verificationCodeRepository.create({
+      userId: user.id,
+      code: hashedCode,
+      action: dto.action,
+      expiresAt,
+    });
+    await this.verificationCodeRepository.save(verificationCode);
+
+    await this.cacheManager.set(cooldownKey, true, 60); // 冷卻 60 秒
     this.logger.log(`Verification code sent to ${dto.email} for action ${dto.action}`);
   }
 
   async verifyCode(dto: VerifyCodeDto): Promise<string> {
+    const user = await this.userService.findOneByEmail(dto.email);
+    if (!user) throw new BadRequestException('無效的驗證碼');
+
+    const retryKey = `verify:attempts:${dto.email}:${dto.action}`;
+    const retryCount = +(await this.cacheManager.get(retryKey) || 0);
+    if (retryCount >= 5) throw new BadRequestException('驗證失敗次數過多，請重新請求驗證碼');
+
+    const hashedCode = crypto.createHash('sha256').update(dto.code).digest('hex');
+
     const verificationCode = await this.verificationCodeRepository.findOne({
-      where: { code: dto.code, action: dto.action },
+      where: { code: hashedCode, action: dto.action, userId: user.id, },
       relations: ['user'],
     });
 
@@ -87,12 +107,17 @@ export class AuthService {
       throw new BadRequestException('驗證碼已過期');
     }
 
-    // 生成臨時 token（有效期 5 分鐘）
-    const payload = { sub: verificationCode.userId, action: dto.action };
+    const jti = uuidv4();
+    const payload = {
+      sub: user.id,
+      action: dto.action,
+      jti,
+    };
     const token = await this.jwtService.signAsync(payload, { expiresIn: '5m' });
 
-    // 刪除已使用的驗證碼
+    await this.cacheManager.set(`jwt:jti:${jti}`, true, 300); // 有效期 5 分鐘
     await this.verificationCodeRepository.delete(verificationCode.id);
+    await this.cacheManager.del(retryKey); // 驗證成功重置錯誤次數
 
     this.logger.log(`Verification code verified for ${dto.email}`);
     return token;
@@ -105,6 +130,11 @@ export class AuthService {
     } catch (error) {
       throw new UnauthorizedException('無效或過期的 token');
     }
+
+    const used = await this.cacheManager.get(`jwt:jti:${payload.jti}`);
+    if (!used) throw new UnauthorizedException('此 token 已無效或已被使用');
+
+    await this.cacheManager.del(`jwt:jti:${payload.jti}`);
 
     if (payload.action !== dto.action) {
       throw new BadRequestException('Token 與操作類型不匹配');

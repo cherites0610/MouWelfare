@@ -13,7 +13,9 @@ export class Welfare {
     @Column()
     title: string
 
-    @Column()
+    @Column({
+        type: 'text'
+    })
     details: string
 
     @Column()
@@ -25,7 +27,9 @@ export class Welfare {
     @Column()
     forward: string
 
-    @Column()
+    @Column({
+        nullable: true
+    })
     publicationDate: Date
 
     @Column()

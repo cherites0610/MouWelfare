@@ -1,4 +1,5 @@
 import { fetchWelfareByIDAPI } from '@/src/api/welfareApi';
+import { RootState } from '@/src/store';
 import { Welfare } from '@/src/type/welfareType';
 import { COLORS } from '@/src/utils/colors';
 import { Ionicons } from '@expo/vector-icons';
@@ -11,17 +12,23 @@ import {
   TouchableOpacity,
   StyleSheet,
   KeyboardAvoidingView,
+  Image,
   Platform,
   ScrollView,
   SafeAreaView,
   Linking,
   ActivityIndicator,
 } from 'react-native';
+import { useSelector } from 'react-redux';
 
 const WelfareInfo = () => {
   const glob = useLocalSearchParams();
   const [welfare, setWelfare] = useState<Welfare | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const { user } = useSelector((state: RootState) => state.user)
+  const { locations, categories, identities, family, searchQuery } = useSelector((state: RootState) => state.filiter)
+  const { familys } = useSelector((state: RootState) => state.family); // 獲取家庭類型數據
+
 
   const getCircleColor = () => {
     switch (welfare?.lightStatus) {
@@ -51,7 +58,7 @@ const WelfareInfo = () => {
 
   const getWelfare = async () => {
     try {
-      const response = await fetchWelfareByIDAPI(String(glob.welfareId));
+      const response = await fetchWelfareByIDAPI(String(glob.welfareId), user?.id, familys.find((item) => item.name === family)?.id);
       setWelfare(response.data);
     } catch (error) {
       console.error('Error fetching welfare data:', error);
@@ -143,6 +150,10 @@ const WelfareInfo = () => {
                   ]}
                 >
                   <Text style={styles.listIndex}>{index + 1}</Text>
+                  <Image
+                    source={{ uri: item?.avatarUrl }}
+                    style={styles.avatar}
+                  />
                   <Text style={styles.listItemText}>{item.name}</Text>
                 </View>
               )}
@@ -156,7 +167,10 @@ const WelfareInfo = () => {
               </TouchableOpacity>
             </View>
 
-            <Text style={styles.sectionTitle}>簡要原文:</Text>
+            <Text style={styles.sectionTitle}>簡要原文(AI生成，請自行鑒別):</Text>
+            <Text style={styles.notes}>{welfare.summary}</Text>
+
+            <Text style={styles.sectionTitle}>原始文章</Text>
             <Text style={styles.notes}>{welfare.detail}</Text>
           </View>
         </ScrollView>
@@ -256,6 +270,11 @@ const styles = StyleSheet.create({
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   errorContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   errorText: { fontSize: 16, color: 'red' },
+  avatar: {
+    width: 30,
+    height: 30,
+    borderRadius: 50,
+  },
 });
 
 export default WelfareInfo;

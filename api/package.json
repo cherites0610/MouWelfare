@@ -20,7 +20,9 @@
     "test:e2e": "jest --config ./test/jest-e2e.json"
   },
   "dependencies": {
+    "@google/genai": "^1.5.1",
     "@nestjs/axios": "^4.0.0",
+    "@nestjs/bullmq": "^11.0.2",
     "@nestjs/cache-manager": "^3.0.1",
     "@nestjs/common": "^11.0.1",
     "@nestjs/config": "^4.0.2",
@@ -35,6 +37,7 @@
     "argon2": "^0.43.0",
     "aws-sdk": "^2.1692.0",
     "axios": "^1.9.0",
+    "bullmq": "^5.53.3",
     "cache-manager-redis-store": "^3.0.1",
     "cheerio": "^1.1.0",
     "class-transformer": "^0.5.1",

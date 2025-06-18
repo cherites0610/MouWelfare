@@ -59,4 +59,19 @@ export class ConstDataService implements OnModuleInit {
     getFqaItem() {
         return this.fqaItem;
     }
+
+    getLocationIDByName(name: string) {
+        const location = this.locations.find((item) => item.name===name)
+        return location?location.id:0
+    }
+
+    getCategoryIDByName(name: string) {
+        const category = this.categories.find((item) => item.name===name)
+        return category?category.id:0
+    }
+
+    getIdentityIDByName(name: string) {
+        const identity = this.identities.find((item) => item.name===name)
+        return identity?identity.id:0
+    }
 }

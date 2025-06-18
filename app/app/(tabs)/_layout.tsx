@@ -31,7 +31,7 @@ export default function RootLayout() {
           tabPress: (e) => {
             if (status != 'succeeded') {
               e.preventDefault();
-              route.navigate("auth/login")
+              route.navigate("/auth/login")
             }
           },
         }}
@@ -55,7 +55,7 @@ export default function RootLayout() {
           tabPress: (e) => {
             if (status != 'succeeded') {
               e.preventDefault();
-              route.navigate("auth/login")
+              route.navigate("/auth/login")
             }
           },
         }}

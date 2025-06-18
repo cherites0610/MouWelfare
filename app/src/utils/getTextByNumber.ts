@@ -1,4 +1,4 @@
-export const ServiceNum = 11;
+export const ServiceNum = 7;
 export const GenderNum = 3;
 export const LocationNum = 21;
 export const IdentityNum = 12;
@@ -6,16 +6,12 @@ export const IdentityNum = 12;
 // Service Mapping
 const serviceTextMapping: { [key: number]: string } = {
     0: "未設定",
-    1: "家庭與育兒福利",
-    2: "教育福利",
-    3: "健康與退休福利",
-    4: "老人與退休福利",
-    5: "低收入戶與弱勢族群",
-    6: "殘疾與特殊需求福利",
-    7: "就業與創業福利",
-    8: "社會安全與基本生活支援",
-    9: "兒童及少年福利",
-    10: "其他特定族群福利",
+    1: "兒童及青少年福利",
+    2: "婦女與幼兒福利",
+    3: "老人福利",
+    4: "社會救助福利",
+    5: "身心障礙福利",
+    6: "其他福利",
 };
 
 export function getTextByService(number: number): string {
@@ -60,7 +56,7 @@ const locationTextMapping: { [key: number]: string } = {
     10: "苗栗市",
     11: "彰化市",
     12: "南投市",
-    13: "雲林市",
+    13: "雲林縣",
     14: "屏東市",
     15: "宜蘭市",
     16: "花蓮市",

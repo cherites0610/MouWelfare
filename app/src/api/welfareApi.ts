@@ -29,7 +29,7 @@ export async function fetchWelfareApi(params: WelfareApiParams): Promise<Welfare
     if (params.pageSize) {
         query.append('pageSize', params.pageSize.toString());
     }
-    
+
     const url = `/welfare${query.toString() ? `?${query.toString()}` : ''}`;
 
     // Using fetch API (you can replace with axios if preferred)
@@ -44,9 +44,19 @@ export async function fetchWelfareApi(params: WelfareApiParams): Promise<Welfare
     return response;
 }
 
-export async function fetchWelfareByIDAPI(id: string): Promise<WelfareResp> {
-    return apiFetch<WelfareResp>(`/welfare/${id}`, {
-        method: 'GET'
+export async function fetchWelfareByIDAPI(
+    id: string,
+    userID?: string,
+    familyID?: string
+): Promise<WelfareResp> {
+    let url = `/welfare/${id}`;
+
+    if (userID && familyID) {
+        url += `?userID=${encodeURIComponent(userID)}&familyID=${encodeURIComponent(familyID)}`;
+    }
+
+    return apiFetch<WelfareResp>(url, {
+        method: 'GET',
     });
 }
 

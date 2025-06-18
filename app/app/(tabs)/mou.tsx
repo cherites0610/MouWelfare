@@ -45,16 +45,12 @@ const App: React.FC = () => {
 
   // 數據
   const ewlfareItems: Item[] = [
-    { id: 1, name: '家庭與育兒福利', image: require("@/assets/images/Mou/baby.jpg") },
-    { id: 2, name: '教育福利', image: require("@/assets/images/Mou/school.jpg") },
-    { id: 3, name: '健康與醫療福利', image: require("@/assets/images/Mou/school.jpg") },
-    { id: 4, name: '老人與退休福利', image: require("@/assets/images/Mou/school.jpg") },
-    { id: 5, name: '低收入戶與弱勢族群', image: require("@/assets/images/Mou/school.jpg") },
-    { id: 6, name: '殘疾與特殊需求福利', image: require("@/assets/images/Mou/school.jpg") },
-    { id: 7, name: '就業與創業福利', image: require("@/assets/images/Mou/school.jpg") },
-    { id: 8, name: '社會安全與基本生活支援', image: require("@/assets/images/Mou/school.jpg") },
-    { id: 9, name: '兒童及少年福利', image: require("@/assets/images/Mou/school.jpg") },
-    { id: 10, name: '其他特定族群福利', image: require("@/assets/images/Mou/school.jpg") },
+    { id: 1, name: '兒童及青少年福利', image: require("@/assets/images/Mou/baby.jpg") },
+    { id: 2, name: '婦女與幼兒福利', image: require("@/assets/images/Mou/school.jpg") },
+    { id: 3, name: '老人福利', image: require("@/assets/images/Mou/elderly.jpg") },
+    { id: 4, name: '社會救助福利', image: require("@/assets/images/Mou/elderly.jpg") },
+    { id: 5, name: '身心障礙福利', image: require("@/assets/images/Mou/accessibility.jpg") },
+    { id: 6, name: '其他', image: require("@/assets/images/Mou/school.jpg") },
   ];
 
   const taiwanItems: Item[] = [
@@ -365,8 +361,8 @@ const styles = StyleSheet.create({
     paddingBottom: 80,
   },
   userMessage: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
+    flexDirection: 'row-reverse',
+    // justifyContent: 'flex-end',
     alignItems: 'center',
     marginBottom: 16,
   },

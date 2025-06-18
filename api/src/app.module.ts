@@ -19,6 +19,7 @@ import { redisStore } from 'cache-manager-redis-store';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
 import { CrawlerModule } from './crawler/crawler.module';
+import { BullModule } from '@nestjs/bullmq';
 
 @Module({
   imports: [
@@ -50,11 +51,23 @@ import { CrawlerModule } from './crawler/crawler.module';
         store: redisStore,
         host: configService.get<string>('REDIS_HOST', 'localhost'),
         port: configService.get<number>('REDIS_PORT', 6379),
-        username: configService.get<string>('REDIS_USERNAME'), 
-        password: configService.get<string>('REDIS_PASSWORD'), 
+        username: configService.get<string>('REDIS_USERNAME'),
+        password: configService.get<string>('REDIS_PASSWORD'),
         ttl: 24 * 60 * 60, // 預設 TTL 為 24 小時（秒）
       }),
       inject: [ConfigService],
+    }),
+    BullModule.forRootAsync({
+      imports: [ConfigModule],
+      useFactory: async (configService: ConfigService) => ({
+        connection: {
+          host: configService.get<string>('REDIS_HOST', 'localhost'),
+          port: configService.get<number>('REDIS_PORT', 6379),
+          username: configService.get<string>('REDIS_USERNAME'),
+          password: configService.get<string>('REDIS_PASSWORD'),
+        }
+      }),
+      inject: [ConfigService]
     }),
     ScheduleModule.forRoot(),
     ConstantsModule,

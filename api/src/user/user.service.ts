@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, Logger, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from './entities/user.entity';
@@ -68,6 +68,10 @@ export class UserService {
 
     if (!foundUser) {
       throw new UnauthorizedException("找不到賬戶號")
+    }
+
+    if (foundUser.isVerified) {
+      throw new ForbiddenException("尚未驗證賬戶")
     }
     return foundUser;
   }

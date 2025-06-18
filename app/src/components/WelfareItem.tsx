@@ -9,10 +9,7 @@ type props = { location: string, category: string[], title: string, lightStatus:
 
 export default function WelfareItem({ location, category, title, lightStatus, familyMember }: props) {
     const [currentCategoryIndex, setCurrentCategoryIndex] = useState(0);
-    useEffect(() => {
-        console.log("familyMember", familyMember);
 
-    }, [])
     const getCircleColor = () => {
         switch (lightStatus) {
             case 1:
@@ -34,15 +31,15 @@ export default function WelfareItem({ location, category, title, lightStatus, fa
                     <Text style={styles.title}>{title}</Text>
                 </View>
 
-                <View style={styles.avatarContainer}>
-                    {familyMember.map((item, index) => {
-                        return (
+                {familyMember.length > 0 && (
+                    <View style={styles.avatarContainer}>
+                        {familyMember.map((item, index) => (
                             <View key={index}>
                                 <Image style={styles.avatar} source={{ uri: item.avatarUrl }} />
                             </View>
-                        )
-                    })}
-                </View>
+                        ))}
+                    </View>
+                )}
             </View>
             {lightStatus && (
                 <View style={[styles.circle, { backgroundColor: getCircleColor() }]} />
@@ -54,10 +51,10 @@ export default function WelfareItem({ location, category, title, lightStatus, fa
 const styles = StyleSheet.create({
     container: {
         backgroundColor: 'white',
-        height: 110,
         flexDirection: 'row', // 讓文字和圓形圖標水平排列
         alignItems: 'center', // 垂直居中
         paddingHorizontal: 15, // 左右內邊距
+        marginVertical: 20
     },
     textContainer: {
         flex: 1, // 讓文字區域佔據剩餘空間
@@ -82,7 +79,6 @@ const styles = StyleSheet.create({
         marginLeft: 10, // 與文字的間距
     },
     avatarContainer: {
-        // flex:1,
         flexDirection: 'row',
         gap: 5
     },

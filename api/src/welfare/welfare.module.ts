@@ -14,5 +14,6 @@ import { UserModule } from 'src/user/user.module';
   ],
   controllers: [WelfareController],
   providers: [WelfareService],
+  exports: [WelfareService]
 })
 export class WelfareModule {}

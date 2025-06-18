@@ -17,3 +17,5 @@ app/android
 
 api/node_modules
 api/dist
+
+api/output
