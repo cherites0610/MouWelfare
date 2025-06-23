@@ -1,11 +1,11 @@
 import { Global, Module } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
-import { ConstDataService } from "./const-data.service";
-import { Location } from "./entities/location.entity";
-import { Identity } from "./entities/identity.entity";
-import { Category } from "./entities/category.entity";
-import { FaqItem } from "./entities/faq-item.entity";
-import { ConstDataController } from "./const-data.controller";
+import { ConstDataService } from "./const-data.service.js";
+import { Location } from "./entities/location.entity.js";
+import { Identity } from "./entities/identity.entity.js";
+import { Category } from "./entities/category.entity.js";
+import { FaqItem } from "./entities/faq-item.entity.js";
+import { ConstDataController } from "./const-data.controller.js";
 
 @Global()
 @Module({

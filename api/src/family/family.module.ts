@@ -1,9 +1,9 @@
 import { Module } from "@nestjs/common";
-import { FamilyService } from "./family.service";
-import { FamilyController } from "./family.controller";
+import { FamilyService } from "./family.service.js";
+import { FamilyController } from "./family.controller.js";
 import { TypeOrmModule } from "@nestjs/typeorm";
-import { Family } from "./entities/family.entity";
-import { UserFamilyModule } from "src/user-family/user-family.module";
+import { Family } from "./entities/family.entity.js";
+import { UserFamilyModule } from "../user-family/user-family.module.js";
 import { CacheModule } from "@nestjs/cache-manager";
 
 @Module({

@@ -1,13 +1,13 @@
 import { Module } from "@nestjs/common";
-import { AuthService } from "./auth.service";
-import { AuthController } from "./auth.controller";
-import { UserModule } from "src/user/user.module";
+import { AuthService } from "./auth.service.js";
+import { AuthController } from "./auth.controller.js";
+import { UserModule } from "../user/user.module.js";
 import { JwtModule } from "@nestjs/jwt";
 import { ConfigService } from "@nestjs/config";
 import { APP_GUARD } from "@nestjs/core";
-import { AuthGuard } from "./auth.guard";
+import { AuthGuard } from "./auth.guard.js";
 import { TypeOrmModule } from "@nestjs/typeorm";
-import { VerificationCode } from "./entity/verification-code.entity";
+import { VerificationCode } from "./entity/verification-code.entity.js";
 
 @Module({
   imports: [

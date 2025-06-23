@@ -6,13 +6,13 @@ import {
   Logger,
   NotFoundException,
 } from "@nestjs/common";
-import { CreateFamilyDto } from "./dto/create-family.dto";
+import { CreateFamilyDto } from "./dto/create-family.dto.js";
 import { Cache } from "cache-manager";
-import { UserFamilyService } from "src/user-family/user-family.service";
+import { UserFamilyService } from "../user-family/user-family.service.js";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Family } from "./entities/family.entity";
+import { Family } from "./entities/family.entity.js";
 import { Repository } from "typeorm";
-import { FamilyRole } from "src/common/enum/role.enum";
+import { FamilyRole } from "../common/enum/role.enum.js";
 
 @Injectable()
 export class FamilyService {

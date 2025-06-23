@@ -12,10 +12,10 @@ import {
   UploadedFile,
   Req,
 } from "@nestjs/common";
-import { UserService } from "./user.service";
-import { UpdateUserDto } from "./dto/update-user.dto";
-import { UserID } from "src/common/decorators/user-id.decorator";
-import { ResponseDTO } from "src/common/dto/response.dto";
+import { UserService } from "./user.service.js";
+import { UpdateUserDto } from "./dto/update-user.dto.js";
+import { UserID } from "../common/decorators/user-id.decorator.js";
+import { ResponseDTO } from "../common/dto/response.dto.js";
 import { FileInterceptor } from "@nestjs/platform-express";
 
 @Controller("user")

@@ -1,5 +1,5 @@
-import { User } from "src/user/entities/user.entity";
-import { Welfare } from "src/welfare/entities/welfare.entity";
+import { User } from "../../../user/entities/user.entity.js";
+import { Welfare } from "../../../welfare/entities/welfare.entity.js";
 import {
   Entity,
   PrimaryGeneratedColumn,

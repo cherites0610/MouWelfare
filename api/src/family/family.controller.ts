@@ -7,11 +7,11 @@ import {
   Param,
   Delete,
 } from "@nestjs/common";
-import { FamilyService } from "./family.service";
-import { CreateFamilyDto } from "./dto/create-family.dto";
-import { UserID } from "src/common/decorators/user-id.decorator";
-import { ResponseDTO } from "src/common/dto/response.dto";
-import { FamilyRole } from "src/common/enum/role.enum";
+import { FamilyService } from "./family.service.js";
+import { CreateFamilyDto } from "./dto/create-family.dto.js";
+import { UserID } from "../common/decorators/user-id.decorator.js";
+import { ResponseDTO } from "../common/dto/response.dto.js";
+import { FamilyRole } from "../common/enum/role.enum.js";
 
 @Controller("family")
 export class FamilyController {

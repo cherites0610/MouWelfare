@@ -1,9 +1,9 @@
 import { Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { CreateUserFamilyDto } from "./dto/create-user-family.dto";
+import { CreateUserFamilyDto } from "./dto/create-user-family.dto.js";
 import { InjectRepository } from "@nestjs/typeorm";
-import { UserFamily } from "./entities/user-family.entity";
+import { UserFamily } from "./entities/user-family.entity.js";
 import { Repository } from "typeorm";
-import { FamilyRole } from "src/common/enum/role.enum";
+import { FamilyRole } from "../common/enum/role.enum.js";
 
 @Injectable()
 export class UserFamilyService {

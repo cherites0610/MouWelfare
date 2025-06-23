@@ -1,5 +1,5 @@
 import { createZodDto } from "nestjs-zod";
-import { WelfareStatus } from "src/common/enum/welfare-status.enum";
+import { WelfareStatus } from "../../common/enum/welfare-status.enum.js";
 import { z } from "zod";
 
 // 定義 CreateWelfareSchema

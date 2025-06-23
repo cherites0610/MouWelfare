@@ -7,14 +7,14 @@ import {
   Param,
   Delete,
 } from "@nestjs/common";
-import { AuthService } from "./auth.service";
-import { SignupDTO, SignupSchema } from "./dto/sign-up.dto";
-import { LoginDTO } from "./dto/login.dto";
-import { Public } from "src/common/decorators/public.decorator";
-import { SendVerificationCodeDto } from "./dto/send-verification-code.dto";
-import { VerifyCodeDto } from "./dto/verify-code.dto";
-import { PerformActionDto } from "./dto/perform-action.dto";
-import { ResponseDTO } from "src/common/dto/response.dto";
+import { AuthService } from "./auth.service.js";
+import { SignupDTO, SignupSchema } from "./dto/sign-up.dto.js";
+import { LoginDTO } from "./dto/login.dto.js";
+import { Public } from "../common/decorators/public.decorator.js";
+import { SendVerificationCodeDto } from "./dto/send-verification-code.dto.js";
+import { VerifyCodeDto } from "./dto/verify-code.dto.js";
+import { PerformActionDto } from "./dto/perform-action.dto.js";
+import { ResponseDTO } from "../common/dto/response.dto.js";
 
 @Controller("auth")
 export class AuthController {

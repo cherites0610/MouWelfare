@@ -6,22 +6,26 @@ import {
   NotFoundException,
   UnauthorizedException,
 } from "@nestjs/common";
-import { UpdateUserDto } from "./dto/update-user.dto";
+import { UpdateUserDto } from "./dto/update-user.dto.js";
 import { InjectRepository } from "@nestjs/typeorm";
-import { User } from "./entities/user.entity";
+import { User } from "./entities/user.entity.js";
 import { In, Repository } from "typeorm";
-import * as AWS from "aws-sdk";
+import {
+  DeleteObjectCommand,
+  PutObjectCommand,
+  S3Client,
+} from "@aws-sdk/client-s3";
 import * as argon2 from "argon2";
-import * as sharp from "sharp";
-import * as path from "path";
-import { Identity } from "src/common/const-data/entities/identity.entity";
-import { Location } from "src/common/const-data/entities/location.entity";
-import { Welfare } from "src/welfare/entities/welfare.entity";
+import sharp from "sharp";
+import { Location } from "../common/const-data/entities/location.entity.js";
+import { Identity } from "../common/const-data/entities/identity.entity.js";
+import { Welfare } from "../welfare/entities/welfare.entity.js";
 import { v4 as uuidv4 } from "uuid";
 import { ConfigService } from "@nestjs/config";
 
 @Injectable()
 export class UserService {
+  private s3: S3Client;
   private readonly logger = new Logger(UserService.name);
   constructor(
     @InjectRepository(User)
@@ -33,13 +37,20 @@ export class UserService {
     @InjectRepository(Welfare)
     private readonly welfareRepository: Repository<Welfare>,
     private readonly configService: ConfigService,
-  ) {}
-
-  private s3 = new AWS.S3({
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-    region: process.env.AWS_REGION,
-  });
+  ) {
+    const accessKeyId = process.env.AWS_ACCESS_KEY_ID;
+    const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
+    if (!accessKeyId || !secretAccessKey) {
+      throw new Error("AWS credentials are not set in environment variables");
+    }
+    this.s3 = new S3Client({
+      region: process.env.AWS_REGION,
+      credentials: {
+        accessKeyId,
+        secretAccessKey,
+      },
+    });
+  }
 
   async createUser(email: string, password: string) {
     const existingUser = await this.userRepository.findOne({
@@ -256,26 +267,26 @@ export class UserService {
       this.configService.get<string>("AWS_S3_BUCKET_NAME") || "";
 
     // 上傳壓縮後圖片
-    await this.s3
-      .putObject({
+    await this.s3.send(
+      new PutObjectCommand({
         Bucket: bucketName,
         Key: key,
         Body: compressedBuffer,
         ACL: "public-read",
         ContentType: "image/jpeg",
-      })
-      .promise();
+      }),
+    );
 
     // 刪除舊圖片（如果存在）
     if (user.avatarUrl) {
       const oldKey = user.avatarUrl.split(`.amazonaws.com/`)[1];
       if (oldKey) {
-        await this.s3
-          .deleteObject({
+        await this.s3.send(
+          new DeleteObjectCommand({
             Bucket: bucketName,
             Key: oldKey,
-          })
-          .promise();
+          }),
+        );
       }
     }
 

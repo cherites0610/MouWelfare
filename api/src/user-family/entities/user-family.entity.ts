@@ -1,6 +1,6 @@
-import { FamilyRole } from "src/common/enum/role.enum";
-import { Family } from "src/family/entities/family.entity";
-import { User } from "src/user/entities/user.entity";
+import { FamilyRole } from "../../common/enum/role.enum.js";
+import { Family } from "../../family/entities/family.entity.js";
+import { User } from "../../user/entities/user.entity.js";
 import {
   Column,
   Entity,

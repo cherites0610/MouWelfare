@@ -2,10 +2,10 @@ import { Injectable, Logger, OnModuleInit } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { Repository } from "typeorm";
-import { Location } from "./entities/location.entity";
-import { Identity } from "./entities/identity.entity";
-import { Category } from "./entities/category.entity";
-import { FaqItem } from "./entities/faq-item.entity";
+import { Location } from "./entities/location.entity.js";
+import { Identity } from "./entities/identity.entity.js";
+import { Category } from "./entities/category.entity.js";
+import { FaqItem } from "./entities/faq-item.entity.js";
 
 @Injectable()
 export class ConstDataService implements OnModuleInit {

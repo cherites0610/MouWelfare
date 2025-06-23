@@ -1,4 +1,4 @@
-import { FamilyRole } from "src/common/enum/role.enum";
+import { FamilyRole } from "../../common/enum/role.enum.js";
 
 export class CreateUserFamilyDto {
   userID: string;

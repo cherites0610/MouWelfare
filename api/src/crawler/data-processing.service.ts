@@ -2,14 +2,13 @@ import { Injectable, Logger } from "@nestjs/common";
 import { Processor, WorkerHost } from "@nestjs/bullmq";
 import { Job } from "bullmq";
 import { GoogleGenAI } from "@google/genai";
-import { RateLimiter } from "./utils/rate-limiter";
+import { RateLimiter } from "./utils/rate-limiter.js";
 import { ConfigService } from "@nestjs/config";
 import { join } from "path";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
-import { WelfareService } from "src/welfare/welfare.service";
-import { WelfareStatus } from "src/common/enum/welfare-status.enum";
-import { ConstDataService } from "src/common/const-data/const-data.service";
-import { parseDateToISO } from "./utils/parse-date";
+import { WelfareService } from "../welfare/welfare.service.js";
+import { WelfareStatus } from "../common/enum/welfare-status.enum.js";
+import { ConstDataService } from "../common/const-data/const-data.service.js";
 
 // 定義爬取結果的資料結構
 interface CrawlData {

@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { createZodDto } from "nestjs-zod";
-import { Gender } from "src/common/enum/gender.enum";
+import { Gender } from "../../common/enum/gender.enum.js";
 
 // 定義 UpdateUserDto 的 Zod 模式
 export const UpdateUserSchema = z.object({

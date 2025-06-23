@@ -1,6 +1,6 @@
 import { Controller, Get } from "@nestjs/common";
-import { ConstDataService } from "./const-data.service";
-import { Public } from "../decorators/public.decorator";
+import { ConstDataService } from "./const-data.service.js";
+import { Public } from "../decorators/public.decorator.js";
 
 @Controller()
 export class ConstDataController {

@@ -1,8 +1,8 @@
-import { Identity } from "src/common/const-data/entities/identity.entity";
-import { Location } from "src/common/const-data/entities/location.entity";
-import { Gender } from "src/common/enum/gender.enum";
-import { UserFamily } from "src/user-family/entities/user-family.entity";
-import { Welfare } from "src/welfare/entities/welfare.entity";
+import { Identity } from "../../common/const-data/entities/identity.entity.js";
+import { Location } from "../../common/const-data/entities/location.entity.js";
+import { Gender } from "../../common/enum/gender.enum.js";
+import { UserFamily } from "../../user-family/entities/user-family.entity.js";
+import { Welfare } from "../../welfare/entities/welfare.entity.js";
 import {
   Column,
   Entity,

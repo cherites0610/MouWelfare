@@ -1,4 +1,4 @@
-import { UserFamily } from "src/user-family/entities/user-family.entity";
+import { UserFamily } from "../../user-family/entities/user-family.entity.js";
 import {
   Column,
   Entity,

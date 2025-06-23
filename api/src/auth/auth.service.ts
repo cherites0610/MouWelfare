@@ -5,20 +5,20 @@ import {
   Logger,
   UnauthorizedException,
 } from "@nestjs/common";
-import { SignupDTO } from "./dto/sign-up.dto";
-import { LoginDTO } from "./dto/login.dto";
+import { SignupDTO } from "./dto/sign-up.dto.js";
+import { LoginDTO } from "./dto/login.dto.js";
 import * as argon2 from "argon2";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import * as crypto from "crypto";
-import { UserService } from "src/user/user.service";
+import { UserService } from "../user/user.service.js";
 import { JwtService } from "@nestjs/jwt";
-import { NotificationService } from "src/notification/notification.service";
-import { VerificationCode } from "./entity/verification-code.entity";
-import { SendNotificationDto } from "src/notification/dto/notification.dto";
-import { SendVerificationCodeDto } from "./dto/send-verification-code.dto";
-import { VerifyCodeDto } from "./dto/verify-code.dto";
-import { PerformActionDto } from "./dto/perform-action.dto";
+import { NotificationService } from "../notification/notification.service.js";
+import { VerificationCode } from "./entity/verification-code.entity.js";
+import { SendNotificationDto } from "../notification/dto/notification.dto.js";
+import { SendVerificationCodeDto } from "./dto/send-verification-code.dto.js";
+import { VerifyCodeDto } from "./dto/verify-code.dto.js";
+import { PerformActionDto } from "./dto/perform-action.dto.js";
 import { CACHE_MANAGER } from "@nestjs/cache-manager";
 import { Cache } from "cache-manager";
 import { v4 as uuidv4 } from "uuid";

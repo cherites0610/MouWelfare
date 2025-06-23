@@ -1,8 +1,8 @@
-import { Category } from "src/common/const-data/entities/category.entity";
-import { Identity } from "src/common/const-data/entities/identity.entity";
-import { Location } from "src/common/const-data/entities/location.entity";
-import { WelfareStatus } from "src/common/enum/welfare-status.enum";
-import { User } from "src/user/entities/user.entity";
+import { Category } from "../../common/const-data/entities/category.entity.js";
+import { Identity } from "../../common/const-data/entities/identity.entity.js";
+import { Location } from "../../common/const-data/entities/location.entity.js";
+import { WelfareStatus } from "../../common/enum/welfare-status.enum.js";
+import { User } from "../../user/entities/user.entity.js";
 import {
   Column,
   CreateDateColumn,

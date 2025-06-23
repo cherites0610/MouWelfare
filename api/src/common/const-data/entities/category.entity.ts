@@ -1,4 +1,4 @@
-import { Welfare } from "src/welfare/entities/welfare.entity";
+import { Welfare } from "../../../welfare/entities/welfare.entity.js";
 import {
   Entity,
   PrimaryGeneratedColumn,

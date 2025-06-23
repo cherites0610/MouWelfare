@@ -1,7 +1,7 @@
 import { Injectable, BadRequestException } from "@nestjs/common";
-import { LineNotificationService } from "./line-notification.service";
-import { SendNotificationDto } from "./dto/notification.dto";
-import { EmailNotificationService } from "./email-notification.service";
+import { LineNotificationService } from "./line-notification.service.js";
+import { SendNotificationDto } from "./dto/notification.dto.js";
+import { EmailNotificationService } from "./email-notification.service.js";
 
 @Injectable()
 export class NotificationService {

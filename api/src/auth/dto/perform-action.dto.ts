@@ -1,5 +1,5 @@
 import { createZodDto } from "nestjs-zod";
-import { VerifyAction } from "src/common/enum/verify-action-enum";
+import { VerifyAction } from "../../common/enum/verify-action-enum.js";
 import z from "zod";
 
 export const PerformActionSchema = z.object({

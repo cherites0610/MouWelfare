@@ -1,12 +1,12 @@
 import { Injectable, Logger } from "@nestjs/common";
 import axios from "axios";
 import * as cheerio from "cheerio";
-import { loadCityConfigs } from "./config/read-config";
+import { loadCityConfigs } from "./config/read-config.js";
 import { Queue } from "bullmq";
 import { writeFileSync } from "fs";
 import path, { join } from "path";
-import { parseDateToISO } from "./utils/parse-date";
-import { resolveUrl } from "./utils/resolve-url";
+import { parseDateToISO } from "./utils/parse-date.js";
+import { resolveUrl } from "./utils/resolve-url.js";
 import mammoth from "mammoth";
 import pdfParse from "pdf-parse";
 import * as fs from "fs/promises";
@@ -14,7 +14,7 @@ import fetch from "node-fetch";
 import { fileTypeFromBuffer } from "file-type";
 import textract from "textract";
 import { InjectQueue } from "@nestjs/bullmq";
-import { WelfareService } from "src/welfare/welfare.service";
+import { WelfareService } from "../welfare/welfare.service.js";
 
 // 定義爬取結果的資料結構
 interface CrawlData {
@@ -121,26 +121,27 @@ export class CrawlerService {
                 .join(" ")
                 .replace(/\s+/g, " ")
                 .trim();
-            } else if (config.downloadSelector) {
-              const downloadLinks = $(config.downloadSelector)
-                .map((_, el) => $(el).attr("href"))
-                .get()
-                .filter(Boolean);
-
-              for (const link of downloadLinks) {
-                const fileUrl = resolveUrl(baseUrl, link);
-                try {
-                  const text = await this.downloadAndExtractText(fileUrl);
-                  if (text) {
-                    content += "\n" + text;
-                  }
-                } catch (e) {
-                  this.logger.warn(
-                    `📄 解析失敗：${fileUrl}，原因：${e.message}`,
-                  );
-                }
-              }
             }
+            // else if (config.downloadSelector) {
+            //   const downloadLinks = $(config.downloadSelector)
+            //     .map((_, el) => $(el).attr("href"))
+            //     .get()
+            //     .filter(Boolean);
+
+            // for (const link of downloadLinks) {
+            //   const fileUrl = resolveUrl(baseUrl, link);
+            //   try {
+            //     const text = await this.downloadAndExtractText(fileUrl);
+            //     if (text) {
+            //       content += "\n" + text;
+            //     }
+            //   } catch (e) {
+            //     this.logger.warn(
+            //       `📄 解析失敗：${fileUrl}，原因：${e.message}`,
+            //     );
+            //   }
+            // }
+            // }
 
             const data = {
               city: cityDisplayName,
@@ -225,49 +226,49 @@ export class CrawlerService {
     });
   }
 
-  private async downloadAndExtractText(url: string): Promise<string> {
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`無法下載文件: ${url}`);
-    this.logger.debug(`下載文件${url}`);
+  // private async downloadAndExtractText(url: string): Promise<string> {
+  //   const res = await fetch(url);
+  //   if (!res.ok) throw new Error(`無法下載文件: ${url}`);
+  //   this.logger.debug(`下載文件${url}`);
 
-    const buffer = await res.buffer();
-    const fileType = await fileTypeFromBuffer(buffer);
+  //   const buffer = await res.buffer();
+  //   const fileType = await fileTypeFromBuffer(buffer);
 
-    const ext = fileType?.ext || "bin";
-    const tempFilePath = path.join("/tmp", `temp-file.${ext}`);
-    await fs.writeFile(tempFilePath, buffer);
+  //   const ext = fileType?.ext || "bin";
+  //   const tempFilePath = path.join("/tmp", `temp-file.${ext}`);
+  //   await fs.writeFile(tempFilePath, buffer);
 
-    let text = "";
-    try {
-      if (ext === "pdf") {
-        const data = await pdfParse(buffer);
-        const pages = data.text.split("\n\n").slice(0, 3); // 最多三頁
-        text = pages.join("\n\n");
-      } else if (ext === "docx") {
-        const result = await mammoth.extractRawText({ buffer });
-        text = result.value.split("\n").slice(0, 100).join("\n");
-      } else if (["odt", "txt"].includes(ext)) {
-        if (!fileType || !fileType.mime) {
-          throw new Error(`無法判斷檔案 MIME 類型: ${ext}`);
-        }
-        text = await new Promise<string>((resolve, reject) => {
-          textract.fromBufferWithMime(fileType.mime, buffer, (err, txt) => {
-            if (err) return reject(err);
-            resolve(txt.split("\n").slice(0, 100).join("\n"));
-          });
-        });
-      } else {
-        throw new Error(`不支援的文件格式: ${ext}`);
-      }
-    } finally {
-      // 確保刪除臨時檔
-      try {
-        await fs.unlink(tempFilePath);
-      } catch {
-        // 忽略刪除失敗
-      }
-    }
+  //   let text = "";
+  //   try {
+  //     if (ext === "pdf") {
+  //       const data = await pdfParse(buffer);
+  //       const pages = data.text.split("\n\n").slice(0, 3); // 最多三頁
+  //       text = pages.join("\n\n");
+  //     } else if (ext === "docx") {
+  //       const result = await mammoth.extractRawText({ buffer });
+  //       text = result.value.split("\n").slice(0, 100).join("\n");
+  //     } else if (["odt", "txt"].includes(ext)) {
+  //       if (!fileType || !fileType.mime) {
+  //         throw new Error(`無法判斷檔案 MIME 類型: ${ext}`);
+  //       }
+  //       text = await new Promise<string>((resolve, reject) => {
+  //         textract.fromBufferWithMime(fileType.mime, buffer, (err, txt) => {
+  //           if (err) return reject(err);
+  //           resolve(txt.split("\n").slice(0, 100).join("\n"));
+  //         });
+  //       });
+  //     } else {
+  //       throw new Error(`不支援的文件格式: ${ext}`);
+  //     }
+  //   } finally {
+  //     // 確保刪除臨時檔
+  //     try {
+  //       await fs.unlink(tempFilePath);
+  //     } catch {
+  //       // 忽略刪除失敗
+  //     }
+  //   }
 
-    return text.trim();
-  }
+  //   return text.trim();
+  // }
 }

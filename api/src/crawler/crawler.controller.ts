@@ -7,8 +7,8 @@ import {
   Param,
   Delete,
 } from "@nestjs/common";
-import { CrawlerService } from "./crawler.service";
-import { Public } from "src/common/decorators/public.decorator";
+import { CrawlerService } from "./crawler.service.js";
+import { Public } from "../common/decorators/public.decorator.js";
 
 @Controller("crawler")
 export class CrawlerController {

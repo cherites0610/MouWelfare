@@ -1,7 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { NotificationService } from "./interfaces/notification-service.interface";
-import { SendNotificationDto } from "./dto/notification.dto";
+import { NotificationService } from "./interfaces/notification-service.interface.js";
+import { SendNotificationDto } from "./dto/notification.dto.js";
 import axios from "axios";
 
 @Injectable()

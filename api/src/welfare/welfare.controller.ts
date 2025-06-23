@@ -8,14 +8,13 @@ import {
   Delete,
   Query,
 } from "@nestjs/common";
-import { WelfareService } from "./welfare.service";
-import { CreateWelfareDto } from "./dto/create-welfare.dto";
-import { UpdateWelfareDto } from "./dto/update-welfare.dto";
-import { ResponseDTO } from "src/common/dto/response.dto";
-import { Public } from "src/common/decorators/public.decorator";
-import { FindAllDTO } from "./dto/find-all.dto";
-import { UserID } from "src/common/decorators/user-id.decorator";
-import { FindOneDTO } from "./dto/find-one.dto";
+import { WelfareService } from "./welfare.service.js";
+import { CreateWelfareDto } from "./dto/create-welfare.dto.js";
+import { UpdateWelfareDto } from "./dto/update-welfare.dto.js";
+import { ResponseDTO } from "../common/dto/response.dto.js";
+import { Public } from "../common/decorators/public.decorator.js";
+import { FindAllDTO } from "./dto/find-all.dto.js";
+import { FindOneDTO } from "./dto/find-one.dto.js";
 
 @Controller("welfare")
 export class WelfareController {

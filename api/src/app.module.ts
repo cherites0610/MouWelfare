@@ -1,25 +1,30 @@
 import { Module } from "@nestjs/common";
-import { AppController } from "./app.controller";
-import { UserModule } from "./user/user.module";
-import { WelfareModule } from "./welfare/welfare.module";
+import { AppController } from "./app.controller.js";
+import { UserModule } from "./user/user.module.js";
+import { WelfareModule } from "./welfare/welfare.module.js";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { ConfigModule, ConfigService } from "@nestjs/config";
-import { User } from "./user/entities/user.entity";
-import { ConstDataService } from "./common/const-data/const-data.service";
+import { User } from "./user/entities/user.entity.js";
+import { ConstDataService } from "./common/const-data/const-data.service.js";
 import { ScheduleModule } from "@nestjs/schedule";
-import { ConstantsModule } from "./common/const-data/constants.module";
-import { AuthModule } from "./auth/auth.module";
+import { ConstantsModule } from "./common/const-data/constants.module.js";
+import { AuthModule } from "./auth/auth.module.js";
 import { APP_PIPE } from "@nestjs/core";
 import { ZodValidationPipe } from "nestjs-zod";
-import { FamilyModule } from "./family/family.module";
-import { UserFamilyModule } from "./user-family/user-family.module";
-import { NotificationModule } from "./notification/notification.module";
+import { FamilyModule } from "./family/family.module.js";
+import { UserFamilyModule } from "./user-family/user-family.module.js";
+import { NotificationModule } from "./notification/notification.module.js";
 import { CacheModule } from "@nestjs/cache-manager";
 import { redisStore } from "cache-manager-redis-store";
 import { ServeStaticModule } from "@nestjs/serve-static";
 import { join } from "path";
-import { CrawlerModule } from "./crawler/crawler.module";
+import { CrawlerModule } from "./crawler/crawler.module.js";
 import { BullModule } from "@nestjs/bullmq";
+import { dirname } from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 @Module({
   imports: [
@@ -41,8 +46,12 @@ import { BullModule } from "@nestjs/bullmq";
       }),
       inject: [ConfigService],
     }),
-    ServeStaticModule.forRoot({
-      rootPath: join(__dirname, "..", "public"), // 靜態檔案的根目錄
+    ServeStaticModule.forRootAsync({
+      useFactory: async () => [
+        {
+          rootPath: join(__dirname, "..", "public"),
+        },
+      ],
     }),
     CacheModule.registerAsync({
       isGlobal: true,
