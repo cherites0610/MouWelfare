@@ -8,7 +8,9 @@ export class RateLimiter {
     const oneMinuteAgo = now - 60_000;
 
     // 移除一分鐘前的記錄
-    this.timestamps = this.timestamps.filter((timestamp) => timestamp > oneMinuteAgo);
+    this.timestamps = this.timestamps.filter(
+      (timestamp) => timestamp > oneMinuteAgo,
+    );
 
     if (this.timestamps.length >= this.maxCallsPerMinute) {
       const earliest = this.timestamps[0];

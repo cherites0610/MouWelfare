@@ -1,20 +1,20 @@
-import { Injectable, Logger } from '@nestjs/common';
-import axios from 'axios';
-import * as cheerio from 'cheerio';
-import { loadCityConfigs } from './config/read-config';
-import { Queue } from 'bullmq';
-import { writeFileSync } from 'fs';
-import path, { join } from 'path';
-import { parseDateToISO } from './utils/parse-date';
-import { resolveUrl } from './utils/resolve-url';
-import mammoth from 'mammoth';
-import pdfParse from 'pdf-parse';
-import * as fs from 'fs/promises';
-import fetch from 'node-fetch';
-import { fileTypeFromBuffer } from 'file-type';
-import textract from 'textract';
-import { InjectQueue } from '@nestjs/bullmq';
-import { WelfareService } from 'src/welfare/welfare.service';
+import { Injectable, Logger } from "@nestjs/common";
+import axios from "axios";
+import * as cheerio from "cheerio";
+import { loadCityConfigs } from "./config/read-config";
+import { Queue } from "bullmq";
+import { writeFileSync } from "fs";
+import path, { join } from "path";
+import { parseDateToISO } from "./utils/parse-date";
+import { resolveUrl } from "./utils/resolve-url";
+import mammoth from "mammoth";
+import pdfParse from "pdf-parse";
+import * as fs from "fs/promises";
+import fetch from "node-fetch";
+import { fileTypeFromBuffer } from "file-type";
+import textract from "textract";
+import { InjectQueue } from "@nestjs/bullmq";
+import { WelfareService } from "src/welfare/welfare.service";
 
 // 定義爬取結果的資料結構
 interface CrawlData {
@@ -32,11 +32,10 @@ export class CrawlerService {
   private readonly timeoutMs = 15000; // 單一任務逾時時間
 
   constructor(
-    @InjectQueue('data-processing')
+    @InjectQueue("data-processing")
     private readonly dataQueue: Queue,
-    private readonly welfareService: WelfareService
-
-  ) { }
+    private readonly welfareService: WelfareService,
+  ) {}
 
   async crawlAllCities(): Promise<void> {
     const existingLinks = new Set(await this.welfareService.findAllLink());
@@ -49,35 +48,43 @@ export class CrawlerService {
     const allResultsNested = await Promise.all(cityTasks);
     const allResults = allResultsNested.flat();
 
-    const outputPath = join(__dirname, '../../output/results.json');
-    writeFileSync(outputPath, JSON.stringify(allResults, null, 2), 'utf8');
+    const outputPath = join(__dirname, "../../output/results.json");
+    writeFileSync(outputPath, JSON.stringify(allResults, null, 2), "utf8");
     this.logger.log(`原始資料已輸出至 ${outputPath}`);
 
     this.logger.log(`所有城市爬取完成`);
     // 將所有結果推送到 BullMQ 隊列
     for (const result of allResults) {
-      await this.dataQueue.add('process', result, {
+      await this.dataQueue.add("process", result, {
         attempts: 3, // 重試次數
-        backoff: { type: 'fixed', delay: 5000 }, // 重試間隔 5 秒
+        backoff: { type: "fixed", delay: 5000 }, // 重試間隔 5 秒
         removeOnComplete: true,
       });
       this.logger.log(`已將資料推送到隊列: ${result.url}`);
     }
-    
-
   }
 
-  private async crawlSingleCity(cityName: string, config, existingLinks: Set<string>): Promise<any[]> {
+  private async crawlSingleCity(
+    cityName: string,
+    config,
+    existingLinks: Set<string>,
+  ): Promise<any[]> {
     this.logger.log(`🔍 開始爬取 ${cityName}`);
     const cityResults = await this.bfsCrawl(cityName, config, existingLinks);
     this.logger.log(`✅ 完成爬取 ${cityName}，共 ${cityResults.length} 筆`);
     return cityResults;
   }
 
-  private async bfsCrawl(cityName: string, config, existingLinks: Set<string>): Promise<any[]> {
+  private async bfsCrawl(
+    cityName: string,
+    config,
+    existingLinks: Set<string>,
+  ): Promise<any[]> {
     const { baseUrl, city: cityDisplayName } = config;
 
-    const queue: { url: string; level: number }[] = [{ url: config.startUrl, level: 0 }];
+    const queue: { url: string; level: number }[] = [
+      { url: config.startUrl, level: 0 },
+    ];
     const result: any[] = [];
 
     while (queue.length) {
@@ -87,7 +94,10 @@ export class CrawlerService {
         const taskId = `${cityName}-${level}-${index}`;
         try {
           this.logger.debug(`[${taskId}] 開始處理 ${url}`);
-          const response = await this.withTimeout(axios.get(url), this.timeoutMs);
+          const response = await this.withTimeout(
+            axios.get(url),
+            this.timeoutMs,
+          );
           const $ = cheerio.load(response.data);
 
           // 最深層資料擷取
@@ -101,19 +111,19 @@ export class CrawlerService {
             const rawDate = $(config.extractSelectors.date).text().trim();
             const isoDate = parseDateToISO(rawDate);
             // 解析最深層的文字內容或文件下載
-            let content = '';
+            let content = "";
 
             const contentElements = $(config.extractSelectors.content);
             if (contentElements.length) {
               content = contentElements
-                .map((_, el) => $(el).text().trim().replace(/\s+/g, ' '))
+                .map((_, el) => $(el).text().trim().replace(/\s+/g, " "))
                 .get()
-                .join(' ')
-                .replace(/\s+/g, ' ')
+                .join(" ")
+                .replace(/\s+/g, " ")
                 .trim();
             } else if (config.downloadSelector) {
               const downloadLinks = $(config.downloadSelector)
-                .map((_, el) => $(el).attr('href'))
+                .map((_, el) => $(el).attr("href"))
                 .get()
                 .filter(Boolean);
 
@@ -122,10 +132,12 @@ export class CrawlerService {
                 try {
                   const text = await this.downloadAndExtractText(fileUrl);
                   if (text) {
-                    content += '\n' + text;
+                    content += "\n" + text;
                   }
                 } catch (e) {
-                  this.logger.warn(`📄 解析失敗：${fileUrl}，原因：${e.message}`);
+                  this.logger.warn(
+                    `📄 解析失敗：${fileUrl}，原因：${e.message}`,
+                  );
                 }
               }
             }
@@ -192,7 +204,10 @@ export class CrawlerService {
     return results;
   }
 
-  private async withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+  private async withTimeout<T>(
+    promise: Promise<T>,
+    timeoutMs: number,
+  ): Promise<T> {
     return new Promise<T>((resolve, reject) => {
       const timeout = setTimeout(() => {
         reject(new Error(`任務逾時 (${timeoutMs}ms)`));
@@ -213,32 +228,32 @@ export class CrawlerService {
   private async downloadAndExtractText(url: string): Promise<string> {
     const res = await fetch(url);
     if (!res.ok) throw new Error(`無法下載文件: ${url}`);
-    this.logger.debug(`下載文件${url}`)
+    this.logger.debug(`下載文件${url}`);
 
     const buffer = await res.buffer();
     const fileType = await fileTypeFromBuffer(buffer);
 
-    const ext = fileType?.ext || 'bin';
-    const tempFilePath = path.join('/tmp', `temp-file.${ext}`);
+    const ext = fileType?.ext || "bin";
+    const tempFilePath = path.join("/tmp", `temp-file.${ext}`);
     await fs.writeFile(tempFilePath, buffer);
 
-    let text = '';
+    let text = "";
     try {
-      if (ext === 'pdf') {
+      if (ext === "pdf") {
         const data = await pdfParse(buffer);
-        const pages = data.text.split('\n\n').slice(0, 3); // 最多三頁
-        text = pages.join('\n\n');
-      } else if (ext === 'docx') {
+        const pages = data.text.split("\n\n").slice(0, 3); // 最多三頁
+        text = pages.join("\n\n");
+      } else if (ext === "docx") {
         const result = await mammoth.extractRawText({ buffer });
-        text = result.value.split('\n').slice(0, 100).join('\n');
-      } else if (['odt', 'txt'].includes(ext)) {
+        text = result.value.split("\n").slice(0, 100).join("\n");
+      } else if (["odt", "txt"].includes(ext)) {
         if (!fileType || !fileType.mime) {
           throw new Error(`無法判斷檔案 MIME 類型: ${ext}`);
         }
         text = await new Promise<string>((resolve, reject) => {
           textract.fromBufferWithMime(fileType.mime, buffer, (err, txt) => {
             if (err) return reject(err);
-            resolve(txt.split('\n').slice(0, 100).join('\n'));
+            resolve(txt.split("\n").slice(0, 100).join("\n"));
           });
         });
       } else {

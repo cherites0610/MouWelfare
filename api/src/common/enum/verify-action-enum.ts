@@ -1,4 +1,4 @@
 export enum VerifyAction {
-    ChangePassword = 'changePassword',
-    VerifyAccount = 'verifyAccount',
+  ChangePassword = "changePassword",
+  VerifyAccount = "verifyAccount",
 }

@@ -1,21 +1,28 @@
-import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException, UnauthorizedException } from '@nestjs/common';
-import { UpdateUserDto } from './dto/update-user.dto';
-import { InjectRepository } from '@nestjs/typeorm';
-import { User } from './entities/user.entity';
-import { In, Repository } from 'typeorm';
-import * as AWS from 'aws-sdk';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  Logger,
+  NotFoundException,
+  UnauthorizedException,
+} from "@nestjs/common";
+import { UpdateUserDto } from "./dto/update-user.dto";
+import { InjectRepository } from "@nestjs/typeorm";
+import { User } from "./entities/user.entity";
+import { In, Repository } from "typeorm";
+import * as AWS from "aws-sdk";
 import * as argon2 from "argon2";
-import * as sharp from 'sharp';
-import * as path from 'path';
-import { Identity } from 'src/common/const-data/entities/identity.entity';
-import { Location } from 'src/common/const-data/entities/location.entity';
-import { Welfare } from 'src/welfare/entities/welfare.entity';
-import { v4 as uuidv4 } from 'uuid';
-import { ConfigService } from '@nestjs/config';
+import * as sharp from "sharp";
+import * as path from "path";
+import { Identity } from "src/common/const-data/entities/identity.entity";
+import { Location } from "src/common/const-data/entities/location.entity";
+import { Welfare } from "src/welfare/entities/welfare.entity";
+import { v4 as uuidv4 } from "uuid";
+import { ConfigService } from "@nestjs/config";
 
 @Injectable()
 export class UserService {
-  private readonly logger = new Logger(UserService.name)
+  private readonly logger = new Logger(UserService.name);
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
@@ -25,8 +32,8 @@ export class UserService {
     private readonly identityRepository: Repository<Identity>,
     @InjectRepository(Welfare)
     private readonly welfareRepository: Repository<Welfare>,
-    private readonly configService: ConfigService
-  ) { }
+    private readonly configService: ConfigService,
+  ) {}
 
   private s3 = new AWS.S3({
     accessKeyId: process.env.AWS_ACCESS_KEY_ID,
@@ -35,27 +42,33 @@ export class UserService {
   });
 
   async createUser(email: string, password: string) {
-    const existingUser = await this.userRepository.findOne({ where: { email } });
+    const existingUser = await this.userRepository.findOne({
+      where: { email },
+    });
     if (existingUser) {
-      throw new BadRequestException('電子郵件已被使用');
+      throw new BadRequestException("電子郵件已被使用");
     }
 
     const hash = await argon2.hash(password);
-    const user = this.userRepository.create({ email: email, password: hash, name: email });
+    const user = this.userRepository.create({
+      email: email,
+      password: hash,
+      name: email,
+    });
     await this.userRepository.save(user);
-    this.logger.log(`用戶${user.id}已經創建`)
-    user.password = ""
+    this.logger.log(`用戶${user.id}已經創建`);
+    user.password = "";
     return user;
   }
 
   async findOneByID(id: string) {
     const foundUser = await this.userRepository.findOne({
       where: { id: id },
-      relations: ['location', 'identities', 'welfares']
-    })
+      relations: ["location", "identities", "welfares"],
+    });
 
     if (!foundUser) {
-      throw new NotFoundException("未找到用戶")
+      throw new NotFoundException("未找到用戶");
     }
     return foundUser;
   }
@@ -63,15 +76,15 @@ export class UserService {
   async findOneByEmail(email: string) {
     const foundUser = await this.userRepository.findOne({
       where: { email: email },
-      relations: ['location', 'identities', 'welfares']
-    })
+      relations: ["location", "identities", "welfares"],
+    });
 
     if (!foundUser) {
-      throw new UnauthorizedException("找不到賬戶號")
+      throw new UnauthorizedException("找不到賬戶號");
     }
 
     if (foundUser.isVerified) {
-      throw new ForbiddenException("尚未驗證賬戶")
+      throw new ForbiddenException("尚未驗證賬戶");
     }
     return foundUser;
   }
@@ -79,18 +92,20 @@ export class UserService {
   async update(id: string, updateUserDto: UpdateUserDto) {
     const user = await this.userRepository.findOne({
       where: { id },
-      relations: ['location', 'identities'],
+      relations: ["location", "identities"],
     });
     if (!user) {
-      throw new NotFoundException('用戶不存在');
+      throw new NotFoundException("用戶不存在");
     }
 
     // 驗證 locationId（如果提供）
     if (updateUserDto.location !== undefined) {
       if (updateUserDto.location !== null) {
-        const location = await this.locationRepository.findOne({ where: { name: updateUserDto.location } });
+        const location = await this.locationRepository.findOne({
+          where: { name: updateUserDto.location },
+        });
         if (!location) {
-          throw new BadRequestException('指定的 locationId 不存在');
+          throw new BadRequestException("指定的 locationId 不存在");
         }
         user.location = location;
       } else {
@@ -102,10 +117,10 @@ export class UserService {
     if (updateUserDto.identities !== undefined) {
       if (updateUserDto.identities) {
         const identities = await this.identityRepository.find({
-          where: { name: In(updateUserDto.identities) }
+          where: { name: In(updateUserDto.identities) },
         });
         if (identities.length !== updateUserDto.identities.length) {
-          throw new BadRequestException('一個或多個 identity ID 不存在');
+          throw new BadRequestException("一個或多個 identity ID 不存在");
         }
         user.identities = identities;
       } else {
@@ -125,7 +140,7 @@ export class UserService {
     });
 
     await this.userRepository.save(user);
-    this.logger.log(`用戶${id}已經更新`)
+    this.logger.log(`用戶${id}已經更新`);
     return {
       id: user.id,
       email: user.email,
@@ -142,44 +157,46 @@ export class UserService {
   }
 
   async remove(id: string) {
-    const foundUser = await this.findOneByID(id)
-    const result = await this.userRepository.delete({ id: foundUser.id })
-    this.logger.log(`用戶${id}已經刪除`)
-    return result.affected === 1 ? true : false
+    const foundUser = await this.findOneByID(id);
+    const result = await this.userRepository.delete({ id: foundUser.id });
+    this.logger.log(`用戶${id}已經刪除`);
+    return result.affected === 1 ? true : false;
   }
 
   async updatePassword(id: string, password: string) {
-    const foundUser = await this.findOneByID(id)
+    const foundUser = await this.findOneByID(id);
     if (!foundUser) {
-      throw new NotFoundException('未找到該賬號');
+      throw new NotFoundException("未找到該賬號");
     }
 
     const hash = await argon2.hash(password);
-    foundUser.password = hash
-    await this.userRepository.save(foundUser)
-    this.logger.log(`用戶${foundUser.id}已經更改密碼`)
-    return true
+    foundUser.password = hash;
+    await this.userRepository.save(foundUser);
+    this.logger.log(`用戶${foundUser.id}已經更改密碼`);
+    return true;
   }
 
   async addWelfareToUser(userID: string, welfareID: string): Promise<void> {
     // 查找用戶
     const user = await this.userRepository.findOne({
       where: { id: userID },
-      relations: ['welfares'], // 載入 welfares 關聯
+      relations: ["welfares"], // 載入 welfares 關聯
     });
     if (!user) {
-      throw new NotFoundException('用戶不存在');
+      throw new NotFoundException("用戶不存在");
     }
 
     // 查找福利
-    const welfare = await this.welfareRepository.findOne({ where: { id: welfareID } });
+    const welfare = await this.welfareRepository.findOne({
+      where: { id: welfareID },
+    });
     if (!welfare) {
-      throw new NotFoundException('福利不存在');
+      throw new NotFoundException("福利不存在");
     }
 
     // 檢查是否已存在該福利
     if (user.welfares?.some((w) => w.id === welfareID)) {
-      throw new BadRequestException('用戶已添加該福利');
+      throw new BadRequestException("用戶已添加該福利");
     }
 
     // 添加福利到用戶的 welfares 集合
@@ -187,28 +204,33 @@ export class UserService {
 
     // 保存更新
     await this.userRepository.save(user);
-    this.logger.log(`用戶${userID}已添加喜好福利${welfareID}`)
+    this.logger.log(`用戶${userID}已添加喜好福利${welfareID}`);
   }
 
-  async removeWelfareFromUser(userID: string, welfareID: string): Promise<void> {
+  async removeWelfareFromUser(
+    userID: string,
+    welfareID: string,
+  ): Promise<void> {
     // 查找用戶
     const user = await this.userRepository.findOne({
       where: { id: userID },
-      relations: ['welfares'], // 載入 welfares 關聯
+      relations: ["welfares"], // 載入 welfares 關聯
     });
     if (!user) {
-      throw new NotFoundException('用戶不存在');
+      throw new NotFoundException("用戶不存在");
     }
 
     // 查找福利
-    const welfare = await this.welfareRepository.findOne({ where: { id: welfareID } });
+    const welfare = await this.welfareRepository.findOne({
+      where: { id: welfareID },
+    });
     if (!welfare) {
-      throw new NotFoundException('福利不存在');
+      throw new NotFoundException("福利不存在");
     }
 
     // 檢查是否已存在該福利
     if (!user.welfares?.some((w) => w.id === welfareID)) {
-      throw new BadRequestException('用戶未添加該福利');
+      throw new BadRequestException("用戶未添加該福利");
     }
 
     // 從 welfares 集合中移除指定的福利
@@ -216,7 +238,7 @@ export class UserService {
 
     // 保存更新
     await this.userRepository.save(user);
-    this.logger.log(`用戶${userID}已移除喜好福利${welfareID}`)
+    this.logger.log(`用戶${userID}已移除喜好福利${welfareID}`);
   }
 
   async updateAvatar(userId: string, file: Express.Multer.File) {
@@ -230,25 +252,30 @@ export class UserService {
 
     const key = `avatars/${uuidv4()}.jpeg`;
 
-    const bucketName = this.configService.get<string>("AWS_S3_BUCKET_NAME") || "";
+    const bucketName =
+      this.configService.get<string>("AWS_S3_BUCKET_NAME") || "";
 
     // 上傳壓縮後圖片
-    await this.s3.putObject({
-      Bucket: bucketName,
-      Key: key,
-      Body: compressedBuffer,
-      ACL: 'public-read',
-      ContentType: 'image/jpeg',
-    }).promise();
+    await this.s3
+      .putObject({
+        Bucket: bucketName,
+        Key: key,
+        Body: compressedBuffer,
+        ACL: "public-read",
+        ContentType: "image/jpeg",
+      })
+      .promise();
 
     // 刪除舊圖片（如果存在）
     if (user.avatarUrl) {
       const oldKey = user.avatarUrl.split(`.amazonaws.com/`)[1];
       if (oldKey) {
-        await this.s3.deleteObject({
-          Bucket: bucketName,
-          Key: oldKey,
-        }).promise();
+        await this.s3
+          .deleteObject({
+            Bucket: bucketName,
+            Key: oldKey,
+          })
+          .promise();
       }
     }
 
@@ -269,8 +296,8 @@ export class UserService {
     return { avatarUrl: user.avatarUrl };
   }
 
-  async getFavouriteWelfare(userID:string) {
-    const user = await this.findOneByID(userID)
-    return user.welfares
+  async getFavouriteWelfare(userID: string) {
+    const user = await this.findOneByID(userID);
+    return user.welfares;
   }
 }

@@ -1,14 +1,20 @@
 import { UserFamily } from "src/user-family/entities/user-family.entity";
-import { Column, Entity, OneToMany, PrimaryGeneratedColumn, Relation } from "typeorm";
+import {
+  Column,
+  Entity,
+  OneToMany,
+  PrimaryGeneratedColumn,
+  Relation,
+} from "typeorm";
 
 @Entity()
 export class Family {
-    @PrimaryGeneratedColumn('uuid')
-    id: string
+  @PrimaryGeneratedColumn("uuid")
+  id: string;
 
-    @Column()
-    name: string
+  @Column()
+  name: string;
 
-    @OneToMany(() => UserFamily, (userFamily) => userFamily.family)
-    userFamilies: Relation<UserFamily>[];
+  @OneToMany(() => UserFamily, (userFamily) => userFamily.family)
+  userFamilies: Relation<UserFamily>[];
 }

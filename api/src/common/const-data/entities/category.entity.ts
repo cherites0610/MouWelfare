@@ -1,5 +1,11 @@
-import { Welfare } from 'src/welfare/entities/welfare.entity';
-import { Entity, PrimaryGeneratedColumn, Column, ManyToMany, Relation } from 'typeorm';
+import { Welfare } from "src/welfare/entities/welfare.entity";
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToMany,
+  Relation,
+} from "typeorm";
 
 @Entity()
 export class Category {
@@ -7,10 +13,10 @@ export class Category {
   id: number;
 
   @Column({
-    nullable: true
+    nullable: true,
   })
   name: string;
 
-  @ManyToMany(() => Welfare,(welfare) => welfare.categories)
-  welfares: Relation<Welfare>[]
+  @ManyToMany(() => Welfare, (welfare) => welfare.categories)
+  welfares: Relation<Welfare>[];
 }

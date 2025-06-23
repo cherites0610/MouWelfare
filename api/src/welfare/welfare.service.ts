@@ -1,90 +1,100 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { CreateWelfareDto } from './dto/create-welfare.dto';
-import { UpdateWelfareDto } from './dto/update-welfare.dto';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Welfare } from './entities/welfare.entity';
-import { Repository } from 'typeorm';
-import { ConstDataService } from 'src/common/const-data/const-data.service';
-import { FindAllDTO } from './dto/find-all.dto';
-import { FamilyService } from 'src/family/family.service';
-import { Identity } from 'src/common/const-data/entities/identity.entity';
-import { UserService } from 'src/user/user.service';
-import { Family } from 'src/family/entities/family.entity';
-import { WelfareResponseDTO } from './dto/output-welfare.dto';
-import { FindOneDTO } from './dto/find-one.dto';
-import { UserFamily } from 'src/user-family/entities/user-family.entity';
-import { LightStatus } from 'src/common/enum/light-status.enum';
+import { Injectable, Logger, NotFoundException } from "@nestjs/common";
+import { CreateWelfareDto } from "./dto/create-welfare.dto";
+import { UpdateWelfareDto } from "./dto/update-welfare.dto";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Welfare } from "./entities/welfare.entity";
+import { Repository } from "typeorm";
+import { ConstDataService } from "src/common/const-data/const-data.service";
+import { FindAllDTO } from "./dto/find-all.dto";
+import { FamilyService } from "src/family/family.service";
+import { Identity } from "src/common/const-data/entities/identity.entity";
+import { UserService } from "src/user/user.service";
+import { Family } from "src/family/entities/family.entity";
+import { WelfareResponseDTO } from "./dto/output-welfare.dto";
+import { FindOneDTO } from "./dto/find-one.dto";
+import { UserFamily } from "src/user-family/entities/user-family.entity";
+import { LightStatus } from "src/common/enum/light-status.enum";
 
 @Injectable()
 export class WelfareService {
-  private readonly logger = new Logger(WelfareService.name)
+  private readonly logger = new Logger(WelfareService.name);
 
   constructor(
     @InjectRepository(Welfare)
     private readonly welfareRepository: Repository<Welfare>,
     private readonly constDataService: ConstDataService,
     private readonly familyService: FamilyService,
-    private readonly userService: UserService
-  ) { }
+    private readonly userService: UserService,
+  ) {}
 
   async create(createWelfareDto: CreateWelfareDto) {
-    const welfare = this.welfareRepository.create(createWelfareDto)
-    welfare.identities = []
+    const welfare = this.welfareRepository.create(createWelfareDto);
+    welfare.identities = [];
     for (let i of createWelfareDto.identityID) {
       welfare.identities.push({
         id: Number(i),
-        name: '',
+        name: "",
         users: [],
-        welfares: []
-      })
+        welfares: [],
+      });
     }
 
-    welfare.categories = []
+    welfare.categories = [];
     for (let i of createWelfareDto.categoryID) {
       welfare.categories.push({
         id: Number(i),
-        name: '',
-        welfares: []
-      })
+        name: "",
+        welfares: [],
+      });
     }
 
     try {
-      await this.welfareRepository.save(welfare)
-
+      await this.welfareRepository.save(welfare);
     } catch (err: any) {
-      this.logger.debug(err)
+      this.logger.debug(err);
     }
     return welfare;
   }
 
   async findAllLink() {
     const temp = await this.welfareRepository.find({
-      select: ["link"]
-    })
+      select: ["link"],
+    });
 
-    return temp.map((item) => item.link)
+    return temp.map((item) => item.link);
   }
 
   async findAll(dto: FindAllDTO) {
-    const queryBuilder = this.welfareRepository.createQueryBuilder('welfare')
-      .leftJoinAndSelect('welfare.categories', 'categories')
-      .leftJoinAndSelect('welfare.location', 'location')
-      .leftJoinAndSelect('welfare.identities', 'identities');
+    const queryBuilder = this.welfareRepository
+      .createQueryBuilder("welfare")
+      .leftJoinAndSelect("welfare.categories", "categories")
+      .leftJoinAndSelect("welfare.location", "location")
+      .leftJoinAndSelect("welfare.identities", "identities");
 
     if (dto.search) {
-      queryBuilder.andWhere('welfare.title LIKE :search', {
+      queryBuilder.andWhere("welfare.title LIKE :search", {
         search: `%${dto.search}%`,
       });
     }
 
-    const categoryIds = this.filterByNames(dto.categories, this.constDataService.getCategories());
+    const categoryIds = this.filterByNames(
+      dto.categories,
+      this.constDataService.getCategories(),
+    );
     if (categoryIds.length > 0) {
-      queryBuilder.andWhere('categories.id IN (:...categoryIds)', { categoryIds });
+      queryBuilder.andWhere("categories.id IN (:...categoryIds)", {
+        categoryIds,
+      });
     }
 
-    const locationIds = this.filterByNames(dto.locations, this.constDataService.getLocations());
+    const locationIds = this.filterByNames(
+      dto.locations,
+      this.constDataService.getLocations(),
+    );
     if (locationIds.length > 0) {
-      queryBuilder.andWhere('location.id IN (:...locationIds)', { locationIds });
+      queryBuilder.andWhere("location.id IN (:...locationIds)", {
+        locationIds,
+      });
     }
 
     const page = dto.page || 1;
@@ -96,11 +106,17 @@ export class WelfareService {
     const responseList = welfares.map((item) => this.mapWelfareToDTO(item));
     if (dto.userID) {
       const familyID = dto.families?.[0];
-      let identities = this.constDataService.getIdentities()
+      let identities = this.constDataService.getIdentities();
       identities = identities.filter((item) => {
-        return dto.identities?.includes(item.name)
-      })
-      await this.appendLightAndFamilyInfo(welfares, responseList, dto.userID, identities, familyID);
+        return dto.identities?.includes(item.name);
+      });
+      await this.appendLightAndFamilyInfo(
+        welfares,
+        responseList,
+        dto.userID,
+        identities,
+        familyID,
+      );
     }
 
     return {
@@ -109,26 +125,32 @@ export class WelfareService {
         page,
         pageSize,
         total,
-        totalPage: Math.ceil(total / pageSize)
+        totalPage: Math.ceil(total / pageSize),
       },
     };
   }
 
   async findOne(id: string, dto?: FindOneDTO): Promise<WelfareResponseDTO> {
     const welfare = await this.welfareRepository.findOne({
-      relations: ['location', 'categories', 'identities'],
+      relations: ["location", "categories", "identities"],
       where: { id },
     });
 
     if (!welfare) {
-      throw new NotFoundException('未找到福利');
+      throw new NotFoundException("未找到福利");
     }
 
     const response = this.mapWelfareToDTO(welfare);
 
     if (dto?.userID && dto.familyID && dto.familyID.length > 0) {
-      const user = await this.userService.findOneByID(dto.userID)
-      await this.appendLightAndFamilyInfo([welfare], [response], dto.userID, user.identities, dto.familyID);
+      const user = await this.userService.findOneByID(dto.userID);
+      await this.appendLightAndFamilyInfo(
+        [welfare],
+        [response],
+        dto.userID,
+        user.identities,
+        dto.familyID,
+      );
     }
 
     return response;
@@ -142,13 +164,16 @@ export class WelfareService {
     return `This action removes a #${id} welfare`;
   }
 
-  getWelfareLight(welfareIdentities: Identity[], userIdentities: Identity[]): number {
+  getWelfareLight(
+    welfareIdentities: Identity[],
+    userIdentities: Identity[],
+  ): number {
     if (!userIdentities) {
-      return LightStatus.NoIdentity
+      return LightStatus.NoIdentity;
     }
 
-    let welfareIdentitiesIDs = welfareIdentities.map((item) => item.id)
-    let userIdentitiesIDs = userIdentities.map((item) => item.id)
+    let welfareIdentitiesIDs = welfareIdentities.map((item) => item.id);
+    let userIdentitiesIDs = userIdentities.map((item) => item.id);
     const contains = (arr: number[], val: number): boolean => {
       return arr.includes(val);
     };
@@ -178,7 +203,10 @@ export class WelfareService {
 
     // 規則 2 & 3：檢查 4 到 11 的任意值
     for (let i = 4; i <= 11; i++) {
-      if (contains(welfareIdentitiesIDs, i) && !contains(userIdentitiesIDs, i)) {
+      if (
+        contains(welfareIdentitiesIDs, i) &&
+        !contains(userIdentitiesIDs, i)
+      ) {
         return LightStatus.NotEligible;
       }
     }
@@ -206,8 +234,8 @@ export class WelfareService {
       link: welfare.link,
       forward: welfare.forward,
       publicationDate: welfare.publicationDate
-        ? welfare.publicationDate.toISOString().split('T')[0]
-        : '',
+        ? welfare.publicationDate.toISOString().split("T")[0]
+        : "",
       status: welfare.status,
       location: welfare.location!.name,
       categories: welfare.categories.map((c) => c.name),
@@ -221,7 +249,7 @@ export class WelfareService {
     dtoList: WelfareResponseDTO[],
     userID: string,
     identities: Identity[],
-    familyID?: string
+    familyID?: string,
   ) {
     const user = await this.userService.findOneByID(userID);
     let family: Family | null = null;
@@ -229,24 +257,31 @@ export class WelfareService {
 
     if (familyID) {
       family = await this.familyService.findOneByFamilyID(familyID);
-      if (!family) throw new NotFoundException('未找到該家庭');
+      if (!family) throw new NotFoundException("未找到該家庭");
 
       const isMember = family.userFamilies.some((uf) => uf.user.id === user.id);
-      if (!isMember) throw new NotFoundException('用戶不在家庭中');
+      if (!isMember) throw new NotFoundException("用戶不在家庭中");
 
-      otherFamilyMembers = family.userFamilies.filter((uf) => uf.user.id !== user.id);
+      otherFamilyMembers = family.userFamilies.filter(
+        (uf) => uf.user.id !== user.id,
+      );
     }
-
 
     for (let i = 0; i < welfareList.length; i++) {
       const welfare = welfareList[i];
       const dto = dtoList[i];
-      dto.lightStatus = welfare.identities.length == 0 ? 2 : this.getWelfareLight(welfare.identities, identities);
+      dto.lightStatus =
+        welfare.identities.length == 0
+          ? 2
+          : this.getWelfareLight(welfare.identities, identities);
 
       if (family) {
         dto.familyMember = otherFamilyMembers.map((uf) => ({
           avatarUrl: uf.user.avatarUrl,
-          lightStatus: this.getWelfareLight(welfare.identities, uf.user.identities),
+          lightStatus: this.getWelfareLight(
+            welfare.identities,
+            uf.user.identities,
+          ),
           name: uf.user.name,
         }));
       }
