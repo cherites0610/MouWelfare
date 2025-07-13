@@ -76,7 +76,7 @@ export default function Login() {
       {/* --- Logo 圖片 --- */}
 
       <Image
-        source={require('@/assets/images/login.jpg')} // 確認路徑正確
+        source={require('@/assets/images/login.jpeg')} // 確認路徑正確
         style={styles.logo}
         resizeMode="cover" // 或 'contain'，根據圖片調整
       />

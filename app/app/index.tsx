@@ -18,6 +18,7 @@ export default function Index() {
       await dispatch(loadConfig());
       await dispatch(fetchUser());
       await dispatch(fetchFamily());
+      
       setIsInitialized(true);
     } catch (error) {
       console.error("Initialization failed:", error);

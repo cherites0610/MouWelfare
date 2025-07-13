@@ -25,12 +25,12 @@ export class WelfareService {
     private readonly constDataService: ConstDataService,
     private readonly familyService: FamilyService,
     private readonly userService: UserService,
-  ) {}
+  ) { }
 
   async create(createWelfareDto: CreateWelfareDto) {
     const welfare = this.welfareRepository.create(createWelfareDto);
     welfare.identities = [];
-    for (let i of createWelfareDto.identityID) {
+    for (const i of createWelfareDto.identityID) {
       welfare.identities.push({
         id: Number(i),
         name: "",
@@ -40,7 +40,7 @@ export class WelfareService {
     }
 
     welfare.categories = [];
-    for (let i of createWelfareDto.categoryID) {
+    for (const i of createWelfareDto.categoryID) {
       welfare.categories.push({
         id: Number(i),
         name: "",
@@ -156,12 +156,28 @@ export class WelfareService {
     return response;
   }
 
-  update(id: number, updateWelfareDto: UpdateWelfareDto) {
-    return `This action updates a #${id} welfare`;
+  async update(id: string, updateWelfareDto: UpdateWelfareDto) {
+    const foundWelfare = await this.welfareRepository.findOne({
+      where: { id },
+      relations: ["location", "categories", "identities"]
+    })
+
+    if (!foundWelfare) throw new NotFoundException('找不到該福利')
+
+    Object.assign(foundWelfare, updateWelfareDto)
+    try {
+
+      await this.welfareRepository.save(foundWelfare)
+    } catch (err:any) {
+      console.log(err);
+      
+    }
+    return this.mapWelfareToDTO(foundWelfare);
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} welfare`;
+  async remove(id: string) {
+    const result = await this.welfareRepository.delete({ id })
+    return result.affected === 1 ? true : false
   }
 
   getWelfareLight(
@@ -172,8 +188,8 @@ export class WelfareService {
       return LightStatus.NoIdentity;
     }
 
-    let welfareIdentitiesIDs = welfareIdentities.map((item) => item.id);
-    let userIdentitiesIDs = userIdentities.map((item) => item.id);
+    const welfareIdentitiesIDs = welfareIdentities.map((item) => item.id);
+    const userIdentitiesIDs = userIdentities.map((item) => item.id);
     const contains = (arr: number[], val: number): boolean => {
       return arr.includes(val);
     };
@@ -241,6 +257,7 @@ export class WelfareService {
       categories: welfare.categories.map((c) => c.name),
       lightStatus: undefined,
       familyMember: [],
+      isAbnormal: welfare.isAbnormal
     };
   }
 
@@ -286,5 +303,14 @@ export class WelfareService {
         }));
       }
     }
+  }
+
+  async findAllAbnormalWelfare() {
+    const welfares = await this.welfareRepository.find({
+      relations: ["location", "categories", "identities"],
+      where: { isAbnormal: true }
+    })
+
+    return welfares.map((welfare) => this.mapWelfareToDTO(welfare))
   }
 }

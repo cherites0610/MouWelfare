@@ -9,6 +9,11 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import { WelfareService } from "../welfare/welfare.service.js";
 import { WelfareStatus } from "../common/enum/welfare-status.enum.js";
 import { ConstDataService } from "../common/const-data/const-data.service.js";
+import { dirname } from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 // 定義爬取結果的資料結構
 interface CrawlData {
@@ -24,8 +29,8 @@ interface CrawlData {
 export class DataProcessingService extends WorkerHost {
   private readonly logger = new Logger(DataProcessingService.name);
   private readonly ai;
-  private aiRateLimiter = new RateLimiter(9);
-  private modelName = "gemini-2.5-flash";
+  private aiRateLimiter = new RateLimiter(13);
+  private modelName = "gemini-2.0-flash";
 
   constructor(
     private readonly configService: ConfigService,
@@ -112,6 +117,7 @@ export class DataProcessingService extends WorkerHost {
         identityID: processedData.identity.map((item) =>
           this.constService.getIdentityIDByName(item),
         ),
+        isAbnormal: false
       });
 
       writeFileSync(outputPath, JSON.stringify(existingData, null, 2), "utf8");

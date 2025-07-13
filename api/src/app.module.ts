@@ -4,8 +4,6 @@ import { UserModule } from "./user/user.module.js";
 import { WelfareModule } from "./welfare/welfare.module.js";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { ConfigModule, ConfigService } from "@nestjs/config";
-import { User } from "./user/entities/user.entity.js";
-import { ConstDataService } from "./common/const-data/const-data.service.js";
 import { ScheduleModule } from "@nestjs/schedule";
 import { ConstantsModule } from "./common/const-data/constants.module.js";
 import { AuthModule } from "./auth/auth.module.js";
@@ -22,7 +20,6 @@ import { CrawlerModule } from "./crawler/crawler.module.js";
 import { BullModule } from "@nestjs/bullmq";
 import { dirname } from "path";
 import { fileURLToPath } from "url";
-
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
@@ -33,12 +30,12 @@ const __dirname = dirname(__filename);
       isGlobal: true,
     }),
     TypeOrmModule.forRootAsync({
-      useFactory: async (configService) => ({
+      useFactory: (configService) => ({
         type: "mysql",
         host: configService.get("DB_HOST"),
         port: configService.get("DB_PORT"),
         username: configService.get("DB_USER"),
-        password: configService.get("DB_PASS"),
+        password: configService.get("DB_PASSWORD"),
         database: configService.get("DB_NAME"),
         // dropSchema: true,
         autoLoadEntities: true,
@@ -46,6 +43,7 @@ const __dirname = dirname(__filename);
       }),
       inject: [ConfigService],
     }),
+    
     ServeStaticModule.forRootAsync({
       useFactory: async () => [
         {

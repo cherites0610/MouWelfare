@@ -49,11 +49,12 @@ export const fetchFamily = createAsyncThunk<Family[], void, { rejectValue: strin
             }
             
             const result = await fetchUserFamilyApi(authToken);
-            
             const familyData = result.data as Family[];
 
             return familyData
         } catch (error:any) {
+            console.log(error);
+            
             return rejectWithValue(error.message);
         }
     }

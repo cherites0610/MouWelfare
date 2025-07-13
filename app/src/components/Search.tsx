@@ -16,7 +16,7 @@ export default function Search() {
   return (
     <View style={styles.SearchBar}>
       <Image
-        source={require('../../assets/images/logo.png')}
+        source={require('../../assets/images/logo.jpeg')}
         style={styles.avatar}
       />
       <TextInput

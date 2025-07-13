@@ -71,4 +71,9 @@ export class Welfare {
 
   @ManyToMany(() => User, (user) => user.welfares)
   users: Relation<User>[];
+
+  @Column({
+    default: false
+  })
+  isAbnormal: boolean
 }

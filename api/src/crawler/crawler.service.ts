@@ -15,15 +15,11 @@ import { fileTypeFromBuffer } from "file-type";
 import textract from "textract";
 import { InjectQueue } from "@nestjs/bullmq";
 import { WelfareService } from "../welfare/welfare.service.js";
+import { dirname } from "path";
+import { fileURLToPath } from "url";
 
-// 定義爬取結果的資料結構
-interface CrawlData {
-  city: string;
-  url: string;
-  title: string;
-  date: string;
-  content: string;
-}
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 @Injectable()
 export class CrawlerService {
@@ -35,7 +31,7 @@ export class CrawlerService {
     @InjectQueue("data-processing")
     private readonly dataQueue: Queue,
     private readonly welfareService: WelfareService,
-  ) {}
+  ) { }
 
   async crawlAllCities(): Promise<void> {
     const existingLinks = new Set(await this.welfareService.findAllLink());

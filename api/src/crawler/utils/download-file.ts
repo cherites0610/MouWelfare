@@ -5,7 +5,7 @@ import { join } from "path";
 import { v4 as uuidv4 } from "uuid";
 
 export async function downloadFile(url: string): Promise<string> {
-  const fileExt = url.split(".")!.pop()!.split("?")[0]; // 例如 pdf
+  const fileExt = url.split(".").pop()!.split("?")[0]; // 例如 pdf
   const filename = `${uuidv4()}.${fileExt}`;
   const filePath = join(tmpdir(), filename);
 

@@ -184,7 +184,7 @@ export class FamilyService {
       throw new BadRequestException("無效或過期的邀請碼");
     }
 
-    const family = await this.findOneByFamilyID(familyID as string);
+    const family = await this.findOneByFamilyID(familyID);
     if (!family) {
       throw new NotFoundException("未找到該家庭");
     }

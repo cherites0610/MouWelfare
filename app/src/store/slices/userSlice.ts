@@ -71,12 +71,14 @@ export const fetchUser = createAsyncThunk<User, void, { rejectValue: string, get
             }
 
             const response = await fetchApi(authToken);
+
             if (!response.data) {
                 return rejectWithValue('Invalid API response');
             }
 
             return response.data
         } catch (error: any) {
+            console.log(error);
             return rejectWithValue(error.message || 'Failed to fetch user');
         }
     }

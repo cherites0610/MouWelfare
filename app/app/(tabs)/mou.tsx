@@ -45,53 +45,53 @@ const App: React.FC = () => {
 
   // 數據
   const ewlfareItems: Item[] = [
-    { id: 1, name: '兒童及青少年福利', image: require("@/assets/images/Mou/baby.jpg") },
-    { id: 2, name: '婦女與幼兒福利', image: require("@/assets/images/Mou/school.jpg") },
-    { id: 3, name: '老人福利', image: require("@/assets/images/Mou/elderly.jpg") },
-    { id: 4, name: '社會救助福利', image: require("@/assets/images/Mou/elderly.jpg") },
-    { id: 5, name: '身心障礙福利', image: require("@/assets/images/Mou/accessibility.jpg") },
-    { id: 6, name: '其他', image: require("@/assets/images/Mou/school.jpg") },
+    { id: 1, name: '兒童及青少年福利', image: require("@/assets/images/Mou/baby.jpeg") },
+    { id: 2, name: '婦女與幼兒福利', image: require("@/assets/images/Mou/school.jpeg") },
+    { id: 3, name: '老人福利', image: require("@/assets/images/Mou/elderly.jpeg") },
+    { id: 4, name: '社會救助福利', image: require("@/assets/images/Mou/elderly.jpeg") },
+    { id: 5, name: '身心障礙福利', image: require("@/assets/images/Mou/accessibility.jpeg") },
+    { id: 6, name: '其他', image: require("@/assets/images/Mou/school.jpeg") },
   ];
 
   const taiwanItems: Item[] = [
-    { id: 1, name: '北區', image: require("@/assets/images/Mou/school.jpg") },
-    { id: 2, name: '中區', image: require("@/assets/images/Mou/school.jpg") },
-    { id: 3, name: '南區', image: require("@/assets/images/Mou/school.jpg") },
-    { id: 4, name: '東區', image: require("@/assets/images/Mou/school.jpg") },
+    { id: 1, name: '北區', image: require("@/assets/images/Mou/school.jpeg") },
+    { id: 2, name: '中區', image: require("@/assets/images/Mou/school.jpeg") },
+    { id: 3, name: '南區', image: require("@/assets/images/Mou/school.jpeg") },
+    { id: 4, name: '東區', image: require("@/assets/images/Mou/school.jpeg") },
   ];
 
   const northItems: Item[] = [
-    { id: 1, name: '台北市', image: require("@/assets/images/Mou/school.jpg") },
-    { id: 2, name: '新北市', image: require("@/assets/images/Mou/school.jpg") },
-    { id: 3, name: '基隆市', image: require("@/assets/images/Mou/school.jpg") },
-    { id: 4, name: '桃園市', image: require("@/assets/images/Mou/school.jpg") },
-    { id: 5, name: '宜蘭縣', image: require("@/assets/images/Mou/school.jpg") },
-    { id: 6, name: '新竹縣', image: require("@/assets/images/Mou/school.jpg") },
-    { id: 7, name: '新竹市', image: require("@/assets/images/Mou/school.jpg") },
+    { id: 1, name: '台北市', image: require("@/assets/images/Mou/school.jpeg") },
+    { id: 2, name: '新北市', image: require("@/assets/images/Mou/school.jpeg") },
+    { id: 3, name: '基隆市', image: require("@/assets/images/Mou/school.jpeg") },
+    { id: 4, name: '桃園市', image: require("@/assets/images/Mou/school.jpeg") },
+    { id: 5, name: '宜蘭縣', image: require("@/assets/images/Mou/school.jpeg") },
+    { id: 6, name: '新竹縣', image: require("@/assets/images/Mou/school.jpeg") },
+    { id: 7, name: '新竹市', image: require("@/assets/images/Mou/school.jpeg") },
   ];
 
   const midItems: Item[] = [
-    { id: 8, name: '台中市', image: require("@/assets/images/Mou/school.jpg") },
-    { id: 9, name: '苗栗縣', image: require("@/assets/images/Mou/school.jpg") },
-    { id: 10, name: '彰化縣', image: require("@/assets/images/Mou/school.jpg") },
-    { id: 11, name: '南投縣', image: require("@/assets/images/Mou/school.jpg") },
-    { id: 12, name: '雲林縣', image: require("@/assets/images/Mou/school.jpg") },
+    { id: 8, name: '台中市', image: require("@/assets/images/Mou/school.jpeg") },
+    { id: 9, name: '苗栗縣', image: require("@/assets/images/Mou/school.jpeg") },
+    { id: 10, name: '彰化縣', image: require("@/assets/images/Mou/school.jpeg") },
+    { id: 11, name: '南投縣', image: require("@/assets/images/Mou/school.jpeg") },
+    { id: 12, name: '雲林縣', image: require("@/assets/images/Mou/school.jpeg") },
   ];
 
   const southItems: Item[] = [
-    { id: 13, name: '高雄市', image: require("@/assets/images/Mou/school.jpg") },
-    { id: 14, name: '台南市', image: require("@/assets/images/Mou/school.jpg") },
-    { id: 15, name: '嘉義市', image: require("@/assets/images/Mou/school.jpg") },
-    { id: 16, name: '嘉義縣', image: require("@/assets/images/Mou/school.jpg") },
-    { id: 17, name: '屏東縣', image: require("@/assets/images/Mou/school.jpg") },
+    { id: 13, name: '高雄市', image: require("@/assets/images/Mou/school.jpeg") },
+    { id: 14, name: '台南市', image: require("@/assets/images/Mou/school.jpeg") },
+    { id: 15, name: '嘉義市', image: require("@/assets/images/Mou/school.jpeg") },
+    { id: 16, name: '嘉義縣', image: require("@/assets/images/Mou/school.jpeg") },
+    { id: 17, name: '屏東縣', image: require("@/assets/images/Mou/school.jpeg") },
   ];
 
   const eastItems: Item[] = [
-    { id: 18, name: '花蓮縣', image: require("@/assets/images/Mou/school.jpg") },
-    { id: 19, name: '台東縣', image: require("@/assets/images/Mou/school.jpg") },
+    { id: 18, name: '花蓮縣', image: require("@/assets/images/Mou/school.jpeg") },
+    { id: 19, name: '台東縣', image: require("@/assets/images/Mou/school.jpeg") },
   ];
 
-  const botAvatar = require("@/assets/images/logo.png")
+  const botAvatar = require("@/assets/images/logo.jpeg")
 
   // 初始化
   useEffect(() => {
