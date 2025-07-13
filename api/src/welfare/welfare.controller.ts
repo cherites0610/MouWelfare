@@ -9,7 +9,7 @@ import {
   Query,
   ParseBoolPipe,
   UnauthorizedException,
-  Headers
+  Headers,
 } from "@nestjs/common";
 import { WelfareService } from "./welfare.service.js";
 import { CreateWelfareDto } from "./dto/create-welfare.dto.js";
@@ -24,29 +24,31 @@ import { ConfigService } from "@nestjs/config";
 export class WelfareController {
   constructor(
     private readonly welfareService: WelfareService,
-    private readonly configService: ConfigService
-  ) { }
+    private readonly configService: ConfigService,
+  ) {}
 
   private validateApiKey(authHeader: string) {
-    const secretApiKey = this.configService.get<string>('ADMIN_API_KEY');
+    const secretApiKey = this.configService.get<string>("ADMIN_API_KEY");
     if (!secretApiKey) {
-      throw new Error('環境變數 ADMIN_API_KEY 未設定');
+      throw new Error("環境變數 ADMIN_API_KEY 未設定");
     }
-    const expectedBearerToken = Buffer.from(secretApiKey).toString('base64');
+    const expectedBearerToken = Buffer.from(secretApiKey).toString("base64");
 
     // 2. 執行驗證
     if (!authHeader) {
-      throw new UnauthorizedException('缺少 Authorization Header');
+      throw new UnauthorizedException("缺少 Authorization Header");
     }
 
-    const parts = authHeader.split(' ');
-    if (parts.length !== 2 || parts[0] !== 'Bearer') {
-      throw new UnauthorizedException('Token 格式不正確，應為 "Bearer <token>"');
+    const parts = authHeader.split(" ");
+    if (parts.length !== 2 || parts[0] !== "Bearer") {
+      throw new UnauthorizedException(
+        'Token 格式不正確，應為 "Bearer <token>"',
+      );
     }
 
     const receivedToken = parts[1];
     if (receivedToken !== expectedBearerToken) {
-      throw new UnauthorizedException('無效的 API Key');
+      throw new UnauthorizedException("無效的 API Key");
     }
   }
 
@@ -74,26 +76,33 @@ export class WelfareController {
   }
 
   @Patch(":id")
-  async update(@Param("id") id: string, @Body() updateWelfareDto: UpdateWelfareDto, @Headers('Authorization') authHeader: string) {
+  async update(
+    @Param("id") id: string,
+    @Body() updateWelfareDto: UpdateWelfareDto,
+    @Headers("Authorization") authHeader: string,
+  ) {
     this.validateApiKey(authHeader);
     return new ResponseDTO(
       "更新成功",
-      await this.welfareService.update(id, updateWelfareDto)
-    )
+      await this.welfareService.update(id, updateWelfareDto),
+    );
   }
 
   @Delete(":id")
-  async remove(@Param("id") id: string, @Headers('Authorization') authHeader: string) {
+  async remove(
+    @Param("id") id: string,
+    @Headers("Authorization") authHeader: string,
+  ) {
     this.validateApiKey(authHeader);
     return new ResponseDTO(
-      await this.welfareService.remove(id) ? "刪除成功" : "刪除失敗",
-      ""
-    )
+      (await this.welfareService.remove(id)) ? "刪除成功" : "刪除失敗",
+      "",
+    );
   }
 
   @Public()
-  @Get('/admin/abnormal')
-  async findAllAbnormalWelfare(@Headers('Authorization') authHeader: string) {
+  @Get("/admin/abnormal")
+  async findAllAbnormalWelfare(@Headers("Authorization") authHeader: string) {
     this.validateApiKey(authHeader);
     return new ResponseDTO(
       "查詢成功",
@@ -102,14 +111,18 @@ export class WelfareController {
   }
 
   @Public()
-  @Post('/:id/abnormal/:abnormal')
-  async updateWelfareAbnormal(@Param('id') id: string, @Param('abnormal', ParseBoolPipe) isAbnormal: boolean, @Headers('Authorization') authHeader: string) {
+  @Post("/:id/abnormal/:abnormal")
+  async updateWelfareAbnormal(
+    @Param("id") id: string,
+    @Param("abnormal", ParseBoolPipe) isAbnormal: boolean,
+    @Headers("Authorization") authHeader: string,
+  ) {
     if (isAbnormal === false) {
       this.validateApiKey(authHeader);
     }
     return new ResponseDTO(
       "更新成功",
-      await this.welfareService.update(id, { isAbnormal: isAbnormal })
+      await this.welfareService.update(id, { isAbnormal: isAbnormal }),
     );
   }
 }

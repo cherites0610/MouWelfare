@@ -25,7 +25,7 @@ export class WelfareService {
     private readonly constDataService: ConstDataService,
     private readonly familyService: FamilyService,
     private readonly userService: UserService,
-  ) { }
+  ) {}
 
   async create(createWelfareDto: CreateWelfareDto) {
     const welfare = this.welfareRepository.create(createWelfareDto);
@@ -159,25 +159,23 @@ export class WelfareService {
   async update(id: string, updateWelfareDto: UpdateWelfareDto) {
     const foundWelfare = await this.welfareRepository.findOne({
       where: { id },
-      relations: ["location", "categories", "identities"]
-    })
+      relations: ["location", "categories", "identities"],
+    });
 
-    if (!foundWelfare) throw new NotFoundException('找不到該福利')
+    if (!foundWelfare) throw new NotFoundException("找不到該福利");
 
-    Object.assign(foundWelfare, updateWelfareDto)
+    Object.assign(foundWelfare, updateWelfareDto);
     try {
-
-      await this.welfareRepository.save(foundWelfare)
-    } catch (err:any) {
+      await this.welfareRepository.save(foundWelfare);
+    } catch (err: any) {
       console.log(err);
-      
     }
     return this.mapWelfareToDTO(foundWelfare);
   }
 
   async remove(id: string) {
-    const result = await this.welfareRepository.delete({ id })
-    return result.affected === 1 ? true : false
+    const result = await this.welfareRepository.delete({ id });
+    return result.affected === 1 ? true : false;
   }
 
   getWelfareLight(
@@ -257,7 +255,7 @@ export class WelfareService {
       categories: welfare.categories.map((c) => c.name),
       lightStatus: undefined,
       familyMember: [],
-      isAbnormal: welfare.isAbnormal
+      isAbnormal: welfare.isAbnormal,
     };
   }
 
@@ -308,9 +306,9 @@ export class WelfareService {
   async findAllAbnormalWelfare() {
     const welfares = await this.welfareRepository.find({
       relations: ["location", "categories", "identities"],
-      where: { isAbnormal: true }
-    })
+      where: { isAbnormal: true },
+    });
 
-    return welfares.map((welfare) => this.mapWelfareToDTO(welfare))
+    return welfares.map((welfare) => this.mapWelfareToDTO(welfare));
   }
 }

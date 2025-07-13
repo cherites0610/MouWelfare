@@ -43,7 +43,7 @@ const __dirname = dirname(__filename);
       }),
       inject: [ConfigService],
     }),
-    
+
     ServeStaticModule.forRootAsync({
       useFactory: async () => [
         {

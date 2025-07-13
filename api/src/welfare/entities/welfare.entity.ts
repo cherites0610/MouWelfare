@@ -73,7 +73,7 @@ export class Welfare {
   users: Relation<User>[];
 
   @Column({
-    default: false
+    default: false,
   })
-  isAbnormal: boolean
+  isAbnormal: boolean;
 }

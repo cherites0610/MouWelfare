@@ -18,7 +18,7 @@ export const CreateWelfareSchema = z.object({
   identityID: z.array(z.number().int().positive(), {
     message: "Identity IDs must be an array of positive integers",
   }),
-  isAbnormal: z.boolean().default(false)
+  isAbnormal: z.boolean().default(false),
 });
 
-export class CreateWelfareDto extends createZodDto(CreateWelfareSchema) { }
+export class CreateWelfareDto extends createZodDto(CreateWelfareSchema) {}

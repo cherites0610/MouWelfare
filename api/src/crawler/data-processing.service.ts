@@ -117,7 +117,7 @@ export class DataProcessingService extends WorkerHost {
         identityID: processedData.identity.map((item) =>
           this.constService.getIdentityIDByName(item),
         ),
-        isAbnormal: false
+        isAbnormal: false,
       });
 
       writeFileSync(outputPath, JSON.stringify(existingData, null, 2), "utf8");

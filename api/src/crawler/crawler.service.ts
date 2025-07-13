@@ -31,7 +31,7 @@ export class CrawlerService {
     @InjectQueue("data-processing")
     private readonly dataQueue: Queue,
     private readonly welfareService: WelfareService,
-  ) { }
+  ) {}
 
   async crawlAllCities(): Promise<void> {
     const existingLinks = new Set(await this.welfareService.findAllLink());
