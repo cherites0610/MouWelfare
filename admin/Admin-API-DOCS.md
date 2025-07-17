@@ -9,10 +9,6 @@
 所有需要權限的 API 端點都必須經過驗證。請在 HTTP 請求的 Header 中加入 `Authorization` 欄位。
 
 * **驗證模式 (Type)**: **Bearer**
-* **API Key**: `5266b2e014814a61a6881efaa9fbb736` (此為範例，請使用您環境變數中的金鑰)
-
-#### 如何產生 Token
-您需要將 API Key 透過 **Base64** 編碼，然後將編碼後的字串放到 `Bearer ` 後方。
 
 #### 範例
 1.  **原始 API Key**:

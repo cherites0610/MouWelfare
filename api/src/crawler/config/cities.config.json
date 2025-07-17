@@ -20,27 +20,6 @@
       "content": "#ContentPlaceHolder1_data_midlle_cp > table > tbody > tr:nth-child(2) > td > div"
     }
   },
-  "tainan": {
-    "city": "臺南市",
-    "baseUrl": "https://sab.tainan.gov.tw/",
-    "startUrl": "https://sab.tainan.gov.tw/",
-    "levels": [
-      {
-        "selector": ".nav .is-parent a",
-        "getUrlAttr": "href"
-      },
-      {
-        "selector": "table a",
-        "getUrlAttr": "href"
-      }
-    ],
-    "stopSelector": "#base-content > div > div > div > div > div > div > div > div.group.base-section > div > div > div > div.group.page-footer > div > div > div > div.list-text.detail > div > div > div > ul > li:nth-child(3) > span",
-    "extractSelectors": {
-      "title": "#base-content > div > div > div > div > div > div > div > div.group.base-section > div > div > div > div.group.page-header > div > div > div > div.group.default.info > div > div > div > div.simple-text.heading > div > div > div > h2 > span",
-      "date": "#base-content > div > div > div > div > div > div > div > div.group.base-section > div > div > div > div.group.page-footer > div > div > div > div.list-text.detail > div > div > div > ul > li:nth-child(2) > span",
-      "content": "#CCMS_Content > div > div > div > div.area-essay.page-caption-p > div > div > div > div > div > div"
-    }
-  },
   "newtaipei": {
     "city": "新北市",
     "baseUrl": "https://welfare.ntpc.gov.tw",

@@ -31,7 +31,7 @@ export class CrawlerService {
     @InjectQueue("data-processing")
     private readonly dataQueue: Queue,
     private readonly welfareService: WelfareService,
-  ) {}
+  ) { }
 
   async crawlAllCities(): Promise<void> {
     const existingLinks = new Set(await this.welfareService.findAllLink());
@@ -96,8 +96,18 @@ export class CrawlerService {
           );
           const $ = cheerio.load(response.data);
 
+          const htmlContent = response.data;
+
+          // 將抓到的 HTML 存檔，檔名可以用 URL 來命名，替換掉特殊字元
+          const safeFilename = url.replace(/[^a-zA-Z0-9]/g, '_') + '.html';
+          fs.writeFile(safeFilename, htmlContent);
+
+          this.logger.log(`HTML 內容已儲存至: ${safeFilename}`);
+
           // 最深層資料擷取
           if ($(config.stopSelector).length > 0) {
+            console.log(1);
+
             if (existingLinks.has(url)) {
               this.logger.debug(`[跳過] ${url} 已存在於資料庫中`);
               return;
@@ -154,9 +164,12 @@ export class CrawlerService {
           // 中間層收集下一層 URL
           const levelConfig = config.levels[level];
           if (!levelConfig) return;
+          console.log(levelConfig.selector);
 
           $(levelConfig.selector).each((_, el) => {
             const nextUrlRaw = $(el).attr(levelConfig.getUrlAttr);
+            console.log(nextUrlRaw);
+
             if (nextUrlRaw) {
               const nextUrl = resolveUrl(baseUrl, nextUrlRaw);
               queue.push({ url: nextUrl, level: level + 1 });
