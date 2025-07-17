@@ -84,7 +84,11 @@ const WelfareInfo = () => {
         <ScrollView>
           <View style={styles.container}>
             <Text style={styles.title}>{welfare.title}</Text>
-            <Text style={styles.releaseDate}>發佈日期: {welfare.publication_date}</Text>
+            <Text style={{...styles.releaseDate,marginBottom:3}}>發佈日期: {welfare.publication_date||"無法取得發佈日期"}</Text>
+            <Text style={styles.releaseDate}>福利種類: {welfare.categories.join(',')||"無法取得福利種類"}</Text>
+
+            <Text style={styles.sectionTitle}>簡要原文(AI生成，請自行鑒別):</Text>
+            <Text style={styles.notes}>{welfare.summary}</Text>
 
             <Text style={styles.sectionTitle}>申請條件</Text>
             <FlatList
@@ -125,7 +129,7 @@ const WelfareInfo = () => {
             />
 
             <View style={styles.statusRow}>
-              <Text style={styles.statusText}>你是否符合申請條件</Text>
+              <Text style={styles.sectionTitle}>你是否符合申請條件</Text>
               <TouchableOpacity style={styles.infoIcon}>
                 <Ionicons size={20} name="information-circle-outline" />
               </TouchableOpacity>
@@ -167,10 +171,9 @@ const WelfareInfo = () => {
               </TouchableOpacity>
             </View>
 
-            <Text style={styles.sectionTitle}>簡要原文(AI生成，請自行鑒別):</Text>
-            <Text style={styles.notes}>{welfare.summary}</Text>
 
-            <Text style={styles.sectionTitle}>原始文章</Text>
+
+            <Text style={styles.sectionTitle}>原始文章:</Text>
             <Text style={styles.notes}>{welfare.detail}</Text>
           </View>
         </ScrollView>
@@ -193,7 +196,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   title: {
-    fontSize: 20,
+    fontSize: 25,
     fontWeight: 'bold',
     marginBottom: 8,
   },
@@ -203,7 +206,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   sectionTitle: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: 'bold',
     marginTop: 16,
     marginBottom: 8,
@@ -263,9 +266,10 @@ const styles = StyleSheet.create({
     textDecorationLine: "underline"
   },
   notes: {
-    fontSize: 12,
+    fontSize: 15,
     color: '#333',
     marginTop: 8,
+    lineHeight: 25,
   },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   errorContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },

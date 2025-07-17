@@ -244,11 +244,13 @@ export class WelfareService {
       dto.lightStatus = welfare.identities.length == 0 ? 2 : this.getWelfareLight(welfare.identities, identities);
 
       if (family) {
-        dto.familyMember = otherFamilyMembers.map((uf) => ({
-          avatarUrl: uf.user.avatarUrl,
-          lightStatus: this.getWelfareLight(welfare.identities, uf.user.identities),
-          name: uf.user.name,
-        }));
+        dto.familyMember = otherFamilyMembers
+          .filter((uf) => this.getWelfareLight(welfare.identities, uf.user.identities) === 1||2||3)
+          .map((uf) => ({
+            avatarUrl: uf.user.avatarUrl,
+            lightStatus: 1, // 已經確定為 1，可直接寫死或保留原方法也可
+            name: uf.user.name,
+          }));
       }
     }
   }
