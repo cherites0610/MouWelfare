@@ -42,7 +42,7 @@ export default function Profile() {
               地區：<Text style={styles.value}>{user!.location?.name}</Text>
             </Text>
             <Text style={styles.label}>
-              身份別：<Text style={styles.value}>{user!.identities?.map((item) => item.name).join(',')}</Text>
+              身份：<Text style={styles.value}>{user!.identities?.map((item) => item.name).join(',')}</Text>
             </Text>
           </View>
         </View>

@@ -28,7 +28,7 @@ export default function WelfareItem({ location, category, title, lightStatus, fa
             <View style={styles.textContainer}>
                 <View>
                     <Text style={styles.subTitle}>{location} / {category[currentCategoryIndex]}</Text>
-                    <Text style={styles.title}>{title}</Text>
+                    <Text style={styles.title}>{title.length > 16 ? title.slice(0, 16) + '...' : title}</Text>
                 </View>
 
                 {familyMember.length > 0 && (
