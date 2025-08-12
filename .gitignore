@@ -20,3 +20,5 @@ api/dist
 
 api/output
 backend
+
+node_modules/

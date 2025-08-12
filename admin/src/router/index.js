@@ -5,8 +5,14 @@ import Home from '../views/Home.vue'
 import WelfareDetail from '../views/WelfareDetail.vue'
 import WelfareEdit from '../views/WelfareEdit.vue'
 import WelfareCreate from '../views/WelfareCreate.vue'
+import WelfareList from '../views/WelfareList.vue'
 
 const routes = [
+  {
+    path: '/login',
+    name: 'Login',
+    component: Login
+  },
   {
     path: '/',
     component: Home,
@@ -27,10 +33,10 @@ const routes = [
     component: WelfareCreate, 
     meta: { requiresAuth: true } 
   },
-  {
-    path: '/login',
-    name: 'Login',
-    component: Login
+  { 
+    path: '/welfare', 
+    component: WelfareList, 
+    meta: { requiresAuth: true } 
   }
 ]
 

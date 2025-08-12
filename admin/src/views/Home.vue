@@ -2,7 +2,6 @@
   <div class="p-4">
     <el-card>
       <h2>異常福利列表</h2>
-      <el-button type="primary" @click="goToCreatePage">新增福利</el-button>
 
       <el-table :data="welfareList" style="width: 100%" v-loading="loading">
         <el-table-column prop="title" label="標題" />
@@ -31,10 +30,6 @@ import { getAbnormalWelfares, markAsNormal } from '../api/welfare'
 import { ElMessage } from 'element-plus'
 import { useRouter } from 'vue-router'
 const router = useRouter()
-
-const goToCreatePage = () => {
-  router.push('/welfare/create')
-}
 
 const view = (item) => {
   router.push(`/welfare/${item.id}`)

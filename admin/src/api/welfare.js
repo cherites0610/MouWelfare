@@ -23,3 +23,7 @@ export const updateWelfare = (id, data) => {
 export const createWelfare = (data) => {
   return api.post('/welfare', data)
 }
+
+export const getAllWelfares = (params) => {
+  return api.get('/welfare', { params })
+}
