@@ -10,12 +10,6 @@
         <el-menu-item index="/welfare">
           <span>福利管理</span>
         </el-menu-item>
-        <el-menu-item index="/abnormal">
-          <span>異常檢舉</span>
-        </el-menu-item>
-        <el-menu-item index="/users">
-          <span>使用者列表</span>
-        </el-menu-item>
       </el-menu>
     </el-aside>
 

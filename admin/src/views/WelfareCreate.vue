@@ -78,7 +78,7 @@ const form = ref({
 })
 
 const goBack = () => {
-  router.push('/')
+  router.push('/welfare')
 }
 
 const submit = () => {
@@ -96,7 +96,7 @@ const submit = () => {
       }
       await createWelfare(payload)
       ElMessage.success('建立成功')
-      router.push('/')
+      router.push('/welfare')
     } catch (e) {
       ElMessage.error('建立失敗，請檢查欄位內容')
     }
