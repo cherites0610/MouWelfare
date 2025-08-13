@@ -22,3 +22,6 @@ api/output
 backend
 
 node_modules/
+
+.env
+welfare-462510-eacfaf1645dd.json
