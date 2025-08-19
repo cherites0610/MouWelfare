@@ -94,9 +94,9 @@ export class UserService {
       throw new UnauthorizedException("找不到賬戶號");
     }
 
-    if (!foundUser.isVerified) {
-      throw new ForbiddenException("尚未驗證賬戶");
-    }
+    // if (!foundUser.isVerified) {
+    //   throw new ForbiddenException("尚未驗證賬戶");
+    // }
     return foundUser;
   }
 
