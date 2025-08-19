@@ -1,0 +1,9 @@
+{
+  "version": "1",
+  "name": "Mou-Welfare",
+  "type": "collection",
+  "ignore": [
+    "node_modules",
+    ".git"
+  ]
+}

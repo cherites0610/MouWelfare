@@ -1,54 +1,11 @@
 <template>
   <div class="ai-chat-page p-6">
     <h1 class="text-2xl font-bold mb-4">阿哞AI福利助手</h1>
-    
-    <el-card class="chat-container">
-      <div class="chat-history" ref="chatHistoryRef">
-        <div
-          v-for="(message, index) in conversation"
-          :key="index"
-          :class="['message-item', message.sender, 'flex flex-col']"
-        >
-          <div :class="['message-item', message.sender]">
-            <div class="message-bubble">{{ message.text }}</div>
-          </div>
 
-          <div v-if="message.citations && message.citations.length" class="reference-list mt-2">
-            <h4 class="font-semibold text-gray-600 mb-1">參考資料：</h4>
-            <div
-              v-for="(item, i) in message.citations"
-              :key="i"
-              class="text-sm text-gray-500"
-            >
-              <a :href="item.link" target="_blank" class="hover:underline">{{ item.title }}</a>
-            </div>
-          </div>
+    <gen-search-widget configId="7a2b98db-d899-4f7c-8197-c8a2f0ae7565" triggerId="searchWidgetTrigger">
+    </gen-search-widget>
 
-          <div v-if="message.related_questions && message.related_questions.length" class="mt-2">
-            <h4 class="font-semibold text-gray-600 mb-1">您可能也會想問：</h4>
-            <div class="flex flex-col gap-2">
-              <el-button
-                v-for="(q, i) in message.related_questions"
-                :key="i"
-                size="mini"
-                @click="sendRelatedQuery(q)"
-                class="rounded-full w-full text-left"
-              >{{ q }}</el-button>
-            </div>
-          </div>
-        </div>  <!-- 這裡是v-for迴圈結束的div -->
-      </div>
-      
-      <div class="input-area mt-4">
-        <el-input 
-          v-model="userQuery" 
-          placeholder="請輸入您的問題..." 
-          @keyup.enter="sendMessage"
-          class="flex-grow mr-2"
-        />
-        <el-button type="primary" @click="sendMessage" :loading="isLoading">發送</el-button>
-      </div>
-    </el-card>
+    <input placeholder="在這裡搜尋" id="searchWidgetTrigger" />
   </div>
 </template>
 
@@ -134,37 +91,47 @@ const sendRelatedQuery = (question) => {
   max-width: 800px;
   margin: 0 auto;
 }
+
 .chat-container {
   display: flex;
   flex-direction: column;
 }
+
 .chat-history {
   flex-grow: 1;
   overflow-y: auto;
   padding: 10px;
   border-bottom: 1px solid #e0e0e0;
-  max-height: 500px; /* 或你想要的固定高度 */
+  max-height: 500px;
+  /* 或你想要的固定高度 */
 }
+
 .input-area {
   display: flex;
   padding: 10px 0;
 }
+
 .message-item {
   margin-bottom: 15px;
   display: flex;
 }
+
 .message-item.user {
   justify-content: flex-end;
 }
+
 .message-item.user .message-bubble {
   background-color: #e1ffc7;
 }
+
 .message-item.ai {
   justify-content: flex-start;
 }
+
 .message-item.ai .message-bubble {
   background-color: #f1f0f0;
 }
+
 .message-bubble p {
   margin: 0 0 0.6em 0;
 }
@@ -177,16 +144,21 @@ const sendRelatedQuery = (question) => {
 .message-bubble li {
   margin-bottom: 0.3em;
 }
+
 .message-bubble {
   display: inline-block;
   padding: 8px 12px;
   border-radius: 18px;
   max-width: 80%;
   text-align: left;
-  word-wrap: break-word; /* 防止長字串溢出 */
-  white-space: pre-wrap; /* 會保留字串中的換行符號 */
-  max-width: 70%;  /* 控制泡泡不過寬 */
+  word-wrap: break-word;
+  /* 防止長字串溢出 */
+  white-space: pre-wrap;
+  /* 會保留字串中的換行符號 */
+  max-width: 70%;
+  /* 控制泡泡不過寬 */
 }
+
 .reference-list {
   text-align: left;
   margin-left: 20px;

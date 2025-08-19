@@ -1,0 +1,24 @@
+meta {
+  name: 查詢福利
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/welfare/:id?userID=6c5a28c8-cfbe-4aca-a189-8a8d09c012e6&familyID=5c1d931c-dc1a-4d8f-93e3-969dd6835b48
+  body: none
+  auth: inherit
+}
+
+params:query {
+  userID: 6c5a28c8-cfbe-4aca-a189-8a8d09c012e6
+  familyID: 5c1d931c-dc1a-4d8f-93e3-969dd6835b48
+}
+
+params:path {
+  id: fa6441ea-d884-456e-bb53-596f1af0d981
+}
+
+settings {
+  encodeUrl: true
+}

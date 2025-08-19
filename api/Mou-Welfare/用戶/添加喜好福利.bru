@@ -1,0 +1,25 @@
+meta {
+  name: 添加喜好福利
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/user/welfare/:welfareID
+  body: text
+  auth: inherit
+}
+
+params:path {
+  welfareID: fa6441ea-d884-456e-bb53-596f1af0d981
+}
+
+body:text {
+  {
+      "name":"test"
+  }
+}
+
+settings {
+  encodeUrl: true
+}

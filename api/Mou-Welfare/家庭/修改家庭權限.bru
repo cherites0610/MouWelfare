@@ -1,0 +1,21 @@
+meta {
+  name: 修改家庭權限
+  type: http
+  seq: 5
+}
+
+patch {
+  url: {{baseUrl}}/family/:familyID/user/:userID/role/:role
+  body: none
+  auth: inherit
+}
+
+params:path {
+  familyID: 9aea0b8a-0a4f-4bc9-8af3-4ea2dc492780
+  userID: b7b801a9-de65-450f-86d2-a9e955fb5c18
+  role: 3
+}
+
+settings {
+  encodeUrl: true
+}

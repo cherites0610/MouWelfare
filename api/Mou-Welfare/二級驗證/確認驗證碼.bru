@@ -1,0 +1,23 @@
+meta {
+  name: 確認驗證碼
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/auth/verify-code
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+      "email":"cherites061@gma.com",
+      "code": "981456",
+      "action": "verifyAccount"
+  }
+}
+
+settings {
+  encodeUrl: true
+}
