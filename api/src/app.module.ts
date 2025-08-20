@@ -27,6 +27,7 @@ const __dirname = dirname(__filename);
 @Module({
   imports: [
     ConfigModule.forRoot({
+      envFilePath: '.env.develop',
       isGlobal: true,
     }),
     TypeOrmModule.forRootAsync({
