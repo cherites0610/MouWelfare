@@ -1,0 +1,23 @@
+meta {
+  name: 執行動作
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/auth/perform-action
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyZTM0ZjQyMy1kMzA3LTQzMjEtYTNkYS0xNTUwZGE4ZTAyZTAiLCJhY3Rpb24iOiJ2ZXJpZnlBY2NvdW50IiwiaWF0IjoxNzQ5MzE3MDI3LCJleHAiOjE3NDkzMTczMjd9.Lvj5Y89NBOYECuaupbUZGLdMwccHRO8t946gLWIZfKc",
+      "action": "verifyAccount",
+      "newPassword": "Che13416905142"
+  }
+}
+
+settings {
+  encodeUrl: true
+}

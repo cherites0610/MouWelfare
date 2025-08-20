@@ -1,0 +1,15 @@
+meta {
+  name: 找尋所有家庭By用戶ID
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/family
+  body: none
+  auth: inherit
+}
+
+settings {
+  encodeUrl: true
+}

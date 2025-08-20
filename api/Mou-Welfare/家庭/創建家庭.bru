@@ -1,0 +1,21 @@
+meta {
+  name: 創建家庭
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/family
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+      "name":"test"
+  }
+}
+
+settings {
+  encodeUrl: true
+}

@@ -1,0 +1,19 @@
+meta {
+  name: 刪除喜好福利
+  type: http
+  seq: 6
+}
+
+delete {
+  url: {{baseUrl}}/user/welfare/:welfareID
+  body: none
+  auth: inherit
+}
+
+params:path {
+  welfareID: fa6441ea-d884-456e-bb53-596f1af0d981
+}
+
+settings {
+  encodeUrl: true
+}

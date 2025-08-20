@@ -10,6 +10,10 @@
         <el-menu-item index="/welfare">
           <span>福利管理</span>
         </el-menu-item>
+        <el-menu-item index="/ai-test">
+          <span>AI 對話測試</span>
+        </el-menu-item>
+
       </el-menu>
     </el-aside>
 
