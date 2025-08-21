@@ -15,6 +15,8 @@ import {
   SafeAreaView,
   ImageSourcePropType,
 } from 'react-native';
+import axios from 'axios';
+import { Platform } from 'react-native';
 
 // 定義類型
 interface Item {
@@ -26,6 +28,10 @@ interface Item {
 interface ResultItem {
   title: string;
   url: string;
+  // welfareCards 的結構
+  summary?: string;
+  location?: string;
+  publicationDate?: string;
 }
 
 interface Message {
@@ -104,7 +110,8 @@ const App: React.FC = () => {
   // 獲取 chatID
   const getChatId = async () => {
     // try {
-    //   // const result = await mouRequest.get('application/6236a802-a99f-11ef-86e8-0242ac110002/chat/open');
+    //   const result = await mouRequest.get('application/6236a802-a99f-11ef-86e8-0242ac110002/chat/open');
+      
     //   setChatID(result.data.data);
     // } catch (error) {
     //   Alert.alert('錯誤', '無法獲取 chatID');
@@ -112,42 +119,143 @@ const App: React.FC = () => {
   };
 
   // 發送消息到後端
-  const sendMessageToModel = async (message: string): Promise<string> => {
-    // const result = await mouRequest.post(`/application/chat_message/${chatID}`, {
-    // message,
-    // re_chat: false,
-    // stream: false,
-    // });
-    // return result.data.data.content;
-    return "當前為測試環境\n為避免api超出費用\n請切換至生產環境"
-  };
+  const sendMessageToModel = async (message: string): Promise<{ content: string; cards: ResultItem[]; }> => {
+  try {
+    const baseUrl = Platform.OS === 'android' ? 'http://10.0.2.2:3000' : 'http://localhost:3000';
+    const response = await axios.post(`${baseUrl}/vertex/search`, {
+      query: message
+    }, {
+      timeout: 30000, // 30 秒超時
+      headers: {
+        'Content-Type': 'application/json',
+      }
+    });
+    
+    // 處理回應資料
+    let aiAnswer: string = '';
+    let welfareCards: ResultItem[] = [];
+    
+    // 檢查 response.data 是否為物件，並提取 answer 和 welfareCards
+    if (response.data && typeof response.data === 'object') {
+      if (response.data.answer) {
+        aiAnswer = response.data.answer;
+      } else {
+        // 如果沒有 answer 字段，但有其他內容，可以將整個物件字串化作為備用
+        aiAnswer = JSON.stringify(response.data);
+      }
+
+      // 提取 welfareCards
+      if (response.data.welfareCards && Array.isArray(response.data.welfareCards)) {
+        welfareCards = response.data.welfareCards.map((card: any) => ({
+          title: card.title,
+          url: card.link,
+          summary: card.summary, // 根據您的 ResultItem 介面添加
+          location: card.location, // 根據您的 ResultItem 介面添加
+          publicationDate: card.publicationDate, // 根據您的 ResultItem 介面添加
+        }));
+      }
+
+    } else if (typeof response.data === 'string') {
+      // 如果後端直接返回字串，則直接使用
+      aiAnswer = response.data;
+    } else {
+      aiAnswer = '收到回應但格式不正確';
+    }
+    
+    // 返回一個包含 AI 回答和福利卡片的物件
+    return { content: aiAnswer || '抱歉，沒有收到有效回應', cards: welfareCards };
+    
+  } catch (error) {
+    console.error('Vertex AI 查詢失敗:', error);
+    
+    let errorMessage = '發生未知錯誤，請稍後再試';
+    if (axios.isAxiosError(error)) {
+      if (error.response) {
+        const status = error.response.status;
+        const message = error.response.data?.message || '未知伺服器錯誤';
+        errorMessage = `伺服器錯誤 (${status}): ${message}`;
+      } else if (error.request) {
+        errorMessage = '網路連線錯誤，請檢查：\n1. 後端服務是否正在運行\n2. 網路連線是否正常\n3. URL 設定是否正確';
+      } else if (error.code === 'ECONNABORTED') {
+        errorMessage = '請求超時，AI 處理時間較長，請稍後再試';
+      }
+    }
+    // 即使發生錯誤，也返回一個包含錯誤訊息和空卡片的物件
+    return { content: errorMessage, cards: [] };
+  }
+};
+  // const sendMessageToModel = async (message: string): Promise<string> => {
+  //   // const result = await mouRequest.post(`/application/chat_message/${chatID}`, {
+  //   // message,
+  //   // re_chat: false,
+  //   // stream: false,
+  //   // });
+  //   // return result.data.data.content;
+  //   // return "當前為測試環境\n為避免api超出費用\n請切換至生產環境"
+  // };
 
   // 處理用戶輸入
   const handleSendMessage = async () => {
-    if (!inputText.trim()) {
-      Alert.alert('錯誤', '請輸入問題');
-      return;
+  if (!inputText.trim()) {
+    Alert.alert("錯誤", "請輸入問題");
+    return;
+  }
+
+  // 插入用戶消息
+  setMessages((prev) => [...prev, { type: "user", content: inputText }]);
+  setInputText("");
+
+  // 插入加載中
+  setMessages((prev) => [...prev, { type: "loading" }]);
+
+  try {
+    // 呼叫 sendMessageToModel，它現在返回一個物件 { content, cards }
+    const { content: aiResponseContent, cards: welfareCards } = await sendMessageToModel(inputText);
+
+    // 移除加載中，插入 AI 的文字回答
+    setMessages((prev) => [...prev.slice(0, -1), { type: "bot", content: aiResponseContent }]);
+
+    // 如果有福利卡片，則將它們作為新的訊息類型插入
+    if (welfareCards && welfareCards.length > 0) {
+      setMessages((prev) => [
+        ...prev,
+        { type: "result", resultItems: welfareCards } // 使用 resultItems 來顯示卡片
+      ]);
     }
 
-    // 插入用戶消息
-    setMessages((prev) => [...prev, { type: 'user', content: inputText }]);
-    setInputText('');
+  } catch (error) {
+    // 移除加載中，插入錯誤提示
+    setMessages((prev) => [...prev.slice(0, -1), { type: "bot", content: "發生錯誤，請重新輸入" }]);
+  }
 
-    // 插入加載中
-    setMessages((prev) => [...prev, { type: 'loading' }]);
+  // 自動滾動到底部
+  scrollViewRef.current?.scrollToEnd({ animated: true });
+};
+  // const handleSendMessage = async () => {
+  //   if (!inputText.trim()) {
+  //     Alert.alert('錯誤', '請輸入問題');
+  //     return;
+  //   }
 
-    try {
-      const result = await sendMessageToModel(inputText);
-      // 移除加載中，插入結果
-      setMessages((prev) => [...prev.slice(0, -1), { type: 'bot', content: result }]);
-    } catch (error) {
-      // 移除加載中，插入錯誤提示
-      setMessages((prev) => [...prev.slice(0, -1), { type: 'bot', content: '發生錯誤，請重新輸入' }]);
-    }
+  //   // 插入用戶消息
+  //   setMessages((prev) => [...prev, { type: 'user', content: inputText }]);
+  //   setInputText('');
 
-    // 自動滾動到底部
-    scrollViewRef.current?.scrollToEnd({ animated: true });
-  };
+  //   // 插入加載中
+  //   setMessages((prev) => [...prev, { type: 'loading' }]);
+
+  //   try {
+  //     const result = await sendMessageToModel(inputText);
+  //     // 移除加載中，插入結果
+  //     setMessages((prev) => [...prev.slice(0, -1), { type: 'bot', content: result }]);
+  //   } catch (error) {
+  //     // 移除加載中，插入錯誤提示
+  //     setMessages((prev) => [...prev.slice(0, -1), { type: 'bot', content: '發生錯誤，請重新輸入' }]);
+  //   }
+
+  //   // 自動滾動到底部
+  //   scrollViewRef.current?.scrollToEnd({ animated: true });
+  // };
 
   // 檢查選擇項
   const checkIndex = (name: string): [number, number, string, number] => {
