@@ -1,0 +1,25 @@
+meta {
+  name: 查詢家庭ByID
+  type: http
+  seq: 8
+}
+
+get {
+  url: {{baseUrl}}/family/:id
+  body: text
+  auth: inherit
+}
+
+params:path {
+  id: 5c1d931c-dc1a-4d8f-93e3-969dd6835b48
+}
+
+body:text {
+  {
+      "name":"test"
+  }
+}
+
+settings {
+  encodeUrl: true
+}

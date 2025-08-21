@@ -53,6 +53,7 @@ export class WelfareController {
   }
 
   @Post()
+  @Public()
   async create(@Body() createWelfareDto: CreateWelfareDto) {
     return new ResponseDTO(
       "創建成功",

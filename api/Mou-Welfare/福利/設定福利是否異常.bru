@@ -1,0 +1,24 @@
+meta {
+  name: 設定福利是否異常
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/welfare/:id/abnormal/:abnormal
+  body: none
+  auth: bearer
+}
+
+params:path {
+  id: 0044149a-4130-4bef-934f-4c91a8e2f87b
+  abnormal: true
+}
+
+auth:bearer {
+  token: YTc4MzAxYzhkZTBlNDYyZDgyNzY3OWNkNTkwMjIzZmQ=
+}
+
+settings {
+  encodeUrl: true
+}

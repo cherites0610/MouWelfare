@@ -20,13 +20,14 @@ import { CrawlerModule } from "./crawler/crawler.module.js";
 import { BullModule } from "@nestjs/bullmq";
 import { dirname } from "path";
 import { fileURLToPath } from "url";
+import { VertexModule } from './vertex/vertex.module.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 @Module({
   imports: [
     ConfigModule.forRoot({
-      envFilePath: `.env.${process.env.NODE_ENV || "develop"}`,
+      envFilePath: '.env.develop',
       isGlobal: true,
     }),
     TypeOrmModule.forRootAsync({
@@ -85,6 +86,7 @@ const __dirname = dirname(__filename);
     UserFamilyModule,
     NotificationModule,
     CrawlerModule,
+    VertexModule,
   ],
   controllers: [AppController],
   providers: [

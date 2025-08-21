@@ -37,7 +37,11 @@ const routes = [
     path: '/welfare', 
     component: WelfareList, 
     meta: { requiresAuth: true } 
+  },
+  { path: '/ai-test', 
+    component: () => import('../views/AITest.vue') 
   }
+
 ]
 
 const router = createRouter({

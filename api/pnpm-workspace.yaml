@@ -1,0 +1,6 @@
+ignoredBuiltDependencies:
+  - '@nestjs/core'
+  - '@swc/core'
+  - argon2
+  - msgpackr-extract
+  - sharp

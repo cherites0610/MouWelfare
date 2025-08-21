@@ -1,0 +1,25 @@
+meta {
+  name: 查詢所有福利
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/welfare?page=1&pageSize=20
+  body: none
+  auth: inherit
+}
+
+params:query {
+  page: 1
+  pageSize: 20
+  ~locations: 2
+  ~identities: 1,2
+  ~categories: 1,2,3
+  ~families: 1,2,3
+  ~search: 123
+}
+
+settings {
+  encodeUrl: true
+}

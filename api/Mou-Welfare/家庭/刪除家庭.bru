@@ -1,0 +1,25 @@
+meta {
+  name: 刪除家庭
+  type: http
+  seq: 2
+}
+
+delete {
+  url: {{baseUrl}}/family/:familyID
+  body: text
+  auth: inherit
+}
+
+params:path {
+  familyID: 83138af4-0e93-4400-9e2d-7747825235d2
+}
+
+body:text {
+  {
+      "name":"test"
+  }
+}
+
+settings {
+  encodeUrl: true
+}

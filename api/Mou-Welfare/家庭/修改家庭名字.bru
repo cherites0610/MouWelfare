@@ -1,0 +1,20 @@
+meta {
+  name: 修改家庭名字
+  type: http
+  seq: 4
+}
+
+patch {
+  url: {{baseUrl}}/family/:familyID/name/:name
+  body: none
+  auth: inherit
+}
+
+params:path {
+  familyID: 510757b1-008e-457a-b190-003b21e9b9a8
+  name: 123
+}
+
+settings {
+  encodeUrl: true
+}

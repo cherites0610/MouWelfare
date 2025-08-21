@@ -1,0 +1,30 @@
+meta {
+  name: 添加福利
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/welfare
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+      "title": "1",
+      "details": "1",
+      "summary": "1",
+      "link": "https://google.com",
+      "forward": "1",
+      "publicationDate": "2024-04-03",
+      "status": 1,
+      "locationID": 1,
+      "categoryID": [],
+      "identityID": [1]
+  }
+}
+
+settings {
+  encodeUrl: true
+}

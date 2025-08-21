@@ -1,0 +1,26 @@
+meta {
+  name: 生成邀請碼
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/family/:familyID/invite
+  body: text
+  auth: inherit
+}
+
+params:path {
+  familyID: 5c1d931c-dc1a-4d8f-93e3-969dd6835b48
+}
+
+body:text {
+  {
+      "email":"cherites0610@gmail.com",
+      "password": "Che13416905142"
+  }
+}
+
+settings {
+  encodeUrl: true
+}
