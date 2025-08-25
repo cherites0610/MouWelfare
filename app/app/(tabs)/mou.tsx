@@ -149,8 +149,7 @@ const App: React.FC = () => {
       if (response.data.welfareCards && Array.isArray(response.data.welfareCards)) {
         welfareCards = response.data.welfareCards.map((card: any) => ({
           title: card.title,
-          // url: `home/${card.id}`,   // 模板字串寫法
-          url:card.link,
+          url: `home/${card.id}`,   // 模板字串寫法
           summary: card.summary, // 根據您的 ResultItem 介面添加
           location: card.location, // 根據您的 ResultItem 介面添加
           forward: card.forward, // 根據您的 ResultItem 介面添加
