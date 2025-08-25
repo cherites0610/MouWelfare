@@ -17,7 +17,7 @@ import {
 } from 'react-native';
 import axios from 'axios';
 import { Platform,Linking } from 'react-native';
-
+import AsyncStorage from '@react-native-async-storage/async-storage';
 // 定義類型
 interface Item {
   id: number;
@@ -105,86 +105,271 @@ const App: React.FC = () => {
     // 插入初始服務卡片
     setMessages([{ type: 'service', items: ewlfareItems }]);
     // 獲取 chatID
-    getChatId();
+    const initializeChat = async () => {
+      const id = await getOrCreateChatId();
+      if (id) {
+        // 確保 chatID 已經設置後再載入歷史對話
+        loadChatHistory(id); 
+      }
+    };
+    initializeChat();
   }, []);
 
   // 獲取 chatID
-  const getChatId = async () => {
-    // try {
-    //   const result = await mouRequest.get('application/6236a802-a99f-11ef-86e8-0242ac110002/chat/open');
+  const getOrCreateChatId = async () => {
+    try {
+      // 1. 嘗試從 AsyncStorage 載入 chatID
+      const storedChatId = await AsyncStorage.getItem("current_chat_id");
+      if (storedChatId) {
+        setChatID(storedChatId);
+        console.log("從 AsyncStorage 載入 chatID:", storedChatId);
+        return storedChatId; // 返回載入的 chatID
+      }
+
+      // 2. 如果 AsyncStorage 中沒有，則向後端請求新的 chatID
+      const baseUrl = Platform.OS === 'android' ? 'http://10.0.2.2:3000' : 'http://localhost:3000';
+      // 注意：這裡的 userId 應該是您應用程式中實際的用戶 ID
+      // 如果沒有用戶登入系統，您可以生成一個 UUID 並儲存起來作為匿名用戶的 ID
+      const userId = '06d55800-9a60-4a33-9777-e6ac439b82e7'; // 請替換為實際的用戶 ID
+
+      const response = await axios.post(`${baseUrl}/vertex/conversations`, {
+        userId: userId,
+        title: '新對話' // 可以給一個預設標題
+      });
       
-    //   setChatID(result.data.data);
-    // } catch (error) {
-    //   Alert.alert('錯誤', '無法獲取 chatID');
-    // }
+      const newChatId = response.data.conversationId.toString();
+      setChatID(newChatId);
+      await AsyncStorage.setItem("current_chat_id", newChatId); // 儲存新的 chatID 到 AsyncStorage
+      console.log("從後端獲取並儲存新的 chatID:", newChatId);
+      return newChatId; // 返回新的 chatID
+
+    } catch (error) {
+      console.error('無法獲取或創建 chatID:', error);
+      Alert.alert('錯誤', '無法獲取或創建 chatID');
+      return null; // 發生錯誤時返回 null
+    }
+  };
+  // const getChatId = async () => {
+  //   // try {
+  //   //   const result = await mouRequest.get('application/6236a802-a99f-11ef-86e8-0242ac110002/chat/open');
+      
+  //   //   setChatID(result.data.data);
+  //   // } catch (error) {
+  //   //   Alert.alert('錯誤', '無法獲取 chatID');
+  //   // }
+  // };
+  const loadChatHistory = async (currentChatId: string) => {
+    if (!currentChatId) return; // 確保 chatID 存在
+
+    try {
+      const baseUrl = Platform.OS === 'android' ? 'http://10.0.2.2:3000' : 'http://localhost:3000';
+      const userId = '06d55800-9a60-4a33-9777-e6ac439b82e7'; // 請替換為實際的用戶 ID，與 getOrCreateChatId 中的保持一致
+
+      // 向後端發送請求，獲取特定 chatID 下的所有歷史訊息
+      const response = await axios.get(`${baseUrl}/vertex/conversations/${userId}/${currentChatId}`);
+      
+      // 後端返回的 messages 列表
+      const historyMessages: Message[] = response.data.messages.map((msg: any) => {
+        // 根據後端返回的 role 判斷訊息類型
+        let type: Message['type'];
+        if (msg.role === 'user') {
+          type = 'user';
+        } else if (msg.role === 'ai') {
+          type = 'bot'; // 將 ai 角色映射為 bot 類型
+        } else {
+          type = 'bot'; // 預設為 bot，或者根據實際情況處理其他類型
+        }
+
+        // 處理 content 和可能的 welfareCards
+        const messageContent = msg.content;
+        const welfareCards = msg.welfareCards; // 後端直接返回 welfareCards 陣列
+
+        // 根據類型構建 Message 對象
+        if (type === 'bot' && welfareCards && welfareCards.length > 0) {
+          // 如果是機器人訊息且包含福利卡片，則可能需要拆分成兩條訊息
+          // 一條是文字回覆，一條是結果卡片
+          // 這裡為了簡化，我們將文字和卡片都放在 bot 訊息中，或者只顯示文字
+          // 更複雜的處理會在後續 UI/UX 優化中考慮
+          return { 
+            type: type, 
+            content: messageContent, 
+            resultItems: welfareCards.map((card: any) => ({
+              title: card.title,
+              url: `home/${card.id}`,   
+              summary: card.summary, 
+              location: card.location, 
+              forward: card.forward, 
+            }))
+          };
+        } else {
+          return { type: type, content: messageContent };
+        }
+      });
+
+      // 將歷史訊息添加到當前訊息列表的最前面
+      // 注意：這裡我們將初始服務卡片保留，然後將歷史訊息放在其後面
+      // 如果您希望歷史訊息完全覆蓋初始服務卡片，可以調整這裡的邏輯
+      setMessages((prev) => {
+        // 過濾掉初始的服務卡片，如果它不是歷史對話的一部分
+        const initialServiceCard = prev.find(m => m.type === 'service');
+        const filteredPrev = initialServiceCard ? [initialServiceCard] : [];
+        return [...filteredPrev, ...historyMessages];
+      });
+      
+      // 自動滾動到底部
+      scrollViewRef.current?.scrollToEnd({ animated: false });
+
+    } catch (error) {
+      console.error('載入歷史對話失敗:', error);
+      Alert.alert('錯誤', '無法載入歷史對話');
+    }
   };
 
   // 發送消息到後端
   const sendMessageToModel = async (message: string): Promise<{ content: string; cards: ResultItem[]; }> => {
-  try {
-    const baseUrl = Platform.OS === 'android' ? 'http://10.0.2.2:3000' : 'http://localhost:3000';
-    const response = await axios.post(`${baseUrl}/vertex/search`, {
-      query: message
-    }, {
-      timeout: 30000, // 30 秒超時
-      headers: {
-        'Content-Type': 'application/json',
-      }
-    });
-    
-    // 處理回應資料
-    let aiAnswer: string = '';
-    let welfareCards: ResultItem[] = [];
-    
-    // 檢查 response.data 是否為物件，並提取 answer 和 welfareCards
-    if (response.data && typeof response.data === 'object') {
-      if (response.data.answer) {
-        aiAnswer = response.data.answer;
+    try {
+      const baseUrl = Platform.OS === 'android' ? 'http://10.0.2.2:3000' : 'http://localhost:3000';
+      const userId = '06d55800-9a60-4a33-9777-e6ac439b82e7'; // 請替換為實際的用戶 ID，與 getOrCreateChatId 中的保持一致
+
+      const response = await axios.post(`${baseUrl}/vertex/search`, {
+        userId: userId, // 傳遞用戶 ID
+        conversationId: chatID ? parseInt(chatID) : undefined, // 傳遞 chatID，如果存在則轉換為數字
+        query: message
+      }, {
+        timeout: 30000, // 30 秒超時
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+      
+      // 處理回應資料
+      let aiAnswer: string = '';
+      let welfareCards: ResultItem[] = [];
+      let returnedConversationId: string = ''; // 新增：用於接收後端返回的 conversationId
+      
+      // 檢查 response.data 是否為物件，並提取 answer 和 welfareCards
+      if (response.data && typeof response.data === 'object') {
+        if (response.data.answer) {
+          aiAnswer = response.data.answer;
+        } else {
+          aiAnswer = JSON.stringify(response.data);
+        }
+
+        // 提取 welfareCards
+        if (response.data.welfareCards && Array.isArray(response.data.welfareCards)) {
+          welfareCards = response.data.welfareCards.map((card: any) => ({
+            title: card.title,
+            url: `home/${card.id}`,   
+            summary: card.summary, 
+            location: card.location, 
+            forward: card.forward, 
+          }));
+        }
+
+        // 提取後端返回的 conversationId
+        if (response.data.conversationId) {
+          returnedConversationId = response.data.conversationId.toString();
+        }
+
+      } else if (typeof response.data === 'string') {
+        aiAnswer = response.data;
       } else {
-        // 如果沒有 answer 字段，但有其他內容，可以將整個物件字串化作為備用
-        aiAnswer = JSON.stringify(response.data);
+        aiAnswer = '收到回應但格式不正確';
+      }
+      
+      // 如果後端返回了新的 conversationId，更新前端的 chatID 狀態
+      if (returnedConversationId && returnedConversationId !== chatID) {
+        setChatID(returnedConversationId);
+        AsyncStorage.setItem("current_chat_id", returnedConversationId); // 同步更新 AsyncStorage
+        console.log("後端返回新的 conversationId，已更新 chatID:", returnedConversationId);
       }
 
-      // 提取 welfareCards
-      if (response.data.welfareCards && Array.isArray(response.data.welfareCards)) {
-        welfareCards = response.data.welfareCards.map((card: any) => ({
-          title: card.title,
-          url: `home/${card.id}`,   // 模板字串寫法
-          summary: card.summary, // 根據您的 ResultItem 介面添加
-          location: card.location, // 根據您的 ResultItem 介面添加
-          forward: card.forward, // 根據您的 ResultItem 介面添加
-        }));
+      // 返回一個包含 AI 回答和福利卡片的物件
+      return { content: aiAnswer || '抱歉，沒有收到有效回應', cards: welfareCards };
+      
+    } catch (error) {
+      console.error('Vertex AI 查詢失敗:', error);
+      
+      let errorMessage = '發生未知錯誤，請稍後再試';
+      if (axios.isAxiosError(error)) {
+        if (error.response) {
+          const status = error.response.status;
+          const message = error.response.data?.message || '未知伺服器錯誤';
+          errorMessage = `伺服器錯誤 (${status}): ${message}`;
+        } else if (error.request) {
+          errorMessage = '網路連線錯誤，請檢查：\n1. 後端服務是否正在運行\n2. 網路連線是否正常\n3. URL 設定是否正確';
+        } else if (error.code === 'ECONNABORTED') {
+          errorMessage = '請求超時，AI 處理時間較長，請稍後再試';
+        }
       }
+      return { content: errorMessage, cards: [] };
+    }
+  };
+//   const sendMessageToModel = async (message: string): Promise<{ content: string; cards: ResultItem[]; }> => {
+//   try {
+//     const baseUrl = Platform.OS === 'android' ? 'http://10.0.2.2:3000' : 'http://localhost:3000';
+//     const response = await axios.post(`${baseUrl}/vertex/search`, {
+//       query: message
+//     }, {
+//       timeout: 30000, // 30 秒超時
+//       headers: {
+//         'Content-Type': 'application/json',
+//       }
+//     });
+    
+//     // 處理回應資料
+//     let aiAnswer: string = '';
+//     let welfareCards: ResultItem[] = [];
+    
+//     // 檢查 response.data 是否為物件，並提取 answer 和 welfareCards
+//     if (response.data && typeof response.data === 'object') {
+//       if (response.data.answer) {
+//         aiAnswer = response.data.answer;
+//       } else {
+//         // 如果沒有 answer 字段，但有其他內容，可以將整個物件字串化作為備用
+//         aiAnswer = JSON.stringify(response.data);
+//       }
 
-    } else if (typeof response.data === 'string') {
-      // 如果後端直接返回字串，則直接使用
-      aiAnswer = response.data;
-    } else {
-      aiAnswer = '收到回應但格式不正確';
-    }
+//       // 提取 welfareCards
+//       if (response.data.welfareCards && Array.isArray(response.data.welfareCards)) {
+//         welfareCards = response.data.welfareCards.map((card: any) => ({
+//           title: card.title,
+//           url: `home/${card.id}`,   // 模板字串寫法
+//           summary: card.summary, // 根據您的 ResultItem 介面添加
+//           location: card.location, // 根據您的 ResultItem 介面添加
+//           forward: card.forward, // 根據您的 ResultItem 介面添加
+//         }));
+//       }
+
+//     } else if (typeof response.data === 'string') {
+//       // 如果後端直接返回字串，則直接使用
+//       aiAnswer = response.data;
+//     } else {
+//       aiAnswer = '收到回應但格式不正確';
+//     }
     
-    // 返回一個包含 AI 回答和福利卡片的物件
-    return { content: aiAnswer || '抱歉，沒有收到有效回應', cards: welfareCards };
+//     // 返回一個包含 AI 回答和福利卡片的物件
+//     return { content: aiAnswer || '抱歉，沒有收到有效回應', cards: welfareCards };
     
-  } catch (error) {
-    console.error('Vertex AI 查詢失敗:', error);
+//   } catch (error) {
+//     console.error('Vertex AI 查詢失敗:', error);
     
-    let errorMessage = '發生未知錯誤，請稍後再試';
-    if (axios.isAxiosError(error)) {
-      if (error.response) {
-        const status = error.response.status;
-        const message = error.response.data?.message || '未知伺服器錯誤';
-        errorMessage = `伺服器錯誤 (${status}): ${message}`;
-      } else if (error.request) {
-        errorMessage = '網路連線錯誤，請檢查：\n1. 後端服務是否正在運行\n2. 網路連線是否正常\n3. URL 設定是否正確';
-      } else if (error.code === 'ECONNABORTED') {
-        errorMessage = '請求超時，AI 處理時間較長，請稍後再試';
-      }
-    }
-    // 即使發生錯誤，也返回一個包含錯誤訊息和空卡片的物件
-    return { content: errorMessage, cards: [] };
-  }
-};
+//     let errorMessage = '發生未知錯誤，請稍後再試';
+//     if (axios.isAxiosError(error)) {
+//       if (error.response) {
+//         const status = error.response.status;
+//         const message = error.response.data?.message || '未知伺服器錯誤';
+//         errorMessage = `伺服器錯誤 (${status}): ${message}`;
+//       } else if (error.request) {
+//         errorMessage = '網路連線錯誤，請檢查：\n1. 後端服務是否正在運行\n2. 網路連線是否正常\n3. URL 設定是否正確';
+//       } else if (error.code === 'ECONNABORTED') {
+//         errorMessage = '請求超時，AI 處理時間較長，請稍後再試';
+//       }
+//     }
+//     // 即使發生錯誤，也返回一個包含錯誤訊息和空卡片的物件
+//     return { content: errorMessage, cards: [] };
+//   }
+// };
 
   // 處理用戶輸入
   const handleSendMessage = async () => {
@@ -373,7 +558,7 @@ const App: React.FC = () => {
                         }
                       }}
                     >
-                      <Text style={styles.resultTitle}>{result.title}</Text>
+                      <Text style={styles.resultTitle} numberOfLines={3} ellipsizeMode="tail">{result.title}</Text>
                       {result.location && <Text style={styles.resultLocation}>地點: {result.location}</Text>}
                       {result.forward && <Text style={styles.resultForward}>福利: {result.forward}</Text>}
                       
@@ -535,6 +720,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#333',
     marginBottom: 2,
+    lineHeight: 24,  
   },
   resultLocation: {
     fontSize: 14,
