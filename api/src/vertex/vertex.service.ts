@@ -141,7 +141,7 @@ export class VertexService {
 
         const results = response.data.results || [];
         return results.map(r => ({
-            id: r.document?.id,
+            id: r.document?.structData?.id || r.document?.id,
             title: r.document?.structData?.title || r.document?.displayName,
             summary: r.document?.structData?.summary || r.document?.snippet,
             detail: r.document?.structData?.detail,
