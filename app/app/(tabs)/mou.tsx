@@ -114,22 +114,23 @@ const App: React.FC = () => {
     };
     initializeChat();
   }, []);
+  
+  useEffect(() => {
+    if (scrollViewRef.current) {
+      scrollViewRef.current.scrollToEnd({ animated: true });
+    }
+  }, [messages]);
 
   // 獲取 chatID
   const getOrCreateChatId = async () => {
     try {
-      // 1. 嘗試從 AsyncStorage 載入 chatID
-      const storedChatId = await AsyncStorage.getItem("current_chat_id");
-      if (storedChatId) {
-        setChatID(storedChatId);
-        console.log("從 AsyncStorage 載入 chatID:", storedChatId);
-        return storedChatId; // 返回載入的 chatID
-      }
+      // 1. 清除 AsyncStorage 中可能存在的舊 chatID (可選，但推薦)
+      await AsyncStorage.removeItem("current_chat_id");
+      console.log("已清除 AsyncStorage 中的舊 chatID");
 
-      // 2. 如果 AsyncStorage 中沒有，則向後端請求新的 chatID
+      // 2. 直接向後端請求新的 chatID
       const baseUrl = Platform.OS === 'android' ? 'http://10.0.2.2:3000' : 'http://localhost:3000';
       // 注意：這裡的 userId 應該是您應用程式中實際的用戶 ID
-      // 如果沒有用戶登入系統，您可以生成一個 UUID 並儲存起來作為匿名用戶的 ID
       const userId = '06d55800-9a60-4a33-9777-e6ac439b82e7'; // 請替換為實際的用戶 ID
 
       const response = await axios.post(`${baseUrl}/vertex/conversations`, {
@@ -139,8 +140,8 @@ const App: React.FC = () => {
       
       const newChatId = response.data.conversationId.toString();
       setChatID(newChatId);
-      await AsyncStorage.setItem("current_chat_id", newChatId); // 儲存新的 chatID 到 AsyncStorage
-      console.log("從後端獲取並儲存新的 chatID:", newChatId);
+      // 這裡不再將新的 chatID 儲存到 AsyncStorage，因為我們希望每次都創建新的
+      console.log("從後端獲取新的 chatID:", newChatId);
       return newChatId; // 返回新的 chatID
 
     } catch (error) {
@@ -149,15 +150,6 @@ const App: React.FC = () => {
       return null; // 發生錯誤時返回 null
     }
   };
-  // const getChatId = async () => {
-  //   // try {
-  //   //   const result = await mouRequest.get('application/6236a802-a99f-11ef-86e8-0242ac110002/chat/open');
-      
-  //   //   setChatID(result.data.data);
-  //   // } catch (error) {
-  //   //   Alert.alert('錯誤', '無法獲取 chatID');
-  //   // }
-  // };
   const loadChatHistory = async (currentChatId: string) => {
     if (!currentChatId) return; // 確保 chatID 存在
 
@@ -186,10 +178,6 @@ const App: React.FC = () => {
 
         // 根據類型構建 Message 對象
         if (type === 'bot' && welfareCards && welfareCards.length > 0) {
-          // 如果是機器人訊息且包含福利卡片，則可能需要拆分成兩條訊息
-          // 一條是文字回覆，一條是結果卡片
-          // 這裡為了簡化，我們將文字和卡片都放在 bot 訊息中，或者只顯示文字
-          // 更複雜的處理會在後續 UI/UX 優化中考慮
           return { 
             type: type, 
             content: messageContent, 
@@ -205,10 +193,6 @@ const App: React.FC = () => {
           return { type: type, content: messageContent };
         }
       });
-
-      // 將歷史訊息添加到當前訊息列表的最前面
-      // 注意：這裡我們將初始服務卡片保留，然後將歷史訊息放在其後面
-      // 如果您希望歷史訊息完全覆蓋初始服務卡片，可以調整這裡的邏輯
       setMessages((prev) => {
         // 過濾掉初始的服務卡片，如果它不是歷史對話的一部分
         const initialServiceCard = prev.find(m => m.type === 'service');
@@ -305,72 +289,7 @@ const App: React.FC = () => {
       return { content: errorMessage, cards: [] };
     }
   };
-//   const sendMessageToModel = async (message: string): Promise<{ content: string; cards: ResultItem[]; }> => {
-//   try {
-//     const baseUrl = Platform.OS === 'android' ? 'http://10.0.2.2:3000' : 'http://localhost:3000';
-//     const response = await axios.post(`${baseUrl}/vertex/search`, {
-//       query: message
-//     }, {
-//       timeout: 30000, // 30 秒超時
-//       headers: {
-//         'Content-Type': 'application/json',
-//       }
-//     });
-    
-//     // 處理回應資料
-//     let aiAnswer: string = '';
-//     let welfareCards: ResultItem[] = [];
-    
-//     // 檢查 response.data 是否為物件，並提取 answer 和 welfareCards
-//     if (response.data && typeof response.data === 'object') {
-//       if (response.data.answer) {
-//         aiAnswer = response.data.answer;
-//       } else {
-//         // 如果沒有 answer 字段，但有其他內容，可以將整個物件字串化作為備用
-//         aiAnswer = JSON.stringify(response.data);
-//       }
-
-//       // 提取 welfareCards
-//       if (response.data.welfareCards && Array.isArray(response.data.welfareCards)) {
-//         welfareCards = response.data.welfareCards.map((card: any) => ({
-//           title: card.title,
-//           url: `home/${card.id}`,   // 模板字串寫法
-//           summary: card.summary, // 根據您的 ResultItem 介面添加
-//           location: card.location, // 根據您的 ResultItem 介面添加
-//           forward: card.forward, // 根據您的 ResultItem 介面添加
-//         }));
-//       }
-
-//     } else if (typeof response.data === 'string') {
-//       // 如果後端直接返回字串，則直接使用
-//       aiAnswer = response.data;
-//     } else {
-//       aiAnswer = '收到回應但格式不正確';
-//     }
-    
-//     // 返回一個包含 AI 回答和福利卡片的物件
-//     return { content: aiAnswer || '抱歉，沒有收到有效回應', cards: welfareCards };
-    
-//   } catch (error) {
-//     console.error('Vertex AI 查詢失敗:', error);
-    
-//     let errorMessage = '發生未知錯誤，請稍後再試';
-//     if (axios.isAxiosError(error)) {
-//       if (error.response) {
-//         const status = error.response.status;
-//         const message = error.response.data?.message || '未知伺服器錯誤';
-//         errorMessage = `伺服器錯誤 (${status}): ${message}`;
-//       } else if (error.request) {
-//         errorMessage = '網路連線錯誤，請檢查：\n1. 後端服務是否正在運行\n2. 網路連線是否正常\n3. URL 設定是否正確';
-//       } else if (error.code === 'ECONNABORTED') {
-//         errorMessage = '請求超時，AI 處理時間較長，請稍後再試';
-//       }
-//     }
-//     // 即使發生錯誤，也返回一個包含錯誤訊息和空卡片的物件
-//     return { content: errorMessage, cards: [] };
-//   }
-// };
-
+  
   // 處理用戶輸入
   const handleSendMessage = async () => {
   if (!inputText.trim()) {
