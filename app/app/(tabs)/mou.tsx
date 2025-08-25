@@ -16,7 +16,7 @@ import {
   ImageSourcePropType,
 } from 'react-native';
 import axios from 'axios';
-import { Platform } from 'react-native';
+import { Platform,Linking } from 'react-native';
 
 // 定義類型
 interface Item {
@@ -29,9 +29,10 @@ interface ResultItem {
   title: string;
   url: string;
   // welfareCards 的結構
+  id?:string;
   summary?: string;
   location?: string;
-  publicationDate?: string;
+  forward?: string;
 }
 
 interface Message {
@@ -148,10 +149,11 @@ const App: React.FC = () => {
       if (response.data.welfareCards && Array.isArray(response.data.welfareCards)) {
         welfareCards = response.data.welfareCards.map((card: any) => ({
           title: card.title,
-          url: card.link,
+          // url: `home/${card.id}`,   // 模板字串寫法
+          url:card.link,
           summary: card.summary, // 根據您的 ResultItem 介面添加
           location: card.location, // 根據您的 ResultItem 介面添加
-          publicationDate: card.publicationDate, // 根據您的 ResultItem 介面添加
+          forward: card.forward, // 根據您的 ResultItem 介面添加
         }));
       }
 
@@ -184,15 +186,6 @@ const App: React.FC = () => {
     return { content: errorMessage, cards: [] };
   }
 };
-  // const sendMessageToModel = async (message: string): Promise<string> => {
-  //   // const result = await mouRequest.post(`/application/chat_message/${chatID}`, {
-  //   // message,
-  //   // re_chat: false,
-  //   // stream: false,
-  //   // });
-  //   // return result.data.data.content;
-  //   // return "當前為測試環境\n為避免api超出費用\n請切換至生產環境"
-  // };
 
   // 處理用戶輸入
   const handleSendMessage = async () => {
@@ -231,31 +224,6 @@ const App: React.FC = () => {
   // 自動滾動到底部
   scrollViewRef.current?.scrollToEnd({ animated: true });
 };
-  // const handleSendMessage = async () => {
-  //   if (!inputText.trim()) {
-  //     Alert.alert('錯誤', '請輸入問題');
-  //     return;
-  //   }
-
-  //   // 插入用戶消息
-  //   setMessages((prev) => [...prev, { type: 'user', content: inputText }]);
-  //   setInputText('');
-
-  //   // 插入加載中
-  //   setMessages((prev) => [...prev, { type: 'loading' }]);
-
-  //   try {
-  //     const result = await sendMessageToModel(inputText);
-  //     // 移除加載中，插入結果
-  //     setMessages((prev) => [...prev.slice(0, -1), { type: 'bot', content: result }]);
-  //   } catch (error) {
-  //     // 移除加載中，插入錯誤提示
-  //     setMessages((prev) => [...prev.slice(0, -1), { type: 'bot', content: '發生錯誤，請重新輸入' }]);
-  //   }
-
-  //   // 自動滾動到底部
-  //   scrollViewRef.current?.scrollToEnd({ animated: true });
-  // };
 
   // 檢查選擇項
   const checkIndex = (name: string): [number, number, string, number] => {
@@ -387,29 +355,36 @@ const App: React.FC = () => {
         );
       case 'result':
         return (
-          <View style={styles.botMessage}>
-            <Image source={botAvatar} style={styles.avatar} />
-            <FlatList
-              data={item.resultItems}
-              renderItem={({ item: result }) => (
-                <TouchableOpacity
-                  style={styles.resultCard}
-                  onPress={() => {
-                    if (result.url !== 'home') {
-                      // 需要實現 URL 跳轉邏輯
-                      Alert.alert('提示', `跳轉到 ${result.url}`);
-                    } else {
-                      setMessages([{ type: 'service', items: ewlfareItems }]);
-                    }
-                  }}
-                >
-                  <Text style={styles.resultText}>{result.title}</Text>
-                </TouchableOpacity>
-              )}
-              keyExtractor={(item, index) => index.toString()}
-            />
-          </View>
-        );
+              <View style={styles.botMessage}>
+                <Image source={botAvatar} style={styles.avatar} />
+                <FlatList
+                  horizontal={true} // 啟用橫向滑動
+                  showsHorizontalScrollIndicator={false} // 隱藏橫向滾動條
+                  data={item.resultItems}
+                  renderItem={({ item: result }) => (
+                    <TouchableOpacity
+                      style={styles.resultCard} // 將在此樣式中設定寬高
+                      onPress={() => {
+                        if (result.url && result.url !== 'home') {
+                          Linking.openURL(result.url).catch(err => 
+                            Alert.alert('錯誤', `無法打開連結: ${result.url}`)
+                          );
+                        } else if (result.url === 'home') {
+                          setMessages([{ type: 'service', items: ewlfareItems }]);
+                        }
+                      }}
+                    >
+                      <Text style={styles.resultTitle}>{result.title}</Text>
+                      {result.location && <Text style={styles.resultLocation}>地點: {result.location}</Text>}
+                      {result.forward && <Text style={styles.resultForward}>福利: {result.forward}</Text>}
+                      
+                      {/* {result.summary && <Text style={styles.resultSummary}>{result.summary}</Text>} */}
+                    </TouchableOpacity>
+                  )}
+                  keyExtractor={(item, index) => index.toString()}
+                />
+              </View>
+            );
       case 'loading':
         return (
           <View style={styles.botMessage}>
@@ -540,12 +515,42 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   resultCard: {
-    backgroundColor: '#fff',
-    padding: 12,
-    borderBottomWidth: 1,
-    borderColor: '#e5e7eb',
-    alignItems: 'center',
-    marginBottom: 12,
+    width: 160, // 設定固定寬度
+      height: 224, // 設定固定高度
+      backgroundColor: '#fff',
+      padding: 15,
+      borderRadius: 10,
+      marginRight: 10, // 卡片之間增加右邊距，用於橫向間隔
+      marginBottom: 10, // 保持底部間距，如果 FlatList 內容會換行
+      borderWidth: 1,
+      borderColor: '#e5e7eb',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 3,
+      elevation: 3, // Android 陰影
+      justifyContent: 'space-between', // 讓內容在卡片內垂直分佈
+  },
+  resultTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 2,
+  },
+  resultLocation: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 2,
+  },
+  resultForward: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 2,
+  },
+  resultSummary: { // 如果您決定顯示 summary，請添加此樣式
+    fontSize: 14,
+    color: '#555',
+    marginTop: 2,
   },
   resultText: {
     fontSize: 16,
