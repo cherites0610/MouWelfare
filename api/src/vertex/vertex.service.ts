@@ -6,6 +6,7 @@ import axios from 'axios';
 import * as fs from 'fs';
 import * as path from 'path';
 import { google } from 'googleapis';
+import { ConversationService } from './conversation.service.js';
 
 @Injectable()
 export class VertexService {
@@ -18,7 +19,8 @@ export class VertexService {
 
 
     constructor(
-        private readonly configService: ConfigService
+        private readonly configService: ConfigService,
+        private readonly conversationService: ConversationService,
     ) {
         const keyFile = this.configService.get<string>('GOOGLE_APPLICATION_CREDENTIALS');
         if (!keyFile) {
@@ -76,7 +78,7 @@ export class VertexService {
             },
             session: '',
             relatedQuestionsSpec: {
-                "enable": true
+                enable: true
             },
             answerGenerationSpec: {
                 ignoreAdversarialQuery: false,
@@ -139,7 +141,7 @@ export class VertexService {
 
         const results = response.data.results || [];
         return results.map(r => ({
-            id: r.document?.id,
+            id: r.document?.structData?.id || r.document?.id,
             title: r.document?.structData?.title || r.document?.displayName,
             summary: r.document?.structData?.summary || r.document?.snippet,
             detail: r.document?.structData?.detail,
@@ -152,13 +154,29 @@ export class VertexService {
 
 
     /** 主函式 回傳 AI 答案 + 福利資訊 */
-    async getAiAnswer(userQuery: string) {
-        const { answerText } = await this.callAnswerApi(userQuery);
+    async getAiAnswer(userQuery: string, userId: string, conversationId?: number) {
+
+        //沒有conversationId 自動新增對話
+        if (!conversationId) {
+            const newConversation = await this.conversationService.createConversation(userId, '未命名對話');
+            conversationId = newConversation.id;
+        }
+
+        // 取得最近訊息作為上下文
+        const history = await this.conversationService.getRecentMessages(conversationId, 5);
+        const contextText = history
+            .map(m => `${m.role === 'user' ? 'User' : 'AI'}: ${m.content}`)
+            .reverse()
+            .join('\n');
+
+        const combinedPrompt = `以下是之前的對話：${contextText}使用者新問題：${userQuery}`;
+
+        const { answerText } = await this.callAnswerApi(combinedPrompt);
         const welfareCards = await this.callSearchApi(userQuery);
 
-        this.conversationHistory.push({ user: userQuery, ai: answerText });
-        if (this.conversationHistory.length > 5) this.conversationHistory.shift();
+        await this.conversationService.addMessage(conversationId, 'user', userQuery);
+        await this.conversationService.addMessage(conversationId, 'ai', answerText,{welfareCards});
 
-        return { answer: answerText, welfareCards };
+        return { conversationId, answer: answerText, welfareCards };
     }
 }

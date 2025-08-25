@@ -3,6 +3,7 @@ import { Location } from "../../common/const-data/entities/location.entity.js";
 import { Gender } from "../../common/enum/gender.enum.js";
 import { UserFamily } from "../../user-family/entities/user-family.entity.js";
 import { Welfare } from "../../welfare/entities/welfare.entity.js";
+// import { Conversation } from "../../vertex/entities/conversation.entity.js";
 import {
   Column,
   Entity,
@@ -85,4 +86,7 @@ export class User {
     name: "user_favourite_welfare",
   })
   welfares: Relation<Welfare>[];
+
+  @OneToMany('Conversation', 'user', { cascade: true })
+  conversations: any[];
 }
