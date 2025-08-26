@@ -18,8 +18,7 @@ import {
 import axios from 'axios';
 import { Platform,Linking } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Welfare, WelfareApiParams, WelfarePaginatedResp, WelfareResp } from "../type/welfareType";
-import { apiFetch, ResponseType } from "./api";
+import {WelfareApiParams} from "../type/welfareType";
 import {fetchWelfareApi} from "@/src/api/welfareApi";
 // 定義類型
 interface Item {
@@ -43,6 +42,7 @@ interface Message {
   content?: string;
   items?: Item[];
   resultItems?: ResultItem[];
+  showAvatar?: boolean;
 }
 
 // 主組件
@@ -116,7 +116,8 @@ const App: React.FC = () => {
   // 初始化
   useEffect(() => {
     // 插入初始服務卡片
-    setMessages([{ type: 'service', items: ewlfareItems }]);
+    handleBotAvatarClick();
+    // setMessages([{ type: 'service', items: ewlfareItems }]);
     // 獲取 chatID
     const initializeChat = async () => {
       const id = await getOrCreateChatId();
@@ -322,7 +323,7 @@ const App: React.FC = () => {
     const { content: aiResponseContent, cards: welfareCards } = await sendMessageToModel(inputText);
 
     // 移除加載中，插入 AI 的文字回答
-    setMessages((prev) => [...prev.slice(0, -1), { type: "bot", content: aiResponseContent }]);
+    setMessages((prev) => [...prev.slice(0, -1), { type: "bot", content: aiResponseContent, showAvatar: true }]);
 
     // 如果有福利卡片，則將它們作為新的訊息類型插入
     if (welfareCards && welfareCards.length > 0) {
@@ -447,6 +448,33 @@ const App: React.FC = () => {
       return [];
     }
   };
+  // 新增：處理機器人頭像點擊事件
+  const handleBotAvatarClick = async () => {
+    // 1. 顯示「載入中」訊息，讓用戶知道程式正在處理
+    setMessages((prev) => [...prev, { type: 'loading' }]);
+
+    try {
+      // 2. 向後端發送隱藏的「你好」訊息
+      // 我們可以重用 sendMessageToModel 函數，但需要確保它不會在前端顯示「你好」
+      const { content: aiResponseContent, cards: welfareCards } = await sendMessageToModel('你好');
+
+      // 3. 移除「載入中」訊息
+      setMessages((prev) => prev.slice(0, -1));
+
+      // 4. 顯示機器人的自我介紹 (如果後端有返回)
+      if (aiResponseContent) {
+      setMessages((prev) => [
+        ...prev,
+        { type: 'bot', content: aiResponseContent, showAvatar: true }
+      ]);
+      }
+        setMessages((prev) => [...prev, { type: 'service', items: ewlfareItems }]);
+    } catch (error) {
+      // 錯誤處理
+      setMessages((prev) => prev.slice(0, -1));
+      setMessages((prev) => [...prev, { type: 'bot', content: '呼叫服務卡片時發生錯誤，請稍後再試。' }]);
+    }
+  };
 
   // 處理最終結果
   // 修改：處理最終結果
@@ -475,6 +503,8 @@ const App: React.FC = () => {
         // 如果沒找到，就顯示「未找到相關福利」的訊息
         const noResult: ResultItem[] = [{ title: '未找到相關福利\n點擊返回主界面', url: 'home' }];
         setMessages((prev) => [...prev, { type: 'result', resultItems: noResult }]);
+        // 自動滾動到底部
+        scrollViewRef.current?.scrollToEnd({ animated: true });
       }
     } catch (error) {
       // 5. 如果發生錯誤，移除「載入中」並顯示錯誤訊息
@@ -482,12 +512,6 @@ const App: React.FC = () => {
       setMessages((prev) => [...prev, { type: 'bot', content: '查詢福利卡片時發生錯誤，請稍後再試。' }]);
     }
   };
-  // const handleResult = (input: [number, number, string, number]) => {
-  //   // 模擬查詢結果（需要實現後端邏輯）
-  //   const result: ResultItem[] = [{ title: '未找到相關福利\n點擊返回主界面', url: 'home' }];
-  //   setMessages((prev) => [...prev, { type: 'result', resultItems: result }]);
-  //   scrollViewRef.current?.scrollToEnd({ animated: true });
-  // };
 
   // 渲染消息
   const renderMessage = ({ item }: { item: Message }) => {
@@ -502,14 +526,24 @@ const App: React.FC = () => {
       case 'bot':
         return (
           <View style={styles.botMessage}>
-            <Image source={{ uri: 'https://via.placeholder.com/40' }} style={styles.avatar} />
+            <TouchableOpacity onPress={handleBotAvatarClick}>
+              <Image
+                source={botAvatar}
+                style={[
+                  styles.avatar,
+                  item.showAvatar ? { opacity: 0 } : {} // 保留空間但隱藏
+                ]}
+              />
+            </TouchableOpacity>
             <Text style={styles.botText}>{item.content}</Text>
           </View>
         );
       case 'service':
         return (
           <View style={styles.botMessage}>
-            <Image source={botAvatar} style={styles.avatar} />
+          <TouchableOpacity onPress={handleBotAvatarClick}> 
+              <Image source={botAvatar} style={styles.avatar} />
+            </TouchableOpacity>
             <FlatList
               horizontal
               data={item.items}
@@ -530,7 +564,9 @@ const App: React.FC = () => {
       case 'place':
         return (
           <View style={styles.botMessage}>
-            <Image source={botAvatar} style={styles.avatar} />
+            <TouchableOpacity onPress={handleBotAvatarClick}> 
+              <Image source={botAvatar} style={styles.avatar} />
+            </TouchableOpacity>
             <FlatList
               data={item.items}
               renderItem={({ item: place }) => (
@@ -548,7 +584,9 @@ const App: React.FC = () => {
       case 'result':
         return (
               <View style={styles.botMessage}>
-                <Image source={botAvatar} style={styles.avatar} />
+                <TouchableOpacity onPress={handleBotAvatarClick}> 
+              <Image source={botAvatar} style={styles.avatar} />
+            </TouchableOpacity>
                 <FlatList
                   horizontal={true} // 啟用橫向滑動
                   showsHorizontalScrollIndicator={false} // 隱藏橫向滾動條
@@ -663,6 +701,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     borderWidth: 1,
     borderColor: '#e5e7eb',
+    marginRight: 5,
   },
   avatar: {
     width: 40,
