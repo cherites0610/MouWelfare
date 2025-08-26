@@ -18,6 +18,9 @@ import {
 import axios from 'axios';
 import { Platform,Linking } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Welfare, WelfareApiParams, WelfarePaginatedResp, WelfareResp } from "../type/welfareType";
+import { apiFetch, ResponseType } from "./api";
+import {fetchWelfareApi} from "@/src/api/welfareApi";
 // 定義類型
 interface Item {
   id: number;
@@ -51,6 +54,16 @@ const App: React.FC = () => {
   const scrollViewRef = useRef<ScrollView>(null);
 
   // 數據
+  const serviceIdToCategoryMap: { [key: number]: string } = {
+  1: '兒童及青少年福利',
+  2: '婦女與幼兒福利',
+  3: '老人福利',
+  4: '社會救助福利',
+  5: '身心障礙福利',
+  6: '其他',
+  // 如果您有更多福利類別，請在這裡補充
+};
+
   const ewlfareItems: Item[] = [
     { id: 1, name: '兒童及青少年福利', image: require("@/assets/images/Mou/baby.jpeg") },
     { id: 2, name: '婦女與幼兒福利', image: require("@/assets/images/Mou/school.jpeg") },
@@ -391,14 +404,90 @@ const App: React.FC = () => {
     }
     scrollViewRef.current?.scrollToEnd({ animated: true });
   };
+   // 新增或修改：根據福利類別和地區查詢福利卡片
+  const fetchWelfareCards = async (serviceId: number, locationName: string): Promise<ResultItem[]> => {
+    try {
+      // 1. 把福利類別的數字 ID 轉換成名稱
+      const categoryName = serviceIdToCategoryMap[serviceId];
+      if (!categoryName) {
+        console.warn(`未找到 serviceId ${serviceId} 對應的類別名稱`);
+        return []; // 如果找不到對應的名稱，就返回空陣列
+      }
+
+      // 2. 準備好呼叫 API 需要的參數
+      const params: WelfareApiParams = {
+        locations: [locationName], // 地區名稱，放在陣列裡
+        categories: [categoryName], // 福利類別名稱，放在陣列裡
+        userID: '06d55800-9a60-4a33-9777-e6ac439b82e7', // 您的用戶 ID，請替換成實際的
+        // 如果後端 API 支援分頁，您也可以加上 page: 1, pageSize: 10 等參數
+      };
+
+      // 3. 呼叫您提供的 fetchWelfareApi 函數
+      const response = await fetchWelfareApi(params);
+
+      // 4. 處理後端返回的資料
+      // 假設後端返回的資料裡，福利卡片列表放在 response.welfares 裡面
+      if (response && Array.isArray(response.data.data)) {
+        return response.data.data.map((card: any) => ({
+          title: card.title,
+          url: `home/${card.id}`,   
+          summary: card.summary, 
+          location: card.location, 
+          forward: card.forward, 
+          // 如果您的 Welfare 類型還有其他欄位，請在這裡補充映射
+          // 例如：imageUrl: card.imageUrl,
+        }));
+      } else {
+        console.warn("後端返回的福利卡片格式不正確或為空:", response);
+        return [];
+      }
+    } catch (error) {
+      console.error("查詢福利卡片失敗:", error);
+      Alert.alert("錯誤", "無法查詢福利卡片，請稍後再試");
+      return [];
+    }
+  };
 
   // 處理最終結果
-  const handleResult = (input: [number, number, string, number]) => {
-    // 模擬查詢結果（需要實現後端邏輯）
-    const result: ResultItem[] = [{ title: '未找到相關福利\n點擊返回主界面', url: 'home' }];
-    setMessages((prev) => [...prev, { type: 'result', resultItems: result }]);
-    scrollViewRef.current?.scrollToEnd({ animated: true });
+  // 修改：處理最終結果
+  const handleResult = async (input: [number, number, string, number]) => {
+    const selectedServiceId = input[3]; // 這是福利類別的 ID
+    const selectedLocationName = input[2]; // 這是地區的名稱
+
+    // 1. 顯示「載入中」訊息，讓用戶知道正在查詢
+    setMessages((prev) => [...prev, { type: 'loading' }]);
+
+    try {
+      // 2. 呼叫 fetchWelfareCards 函數來獲取實際的福利卡片資料
+      const welfareCards = await fetchWelfareCards(selectedServiceId, selectedLocationName);
+
+      // 3. 移除「載入中」訊息
+      setMessages((prev) => prev.slice(0, -1));
+
+      // 4. 根據是否有找到福利卡片來顯示結果
+      if (welfareCards.length > 0) {
+        // 如果找到了，就顯示這些福利卡片
+        setMessages((prev) => [
+          ...prev,
+          { type: 'result', resultItems: welfareCards }
+        ]);
+      } else {
+        // 如果沒找到，就顯示「未找到相關福利」的訊息
+        const noResult: ResultItem[] = [{ title: '未找到相關福利\n點擊返回主界面', url: 'home' }];
+        setMessages((prev) => [...prev, { type: 'result', resultItems: noResult }]);
+      }
+    } catch (error) {
+      // 5. 如果發生錯誤，移除「載入中」並顯示錯誤訊息
+      setMessages((prev) => prev.slice(0, -1));
+      setMessages((prev) => [...prev, { type: 'bot', content: '查詢福利卡片時發生錯誤，請稍後再試。' }]);
+    }
   };
+  // const handleResult = (input: [number, number, string, number]) => {
+  //   // 模擬查詢結果（需要實現後端邏輯）
+  //   const result: ResultItem[] = [{ title: '未找到相關福利\n點擊返回主界面', url: 'home' }];
+  //   setMessages((prev) => [...prev, { type: 'result', resultItems: result }]);
+  //   scrollViewRef.current?.scrollToEnd({ animated: true });
+  // };
 
   // 渲染消息
   const renderMessage = ({ item }: { item: Message }) => {
