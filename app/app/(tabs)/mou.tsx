@@ -20,6 +20,8 @@ import { Platform,Linking } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {WelfareApiParams} from "../type/welfareType";
 import {fetchWelfareApi} from "@/src/api/welfareApi";
+import Markdown from 'react-native-markdown-display';
+
 // 定義類型
 interface Item {
   id: number;
@@ -48,10 +50,12 @@ interface Message {
 // 主組件
 const App: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
-  const [inputText, setInputText] = useState<string>('');
+  // const [inputText, setInputText] = useState<string>('');
+    const [inputText, setInputText] = useState('');
   const [chatID, setChatID] = useState<string>('');
   const [selectedService, setSelectedService] = useState<number>(0);
   const scrollViewRef = useRef<ScrollView>(null);
+  const { width } = Dimensions.get('window');
 
   // 數據
   const serviceIdToCategoryMap: { [key: number]: string } = {
@@ -158,9 +162,10 @@ const App: React.FC = () => {
       console.log("從後端獲取新的 chatID:", newChatId);
       return newChatId; // 返回新的 chatID
 
-    } catch (error) {
+    } 
+    catch (error) {
       console.error('無法獲取或創建 chatID:', error);
-      Alert.alert('錯誤', '無法獲取或創建 chatID');
+      // Alert.alert('錯誤', '無法獲取或創建 chatID');
       return null; // 發生錯誤時返回 null
     }
   };
@@ -168,7 +173,7 @@ const App: React.FC = () => {
     if (!currentChatId) return; // 確保 chatID 存在
 
     try {
-      const baseUrl = Platform.OS === 'android' ? 'http://10.0.2.2:3000' : 'http://localhost:3000';
+      const baseUrl = Platform.OS === 'android' ? 'http://172.20.10.6:3000' : 'http://localhost:3000';
       const userId = '06d55800-9a60-4a33-9777-e6ac439b82e7'; // 請替換為實際的用戶 ID，與 getOrCreateChatId 中的保持一致
 
       // 向後端發送請求，獲取特定 chatID 下的所有歷史訊息
@@ -226,7 +231,7 @@ const App: React.FC = () => {
   // 發送消息到後端
   const sendMessageToModel = async (message: string): Promise<{ content: string; cards: ResultItem[]; }> => {
     try {
-      const baseUrl = Platform.OS === 'android' ? 'http://10.0.2.2:3000' : 'http://localhost:3000';
+      const baseUrl = Platform.OS === 'android' ? 'http://172.20.10.6:3000' : 'http://localhost:3000';
       const userId = '06d55800-9a60-4a33-9777-e6ac439b82e7'; // 請替換為實際的用戶 ID，與 getOrCreateChatId 中的保持一致
 
       const response = await axios.post(`${baseUrl}/vertex/search`, {
@@ -523,21 +528,30 @@ const App: React.FC = () => {
             <Image source={{ uri: 'https://via.placeholder.com/40' }} style={styles.avatar} />
           </View>
         );
-      case 'bot':
-        return (
-          <View style={styles.botMessage}>
-            <TouchableOpacity onPress={handleBotAvatarClick}>
-              <Image
-                source={botAvatar}
-                style={[
-                  styles.avatar,
-                  item.showAvatar ? { opacity: 0 } : {} // 保留空間但隱藏
-                ]}
-              />
-            </TouchableOpacity>
-            <Text style={styles.botText}>{item.content}</Text>
-          </View>
-        );
+      // case 'bot':
+      //   return (
+      //     <View style={styles.botMessage}>
+      //       <TouchableOpacity onPress={handleBotAvatarClick}>
+      //         <Image
+      //           source={botAvatar}
+      //           style={[
+      //             styles.avatar,
+      //             item.showAvatar ? { opacity: 0 } : {} // 保留空間但隱藏
+      //           ]}
+      //         />
+      //       </TouchableOpacity>
+      //       <Text style={styles.botText}>{item.content}</Text>
+      //     </View>
+      //   );
+           case 'bot':
+            return (
+              <View style={styles.botMessage}>
+                <Image source={botAvatar} style={styles.avatar} />
+                <View style={styles.botTextContainer}> {/* 新增一個容器來包裹 Markdown */}
+                  <Markdown style={markdownStyles}>{item.content}</Markdown>
+                </View>
+              </View>
+            );
       case 'service':
         return (
           <View style={styles.botMessage}>
@@ -648,9 +662,11 @@ const App: React.FC = () => {
         <View style={styles.inputContainer}>
           <TextInput
             style={styles.input}
+            placeholderTextColor="#aaa"
+            placeholder="輸入問題..."
             value={inputText}
             onChangeText={setInputText}
-            placeholder="輸入問題..."
+            
           />
           <TouchableOpacity style={styles.sendButton} onPress={handleSendMessage}>
             <Text style={styles.sendButtonText}>發送</Text>
@@ -825,6 +841,52 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
   },
+  botTextContainer: {
+    backgroundColor: '#fff',
+    padding: 12,
+    borderRadius: 8,
+    maxWidth: width * 0.7,
+    marginLeft: 8,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
 });
+const markdownStyles = {
+  body: {
+    fontSize: 16,
+    lineHeight: 24,
+    color: '#333',
+  },
+  heading1: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 10,
+  },
+  heading2: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 8,
+  },
+  strong: {
+    fontWeight: 'bold',
+  },
+  em: {
+    fontStyle: 'italic',
+  },
+  link: {
+    color: 'blue',
+    textDecorationLine: 'underline',
+  },
+  list_item: {
+    marginBottom: 5,
+  },
+  bullet_list: {
+    marginBottom: 5,
+  },
+  ordered_list: {
+    marginBottom: 5,
+  },
+  // 您可以根據需要添加更多 Markdown 元素的樣式
+};
 
 export default App;

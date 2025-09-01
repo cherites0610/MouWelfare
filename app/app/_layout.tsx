@@ -12,7 +12,7 @@ export default function RootLayout() {
     <Provider store={store}>
       <Stack
         screenOptions={{
-          headerShown: false, // 全局禁用標頭
+          headerShown: false, // 全局標頭
         }}
       />
     </Provider>
