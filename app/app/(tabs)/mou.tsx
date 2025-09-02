@@ -22,6 +22,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import {WelfareApiParams} from "../type/welfareType";
 import {fetchWelfareApi} from "@/src/api/welfareApi";
 import Markdown from 'react-native-markdown-display';
+import { AppConfig } from '@/src/config/app.config';
 
 // 定義類型
 interface Item {
@@ -67,7 +68,6 @@ const App: React.FC = () => {
   4: '社會救助福利',
   5: '身心障礙福利',
   6: '其他',
-  // 如果您有更多福利類別，請在這裡補充
 };
 
   const ewlfareItems: Item[] = [
@@ -134,12 +134,6 @@ const App: React.FC = () => {
     };
     initializeChat();
   }, []);
-  
-  useEffect(() => {
-    if (scrollViewRef.current) {
-      scrollViewRef.current.scrollToEnd({ animated: true });
-    }
-  }, [messages]);
 
   // 獲取 chatID
   const getOrCreateChatId = async () => {
@@ -148,13 +142,8 @@ const App: React.FC = () => {
       await AsyncStorage.removeItem("current_chat_id");
       console.log("已清除 AsyncStorage 中的舊 chatID");
 
-      // 2. 直接向後端請求新的 chatID
-      const baseUrl = Platform.OS === 'android' ? 'http://10.0.2.2:3000' : 'http://localhost:3000';
-      // 注意：這裡的 userId 應該是您應用程式中實際的用戶 ID
-      const userId = '06d55800-9a60-4a33-9777-e6ac439b82e7'; // 請替換為實際的用戶 ID
-
-      const response = await axios.post(`${baseUrl}/vertex/conversations`, {
-        userId: userId,
+      const response = await axios.post(AppConfig.api.endpoints.conversations, {
+        userId: AppConfig.user.mockId,
         title: '新對話' // 可以給一個預設標題
       });
       
@@ -175,11 +164,11 @@ const App: React.FC = () => {
     if (!currentChatId) return; // 確保 chatID 存在
 
     try {
-      const baseUrl = Platform.OS === 'android' ? 'http://172.20.10.6:3000' : 'http://localhost:3000';
-      const userId = '06d55800-9a60-4a33-9777-e6ac439b82e7'; // 請替換為實際的用戶 ID，與 getOrCreateChatId 中的保持一致
-
+     
       // 向後端發送請求，獲取特定 chatID 下的所有歷史訊息
-      const response = await axios.get(`${baseUrl}/vertex/conversations/${userId}/${currentChatId}`);
+        const url = `${AppConfig.api.endpoints.conversations}/${AppConfig.user.mockId}/${currentChatId}`;
+        const response = await axios.get(url);
+      // const response = await axios.get(`${baseUrl}/vertex/conversations/${userId}/${currentChatId}`);
       
       // 後端返回的 messages 列表
       const historyMessages: Message[] = response.data.messages.map((msg: any) => {
@@ -233,11 +222,9 @@ const App: React.FC = () => {
   // 發送消息到後端
   const sendMessageToModel = async (message: string): Promise<{ content: string; cards: ResultItem[]; }> => {
     try {
-      const baseUrl = Platform.OS === 'android' ? 'http://172.20.10.6:3000' : 'http://localhost:3000';
-      const userId = '06d55800-9a60-4a33-9777-e6ac439b82e7'; // 請替換為實際的用戶 ID，與 getOrCreateChatId 中的保持一致
-
-      const response = await axios.post(`${baseUrl}/vertex/search`, {
-        userId: userId, // 傳遞用戶 ID
+      
+      const response = await axios.post(AppConfig.api.endpoints.search, {
+        userId: AppConfig.user.mockId, // 傳遞用戶 ID
         conversationId: chatID ? parseInt(chatID) : undefined, // 傳遞 chatID，如果存在則轉換為數字
         query: message
       }, {
@@ -263,6 +250,7 @@ const App: React.FC = () => {
         // 提取 welfareCards
         if (response.data.welfareCards && Array.isArray(response.data.welfareCards)) {
           welfareCards = response.data.welfareCards.map((card: any) => ({
+            id:card.id,
             title: card.title,
             url: `home/${card.id}`,   
             summary: card.summary, 
@@ -330,7 +318,7 @@ const App: React.FC = () => {
     const { content: aiResponseContent, cards: welfareCards } = await sendMessageToModel(inputText);
 
     // 移除加載中，插入 AI 的文字回答
-    setMessages((prev) => [...prev.slice(0, -1), { type: "bot", content: aiResponseContent, showAvatar: true }]);
+    setMessages((prev) => [...prev.slice(0, -1), { type: "bot", content: aiResponseContent, showAvatar: false }]);
 
     // 如果有福利卡片，則將它們作為新的訊息類型插入
     if (welfareCards && welfareCards.length > 0) {
@@ -339,6 +327,8 @@ const App: React.FC = () => {
         { type: "result", resultItems: welfareCards } // 使用 resultItems 來顯示卡片
       ]);
     }
+    // 自動滾動到底部
+  scrollViewRef.current?.scrollToEnd({ animated: true });
 
   } catch (error) {
     // 移除加載中，插入錯誤提示
@@ -426,7 +416,7 @@ const App: React.FC = () => {
       const params: WelfareApiParams = {
         locations: [locationName], // 地區名稱，放在陣列裡
         categories: [categoryName], // 福利類別名稱，放在陣列裡
-        userID: '06d55800-9a60-4a33-9777-e6ac439b82e7', // 您的用戶 ID，請替換成實際的
+        userID: AppConfig.user.mockId, // 您的用戶 ID，請替換成實際的
         // 如果後端 API 支援分頁，您也可以加上 page: 1, pageSize: 10 等參數
       };
 
@@ -522,7 +512,18 @@ const App: React.FC = () => {
   };
 
   // 渲染消息
-  const renderMessage = ({ item }: { item: Message }) => {
+  const renderMessage = ({ item,index }: { item: Message,index:number }) => {
+    
+    const nextMessage = index < messages.length - 1 ? messages[index + 1] : null;
+
+    // 判斷兩個訊息是否來自同一「陣營」（使用者 vs 機器人）
+    const isSameSenderAsNext = 
+      nextMessage && 
+      (item.type === 'user') === (nextMessage.type === 'user');
+
+    // 如果沒有下一則訊息，或者下一則訊息的發送者陣營不同，就顯示頭像
+    const shouldShowAvatar = !isSameSenderAsNext;
+
     switch (item.type) {
       case 'user':
         return (
@@ -533,12 +534,24 @@ const App: React.FC = () => {
         );
            case 'bot':
             return (
+              // <View style={styles.botMessage}>
+              //   <Image source={botAvatar} style={styles.avatar} />
+              //   <View style={styles.botTextContainer}> {/* 新增一個容器來包裹 Markdown */}
+              //     <Markdown style={markdownStyles}>{item.content}</Markdown>
+              //   </View>
+              // </View>
               <View style={styles.botMessage}>
-                <Image source={botAvatar} style={styles.avatar} />
-                <View style={styles.botTextContainer}> {/* 新增一個容器來包裹 Markdown */}
-                  <Markdown style={markdownStyles}>{item.content}</Markdown>
+                  {/* 根據我們的規則來決定是否渲染頭像 */}
+                  {shouldShowAvatar ? (
+                    <Image source={botAvatar} style={styles.avatar} />
+                  ) : (
+                    // 如果不顯示頭像，放一個等寬的空白 View 來佔位，確保訊息能對齊
+                    <View style={styles.avatarPlaceholder} />
+                  )}
+                  <View style={styles.botTextContainer}>
+                    <Markdown style={markdownStyles}>{item.content}</Markdown>
+                  </View>
                 </View>
-              </View>
             );
       case 'service':
         return (
@@ -585,10 +598,19 @@ const App: React.FC = () => {
         );
       case 'result':
         return (
-              <View style={styles.botMessage}>
-                <TouchableOpacity onPress={handleBotAvatarClick}> 
-              <Image source={botAvatar} style={styles.avatar} />
-            </TouchableOpacity>
+            //   <View style={styles.botMessage}>
+            //     <TouchableOpacity onPress={handleBotAvatarClick}> 
+            //   <Image source={botAvatar} style={styles.avatar} />
+            // </TouchableOpacity>
+            <View style={styles.botMessage}>
+              {/* 同樣的邏輯應用在所有機器人發出的訊息類型上 */}
+              {shouldShowAvatar ? (
+                <TouchableOpacity onPress={handleBotAvatarClick}>
+                  <Image source={botAvatar} style={styles.avatar} />
+                </TouchableOpacity>
+              ) : (
+                <View style={styles.avatarPlaceholder} />
+              )}
                 <FlatList
                   horizontal={true} // 啟用橫向滑動
                   showsHorizontalScrollIndicator={false} // 隱藏橫向滾動條
@@ -646,6 +668,7 @@ const App: React.FC = () => {
           ref={scrollViewRef}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
+          onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
         >
           <FlatList
             data={messages}
@@ -719,6 +742,10 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: 20,
     marginRight: 10,
+  },
+  avatarPlaceholder: {
+    width: 40, // 寬度與頭像相同
+    marginRight: 10, // 右邊距與頭像相同
   },
   serviceCard: {
     width: 160,
