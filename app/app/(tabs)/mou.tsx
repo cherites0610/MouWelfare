@@ -16,6 +16,7 @@ import {
   ImageSourcePropType,
 } from 'react-native';
 import axios from 'axios';
+import { useRouter } from 'expo-router';
 import { Platform,Linking } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {WelfareApiParams} from "../type/welfareType";
@@ -51,7 +52,8 @@ interface Message {
 const App: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   // const [inputText, setInputText] = useState<string>('');
-    const [inputText, setInputText] = useState('');
+  const [inputText, setInputText] = useState('');
+  const router = useRouter();
   const [chatID, setChatID] = useState<string>('');
   const [selectedService, setSelectedService] = useState<number>(0);
   const scrollViewRef = useRef<ScrollView>(null);
@@ -435,6 +437,7 @@ const App: React.FC = () => {
       // 假設後端返回的資料裡，福利卡片列表放在 response.welfares 裡面
       if (response && Array.isArray(response.data.data)) {
         return response.data.data.map((card: any) => ({
+          id:card.id,
           title: card.title,
           url: `home/${card.id}`,   
           summary: card.summary, 
@@ -528,21 +531,6 @@ const App: React.FC = () => {
             <Image source={{ uri: 'https://via.placeholder.com/40' }} style={styles.avatar} />
           </View>
         );
-      // case 'bot':
-      //   return (
-      //     <View style={styles.botMessage}>
-      //       <TouchableOpacity onPress={handleBotAvatarClick}>
-      //         <Image
-      //           source={botAvatar}
-      //           style={[
-      //             styles.avatar,
-      //             item.showAvatar ? { opacity: 0 } : {} // 保留空間但隱藏
-      //           ]}
-      //         />
-      //       </TouchableOpacity>
-      //       <Text style={styles.botText}>{item.content}</Text>
-      //     </View>
-      //   );
            case 'bot':
             return (
               <View style={styles.botMessage}>
@@ -609,12 +597,19 @@ const App: React.FC = () => {
                     <TouchableOpacity
                       style={styles.resultCard} // 將在此樣式中設定寬高
                       onPress={() => {
-                        if (result.url && result.url !== 'home') {
-                          Linking.openURL(result.url).catch(err => 
-                            Alert.alert('錯誤', `無法打開連結: ${result.url}`)
-                          );
+                        // 檢查 result.id 是否存在，以避免路徑變成 'home/undefined'
+                        if (result.id) {
+                          // 使用 navigate 和手動拼接字串的方式
+                          router.navigate(('home/' + result.id) as any);
                         } else if (result.url === 'home') {
-                          setMessages([{ type: 'service', items: ewlfareItems }]);
+                          // 處理 "未找到福利" 的情況，這部分邏輯保持不變
+                          setMessages((prev) => {
+                            const initialMessages = prev.filter(m => m.type === 'bot' || m.type === 'service');
+                            if (initialMessages.length > 0) {
+                              return initialMessages;
+                            }
+                            return [{ type: 'service', items: ewlfareItems }];
+                          });
                         }
                       }}
                     >
@@ -887,6 +882,6 @@ const markdownStyles = {
     marginBottom: 5,
   },
   // 您可以根據需要添加更多 Markdown 元素的樣式
-};
+}as const;
 
 export default App;
