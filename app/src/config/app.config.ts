@@ -5,7 +5,7 @@ const YOUR_COMPUTER_IP = '172.20.10.6'; // <--- 把這裡換成你自己的 IP
 const BASE_URL = `http://${YOUR_COMPUTER_IP}:3000`;
 
 // 固定的使用者 ID (如果需要的話 )
-const MOCK_USER_ID = '06d55800-9a60-4a33-9777-e6ac439b82e7';
+const MOCK_USER_ID = '1bdc9519-1ddb-4613-828e-b0b86b39650b';
 
 // 將所有設定值匯出，方便其他檔案使用
 export const AppConfig = {

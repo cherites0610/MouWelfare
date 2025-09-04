@@ -60,13 +60,14 @@ export class VertexService {
         return tokenResponse.token;
     }
 
+    // /** 呼叫 Answer API (AI對話) */
     /** 呼叫 Answer API (AI對話) */
-    private async callAnswerApi(userQuery: string) {
-        const historyText = this.conversationHistory
-        .map(h => `User: ${h.user}\nAI: ${h.ai}`)
-        .join('\n');
+    private async callAnswerApi(userQuery: string,contentText: string) {
+        // const historyText = this.conversationHistory
+        // .map(h => `User: ${h.user}\nAI: ${h.ai}`)
+        // .join('\n');
 
-        const combinedPrompt = `以下是我們之前的對話：\n${historyText}\n\n這是我的新問題：${userQuery}`;
+        const combinedPrompt = `以下是我們之前的對話：\n${contentText}\n\n這是我的新問題：${userQuery}`;
 
         const accessToken = await this.getAccessToken();
         const apiEndpoint = `https://discoveryengine.googleapis.com/v1alpha/projects/${this.projectId}/locations/global/collections/${this.collectionId}/engines/${this.engineId}/servingConfigs/default_search:answer`;
@@ -94,7 +95,7 @@ export class VertexService {
                         1. 回答內容必須嚴格基於所提供的資料庫。
                         2. 清楚說明福利的名稱和相關內容，並以專業、熱心的口吻回答。
                         3. 每個回答的字數必須維持在 200 字以內，並力求簡潔明瞭。
-                        4. 當使用者提供的資料不明確或不夠完整時，在回應的最後持續追問更多資訊，例如「請問您是哪個縣市的居民呢？」或「您方便提供更具體的資料嗎？」，以幫助使用者找到適合自己的福利。
+                        4. 當使用者提供的資料不明確或不夠完整時，在回應的最後持續追問更多資訊，例如「請問您是哪個縣市的居民呢？」或「您方便提供更具體的資料嗎？」等，以幫助使用者找到適合自己的福利。
                         5. 如果資料庫中找不到使用者提問的資訊，請禮貌地告知使用者目前無法提供相關資訊，並避免編造或猜測答案。`
                 },
                 modelSpec: {
@@ -155,28 +156,30 @@ export class VertexService {
 
     /** 主函式 回傳 AI 答案 + 福利資訊 */
     async getAiAnswer(userQuery: string, userId: string, conversationId?: number) {
+    // 步驟 1: 確保我們有一個有效的 conversationId
+    if (!conversationId) {
+        const newConversation = await this.conversationService.createConversation(userId, '未命名對話');
+        conversationId = newConversation.id;
+    }
 
-        //沒有conversationId 自動新增對話
-        if (!conversationId) {
-            const newConversation = await this.conversationService.createConversation(userId, '未命名對話');
-            conversationId = newConversation.id;
-        }
+    // 步驟 2: 從資料庫中獲取【只屬於這個 conversationId 的】歷史紀錄
+    const historyFromDb = await this.conversationService.getRecentMessages(conversationId, 5);
 
-        // 取得最近訊息作為上下文
-        const history = await this.conversationService.getRecentMessages(conversationId, 5);
-        const contextText = history
-            .map(m => `${m.role === 'user' ? 'User' : 'AI'}: ${m.content}`)
-            .reverse()
-            .join('\n');
+    // 步驟 3: 將資料庫的歷史紀錄轉換成純文字的上下文
+    //         這是之前在 callAnswerApi 中做的，現在移到這裡來
+    const contextText = historyFromDb
+        .map(m => `${m.role === 'user' ? 'User' : 'AI'}: ${m.content}`)
+        .reverse() // 從舊到新排序
+        .join('\n');
 
-        const combinedPrompt = `以下是之前的對話：${contextText}使用者新問題：${userQuery}`;
+    // 步驟 4: 將【動態生成】的上下文傳遞給底層的 API 呼叫函式
+    const { answerText } = await this.callAnswerApi(userQuery, contextText);
+    const welfareCards = await this.callSearchApi(userQuery);
 
-        const { answerText } = await this.callAnswerApi(combinedPrompt);
-        const welfareCards = await this.callSearchApi(userQuery);
+    // 步驟 5: 將新的問答儲存到【正確的】conversationId 中
+    await this.conversationService.addMessage(conversationId, 'user', userQuery);
+    await this.conversationService.addMessage(conversationId, 'ai', answerText, { welfareCards });
 
-        await this.conversationService.addMessage(conversationId, 'user', userQuery);
-        await this.conversationService.addMessage(conversationId, 'ai', answerText,{welfareCards});
-
-        return { conversationId, answer: answerText, welfareCards };
+    return { conversationId, answer: answerText, welfareCards };
     }
 }

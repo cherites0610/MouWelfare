@@ -51,6 +51,7 @@ interface Message {
 
 // 主組件
 const App: React.FC = () => {
+  const [isInitialized, setIsInitialized] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   // const [inputText, setInputText] = useState<string>('');
   const [inputText, setInputText] = useState('');
@@ -121,33 +122,62 @@ const App: React.FC = () => {
 
   // 初始化
   useEffect(() => {
-    // 插入初始服務卡片
-    handleBotAvatarClick();
-    // setMessages([{ type: 'service', items: ewlfareItems }]);
-    // 獲取 chatID
-    const initializeChat = async () => {
-      const id = await getOrCreateChatId();
-      if (id) {
-        // 確保 chatID 已經設置後再載入歷史對話
-        loadChatHistory(id); 
-      }
-    };
-    initializeChat();
-  }, []);
+  if (!isInitialized) {
+    // 這個 effect 的職責只有一個：獲取一次 chatID
+    // 一旦 getOrCreateChatId 成功並呼叫了 setChatID
+    // 上面那個監聽 chatID 的 effect 就會自動被觸發，接管後續流程
+    getOrCreateChatId(); 
+    setIsInitialized(true);
+  }
+}, [isInitialized]);
 
-  // 獲取 chatID
+// --- 新增這個 useEffect 來實現 UI 與 chatID 的連動 ---
+useEffect(() => {
+  // 當 chatID 發生變化時（包括從空字串變為初始 ID）
+  // 這個 effect 就會被觸發
+
+  // 如果 chatID 不是一個有效的 ID，就什麼都不做
+  if (!chatID) {
+    return;
+  }
+
+  console.log(`chatID 已變更為: ${chatID}，準備更新 UI...`);
+
+  // 定義一個函式來載入新聊天室的內容
+  const loadNewChat = async () => {
+    // 1. 立刻清空畫面上的舊訊息
+    setMessages([]); 
+
+    // 2. 顯示一個載入中的提示
+    setMessages([{ type: 'loading' }]);
+
+    // 3. 從後端獲取這個 chatID 的歷史紀錄
+    const history = await loadChatHistory(chatID); // <--- 我們會修改 loadChatHistory
+
+    // 4. 移除載入中提示，並顯示歷史紀錄
+    setMessages(history);
+
+    // 如果是全新的聊天室（沒有歷史紀錄），可以顯示一個歡迎訊息
+    if (history.length === 0) {
+      // 這裡可以再次呼叫機器人打招呼，或者顯示一個靜態的歡迎卡片
+      await handleBotAvatarClick(chatID);
+    }
+  };
+
+  loadNewChat();
+
+}, [chatID]); 
+
+  // 新建並獲取 chatID
   const getOrCreateChatId = async () => {
     try {
-      // 1. 清除 AsyncStorage 中可能存在的舊 chatID (可選，但推薦)
-      await AsyncStorage.removeItem("current_chat_id");
-      console.log("已清除 AsyncStorage 中的舊 chatID");
 
       const response = await axios.post(AppConfig.api.endpoints.conversations, {
         userId: AppConfig.user.mockId,
         title: '新對話' // 可以給一個預設標題
       });
       
-      const newChatId = response.data.conversationId.toString();
+      const newChatId = response.data.id.toString();
       setChatID(newChatId);
       // 這裡不再將新的 chatID 儲存到 AsyncStorage，因為我們希望每次都創建新的
       console.log("從後端獲取新的 chatID:", newChatId);
@@ -160,73 +190,55 @@ const App: React.FC = () => {
       return null; // 發生錯誤時返回 null
     }
   };
-  const loadChatHistory = async (currentChatId: string) => {
-    if (!currentChatId) return; // 確保 chatID 存在
+  const loadChatHistory = async (currentChatId: string): Promise<Message[]> => {
+  if (!currentChatId) return [];
 
-    try {
-     
-      // 向後端發送請求，獲取特定 chatID 下的所有歷史訊息
-        const url = `${AppConfig.api.endpoints.conversations}/${AppConfig.user.mockId}/${currentChatId}`;
-        const response = await axios.get(url);
-      // const response = await axios.get(`${baseUrl}/vertex/conversations/${userId}/${currentChatId}`);
+  try {
+    const url = `${AppConfig.api.endpoints.conversations}/${AppConfig.user.mockId}/${currentChatId}`;
+    const response = await axios.get(url);
+    
+    // *** 確保這裡有完整的 map 邏輯 ***
+    const historyMessages: Message[] = response.data.messages.map((msg: any) => {
+      let type: Message['type'] = msg.role === 'user' ? 'user' : 'bot';
       
-      // 後端返回的 messages 列表
-      const historyMessages: Message[] = response.data.messages.map((msg: any) => {
-        // 根據後端返回的 role 判斷訊息類型
-        let type: Message['type'];
-        if (msg.role === 'user') {
-          type = 'user';
-        } else if (msg.role === 'ai') {
-          type = 'bot'; // 將 ai 角色映射為 bot 類型
-        } else {
-          type = 'bot'; // 預設為 bot，或者根據實際情況處理其他類型
-        }
+      if (type === 'bot' && msg.welfareCards && msg.welfareCards.length > 0) {
+        return { 
+          type: type, 
+          content: msg.content, 
+          resultItems: msg.welfareCards.map((card: any) => ({
+            id: card.id,
+            title: card.title,
+            url: `home/${card.id}`,   
+            summary: card.summary, 
+            location: card.location, 
+            forward: card.forward, 
+          }))
+        };
+      } else {
+        return { type: type, content: msg.content };
+      }
+    });
+    
+    return historyMessages; 
 
-        // 處理 content 和可能的 welfareCards
-        const messageContent = msg.content;
-        const welfareCards = msg.welfareCards; // 後端直接返回 welfareCards 陣列
-
-        // 根據類型構建 Message 對象
-        if (type === 'bot' && welfareCards && welfareCards.length > 0) {
-          return { 
-            type: type, 
-            content: messageContent, 
-            resultItems: welfareCards.map((card: any) => ({
-              title: card.title,
-              url: `home/${card.id}`,   
-              summary: card.summary, 
-              location: card.location, 
-              forward: card.forward, 
-            }))
-          };
-        } else {
-          return { type: type, content: messageContent };
-        }
-      });
-      setMessages((prev) => {
-        // 過濾掉初始的服務卡片，如果它不是歷史對話的一部分
-        const initialServiceCard = prev.find(m => m.type === 'service');
-        const filteredPrev = initialServiceCard ? [initialServiceCard] : [];
-        return [...filteredPrev, ...historyMessages];
-      });
-      
-      // 自動滾動到底部
-      scrollViewRef.current?.scrollToEnd({ animated: false });
-
-    } catch (error) {
-      console.error('載入歷史對話失敗:', error);
-      Alert.alert('錯誤', '無法載入歷史對話');
-    }
-  };
-
+  } catch (error) {
+    console.error('載入歷史對話失敗:', error);
+    Alert.alert('錯誤', '無法載入歷史對話');
+    return []; // 發生錯誤時也返回空陣列
+  }
+};
+  
   // 發送消息到後端
-  const sendMessageToModel = async (message: string): Promise<{ content: string; cards: ResultItem[]; }> => {
+  const sendMessageToModel = async (message: string, conversationIdOverride?: string): Promise<{ content: string; cards: ResultItem[]; }> => {
     try {
-      
-      const response = await axios.post(AppConfig.api.endpoints.search, {
-        userId: AppConfig.user.mockId, // 傳遞用戶 ID
-        conversationId: chatID ? parseInt(chatID) : undefined, // 傳遞 chatID，如果存在則轉換為數字
-        query: message
+       // 優先使用傳入的 conversationIdOverride，如果沒有，才用 state 中的 chatID
+    const finalChatId = conversationIdOverride || chatID;
+
+    const response = await axios.post(AppConfig.api.endpoints.search, {
+      userId: AppConfig.user.mockId,
+      // 使用我們最終確定的 ID
+      conversationId: finalChatId ? parseInt(finalChatId) : undefined, 
+      query: message
       }, {
         timeout: 30000, // 30 秒超時
         headers: {
@@ -237,7 +249,6 @@ const App: React.FC = () => {
       // 處理回應資料
       let aiAnswer: string = '';
       let welfareCards: ResultItem[] = [];
-      let returnedConversationId: string = ''; // 新增：用於接收後端返回的 conversationId
       
       // 檢查 response.data 是否為物件，並提取 answer 和 welfareCards
       if (response.data && typeof response.data === 'object') {
@@ -259,22 +270,10 @@ const App: React.FC = () => {
           }));
         }
 
-        // 提取後端返回的 conversationId
-        if (response.data.conversationId) {
-          returnedConversationId = response.data.conversationId.toString();
-        }
-
       } else if (typeof response.data === 'string') {
         aiAnswer = response.data;
       } else {
         aiAnswer = '收到回應但格式不正確';
-      }
-      
-      // 如果後端返回了新的 conversationId，更新前端的 chatID 狀態
-      if (returnedConversationId && returnedConversationId !== chatID) {
-        setChatID(returnedConversationId);
-        AsyncStorage.setItem("current_chat_id", returnedConversationId); // 同步更新 AsyncStorage
-        console.log("後端返回新的 conversationId，已更新 chatID:", returnedConversationId);
       }
 
       // 返回一個包含 AI 回答和福利卡片的物件
@@ -447,26 +446,19 @@ const App: React.FC = () => {
     }
   };
   // 新增：處理機器人頭像點擊事件
-  const handleBotAvatarClick = async () => {
+  const handleBotAvatarClick = async (currentChatId: string) => {
     // 1. 顯示「載入中」訊息，讓用戶知道程式正在處理
     setMessages((prev) => [...prev, { type: 'loading' }]);
 
     try {
-      // 2. 向後端發送隱藏的「你好」訊息
-      // 我們可以重用 sendMessageToModel 函數，但需要確保它不會在前端顯示「你好」
-      const { content: aiResponseContent, cards: welfareCards } = await sendMessageToModel('你好');
+       // 使用傳入的、最可靠的 chatID
+    const { content, cards } = await sendMessageToModel('你好', currentChatId);
 
-      // 3. 移除「載入中」訊息
-      setMessages((prev) => prev.slice(0, -1));
-
-      // 4. 顯示機器人的自我介紹 (如果後端有返回)
-      if (aiResponseContent) {
-      setMessages((prev) => [
-        ...prev,
-        { type: 'bot', content: aiResponseContent, showAvatar: true }
-      ]);
-      }
-        setMessages((prev) => [...prev, { type: 'service', items: ewlfareItems }]);
+    setMessages((prev) => {
+      const withoutLoading = prev.filter(m => m.type !== 'loading');
+      return [...withoutLoading, { type: 'bot', content: content }];
+    });
+    setMessages((prev) => [...prev, { type: 'service', items: ewlfareItems }]);
     } catch (error) {
       // 錯誤處理
       setMessages((prev) => prev.slice(0, -1));
@@ -511,6 +503,13 @@ const App: React.FC = () => {
     }
   };
 
+  const handleNewChat = () => {
+  console.log("使用者請求開啟新的聊天室...");
+  // 直接呼叫我們現有的函式來獲取一個全新的 chatID
+  // 之後的所有 UI 更新都會由 useEffect[chatID] 自動處理
+  getOrCreateChatId(); 
+};
+
   // 渲染消息
   const renderMessage = ({ item,index }: { item: Message,index:number }) => {
     
@@ -534,12 +533,6 @@ const App: React.FC = () => {
         );
            case 'bot':
             return (
-              // <View style={styles.botMessage}>
-              //   <Image source={botAvatar} style={styles.avatar} />
-              //   <View style={styles.botTextContainer}> {/* 新增一個容器來包裹 Markdown */}
-              //     <Markdown style={markdownStyles}>{item.content}</Markdown>
-              //   </View>
-              // </View>
               <View style={styles.botMessage}>
                   {/* 根據我們的規則來決定是否渲染頭像 */}
                   {shouldShowAvatar ? (
@@ -556,7 +549,7 @@ const App: React.FC = () => {
       case 'service':
         return (
           <View style={styles.botMessage}>
-          <TouchableOpacity onPress={handleBotAvatarClick}> 
+          <TouchableOpacity onPress={handleNewChat}> 
               <Image source={botAvatar} style={styles.avatar} />
             </TouchableOpacity>
             <FlatList
@@ -579,7 +572,7 @@ const App: React.FC = () => {
       case 'place':
         return (
           <View style={styles.botMessage}>
-            <TouchableOpacity onPress={handleBotAvatarClick}> 
+            <TouchableOpacity onPress={handleNewChat}> 
               <Image source={botAvatar} style={styles.avatar} />
             </TouchableOpacity>
             <FlatList
@@ -598,14 +591,10 @@ const App: React.FC = () => {
         );
       case 'result':
         return (
-            //   <View style={styles.botMessage}>
-            //     <TouchableOpacity onPress={handleBotAvatarClick}> 
-            //   <Image source={botAvatar} style={styles.avatar} />
-            // </TouchableOpacity>
             <View style={styles.botMessage}>
               {/* 同樣的邏輯應用在所有機器人發出的訊息類型上 */}
               {shouldShowAvatar ? (
-                <TouchableOpacity onPress={handleBotAvatarClick}>
+                <TouchableOpacity onPress={handleNewChat}>
                   <Image source={botAvatar} style={styles.avatar} />
                 </TouchableOpacity>
               ) : (
