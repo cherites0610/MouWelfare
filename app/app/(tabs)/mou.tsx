@@ -527,7 +527,7 @@ useEffect(() => {
       case 'user':
         return (
           <View style={styles.userMessage}>
-            <Image source={{ uri: 'https://placehold.co/40' }} style={styles.avatarUser} />
+            {/* <Image source={{ uri: 'https://placehold.co/40' }} style={styles.avatarUser} /> */}
             <Text style={styles.userText}>{item.content}</Text>
             
           </View>
