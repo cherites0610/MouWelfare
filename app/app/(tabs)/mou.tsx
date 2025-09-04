@@ -527,8 +527,9 @@ useEffect(() => {
       case 'user':
         return (
           <View style={styles.userMessage}>
+            <Image source={{ uri: 'https://placehold.co/40' }} style={styles.avatarUser} />
             <Text style={styles.userText}>{item.content}</Text>
-            <Image source={{ uri: 'https://via.placeholder.com/40' }} style={styles.avatar} />
+            
           </View>
         );
            case 'bot':
@@ -731,6 +732,12 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: 20,
     marginRight: 10,
+  },
+  avatarUser: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginLeft: 10,
   },
   avatarPlaceholder: {
     width: 40, // 寬度與頭像相同
