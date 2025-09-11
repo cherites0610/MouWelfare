@@ -17,7 +17,7 @@ export class VertexController {
   @Post('search')
   async search(
     @Body('userId') userId: string,
-    @Body('conversationId') conversationId: number,
+    @Body('conversationId') conversationId: number | undefined,
     @Body('query') query: string,
   ) {
     return this.vertexService.getAiAnswer(query, userId, conversationId);

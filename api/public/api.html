@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>哞福利 API 文檔</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <style>
+    .accordion-content { display: none; }
+    .accordion.active .accordion-content { display: block; }
+  </style>
+</head>
+<body class="bg-gray-50 text-gray-800">
+  <!-- Header -->
+  <header class="flex items-center justify-between p-6 border-b bg-white shadow-sm">
+    <div class="flex items-center space-x-2">
+      <img src="./logo.jpg" class="w-10 h-10 rounded-lg" />
+      <h1 class="text-xl font-bold">哞福利 API 文檔</h1>
+    </div>
+    <nav>
+      <a href="./index.html" class="text-blue-600 hover:underline">回首頁</a>
+    </nav>
+  </header>
+
+  <!-- Content -->
+  <main class="max-w-5xl mx-auto p-6 space-y-8">
+    <!-- Intro -->
+    <section>
+      <h2 class="text-2xl font-semibold mb-3">簡介</h2>
+      <p>API Base URL: 
+        <code class="bg-gray-100 px-2 py-1 rounded">https://mou-api.cherites.org</code>
+      </p>
+      <p>所有需要權限的 API 端點必須在 Header 中加入
+        <code class="bg-gray-100 px-2 py-1 rounded">Authorization: Bearer &lt;Base64(API_KEY)&gt;</code>
+      </p>
+    </section>
+
+    <!-- Accordion: Endpoints -->
+    <section>
+      <h2 class="text-2xl font-semibold mb-4">API 端點</h2>
+
+      <!-- 取得異常福利 -->
+      <!-- <div class="accordion border rounded-lg bg-white shadow-sm">
+        <button class="accordion-header w-full flex justify-between p-4 text-left font-semibold">
+          1. 取得所有異常福利列表 <span class="text-blue-600">GET /welfare/admin/abnormal</span>
+        </button>
+        <div class="accordion-content p-4 border-t text-sm">
+          <p><strong>需要驗證</strong></p>
+          <pre class="bg-gray-100 p-3 rounded">
+curl -X GET "https://mou-api.cherites.org/welfare/admin/abnormal" \
+-H "Authorization: Bearer &lt;Base64Token&gt;"
+          </pre>
+        </div>
+      </div> -->
+
+      <!-- 查單一福利 -->
+      <div class="accordion border rounded-lg bg-white shadow-sm mt-2">
+        <button class="accordion-header w-full flex justify-between p-4 text-left font-semibold">
+          1. 取得單一福利資料 <span class="text-blue-600">GET /welfare/:id</span>
+        </button>
+        <div class="accordion-content p-4 border-t text-sm">
+          <p><strong>不需驗證</strong></p>
+          <pre class="bg-gray-100 p-3 rounded">
+curl -X GET "https://mou-api.cherites.org/welfare/0044149a-4130-4bef-934f-4c91a8e2f87b"
+          </pre>
+        </div>
+      </div>
+
+      <!-- 標記為無異常 -->
+      <!-- <div class="accordion border rounded-lg bg-white shadow-sm mt-2">
+        <button class="accordion-header w-full flex justify-between p-4 text-left font-semibold">
+          3. 將福利標記為無異常 <span class="text-blue-600">POST /welfare/:id/abnormal/false</span>
+        </button>
+        <div class="accordion-content p-4 border-t text-sm">
+          <p><strong>需要驗證</strong></p>
+          <pre class="bg-gray-100 p-3 rounded">
+curl -X POST "https://mou-api.cherites.org/welfare/:id/abnormal/false" \
+-H "Authorization: Bearer &lt;Base64Token&gt;"
+          </pre>
+        </div>
+      </div> -->
+
+      <!-- 更新福利 -->
+      <div class="accordion border rounded-lg bg-white shadow-sm mt-2">
+        <button class="accordion-header w-full flex justify-between p-4 text-left font-semibold">
+          2. 更新福利資料 <span class="text-blue-600">PATCH /welfare/:id</span>
+        </button>
+        <div class="accordion-content p-4 border-t text-sm">
+          <p><strong>需要驗證</strong></p>
+          <pre class="bg-gray-100 p-3 rounded">
+{
+  "title": "更新後的福利標題",
+  "link": "https://new.link.com",
+  "status": 1
+}
+          </pre>
+        </div>
+      </div>
+
+      <!-- 刪除福利 -->
+      <div class="accordion border rounded-lg bg-white shadow-sm mt-2">
+        <button class="accordion-header w-full flex justify-between p-4 text-left font-semibold">
+          3. 刪除福利 <span class="text-blue-600">DELETE /welfare/:id</span>
+        </button>
+        <div class="accordion-content p-4 border-t text-sm">
+          <p><strong>需要驗證</strong></p>
+          <pre class="bg-gray-100 p-3 rounded">
+curl -X DELETE "https://mou-api.cherites.org/welfare/:id" \
+-H "Authorization: Bearer &lt;Base64Token&gt;"
+          </pre>
+        </div>
+      </div>
+
+      <!-- 新增福利 -->
+      <div class="accordion border rounded-lg bg-white shadow-sm mt-2">
+        <button class="accordion-header w-full flex justify-between p-4 text-left font-semibold">
+          4. 新增福利資料 <span class="text-blue-600">POST /welfare</span>
+        </button>
+        <div class="accordion-content p-4 border-t text-sm">
+          <p><strong>需要驗證</strong></p>
+          <pre class="bg-gray-100 p-3 rounded">
+{
+  "title": "新建立的福利",
+  "detail": "詳細內容...",
+  "summary": "這是摘要",
+  "link": "https://example.com/new-welfare",
+  "forward": "快來看看這個新福利！",
+  "publicationDate": "2025-07-13",
+  "status": 1,
+  "locationID": 1,
+  "categoryID": [1, 5],
+  "identityID": [2, 3]
+}
+          </pre>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer class="text-center text-sm text-gray-500 py-6 border-t">
+    © 2025 哞福利. All rights reserved.
+  </footer>
+
+  <!-- JS: Accordion -->
+  <script>
+    document.querySelectorAll(".accordion-header").forEach(btn => {
+    btn.addEventListener("click", () => {
+        document.querySelectorAll(".accordion").forEach(acc => {
+          if (acc !== btn.parentElement) acc.classList.remove("active");
+        });
+        btn.parentElement.classList.toggle("active");
+      });
+    });
+  </script>
+</body>
+</html>

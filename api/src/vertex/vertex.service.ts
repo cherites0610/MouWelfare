@@ -15,40 +15,42 @@ export class VertexService {
     private readonly collectionId: string;
     private readonly projectId: string;
     private readonly engineId: string;
-    private readonly keyFile: string;
+    private readonly credentials: any;
 
 
     constructor(
         private readonly configService: ConfigService,
         private readonly conversationService: ConversationService,
     ) {
-        const keyFile = this.configService.get<string>('GOOGLE_APPLICATION_CREDENTIALS');
-        if (!keyFile) {
-            throw new Error('GCP credentials are not configured.');
+        const keyFileBase64 = this.configService.get<string>('GOOGLE_APPLICATION_CREDENTIALS_BASE64');
+
+        if (!keyFileBase64) {
+        throw new Error('GCP credentials are not configured.');
         }
-        this.keyFile = keyFile;
+
+        try {
+        // 解碼 Base64 字串並解析為 JSON 物件
+        const decodedBuffer = Buffer.from(keyFileBase64, 'base64');
+        const jsonString = decodedBuffer.toString('utf-8');
+        this.credentials = JSON.parse(jsonString);
+
+        } catch (error) {
+        throw new Error('解碼或解析 GCP 憑證時發生錯誤: ' + error.message);
+        }
 
         this.projectId = this.configService.get<string>('PROJECT_ID') ?? "";
         this.collectionId = this.configService.get<string>('COLLECTION_ID') ?? "";
         this.engineId = this.configService.get<string>('ENGINE_ID') ?? "";
 
-        const credentials = this.loadCredentials();
-        this.searchClient = new SearchServiceClient({ credentials });
-    }
-
-    /** 處理服務帳戶金鑰 */
-    private loadCredentials() {
-        if (!this.keyFile || !fs.existsSync(this.keyFile)) {
-        throw new Error(`服務帳戶金鑰檔案未找到於: ${this.keyFile}`);
-        }
-        const keyPath = path.resolve(this.keyFile);
-        const raw = fs.readFileSync(keyPath, 'utf8');
-        return JSON.parse(raw);
+        // 使用解碼後的 JSON 物件作為憑證
+        this.searchClient = new SearchServiceClient({
+        credentials: this.credentials,
+        });
     }
 
     private async getAccessToken(): Promise<string> {
         const auth = new google.auth.GoogleAuth({
-        keyFile: path.resolve(this.keyFile),
+        credentials: this.credentials,
         scopes: ['https://www.googleapis.com/auth/cloud-platform'],
         });
 
