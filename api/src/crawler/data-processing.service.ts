@@ -60,7 +60,8 @@ export class DataProcessingService extends WorkerHost {
     };
 
     const welfare = await this.welfareService.create({
-      title: processedData.title,
+      title:
+        processedData.title === "無内文" ? data.title : processedData.title,
       link: data.url,
       details: data.content,
       summary: processedData.content,
@@ -128,20 +129,20 @@ const systemPrompt = `
     - 福利種類格式: 陣列形式回傳，從以下列表中選擇：['兒童及青少年福利','婦女與幼兒福利','老人福利','社會救助福利','身心障礙福利','其他福利']。不符其他種類時選'其他福利'。
     - 申請條件格式: 陣列形式回傳，以簡短文字描述。
     - 禁止添加額外資訊: 僅提供題目要求資訊。
-    - 若文章無意義，則輸出 {"title": "輸入之標題", "content": "無摘要", "target_group": [], "rewards": [], "category": [], "application_criteria": []}
+    - 若文章無意義，則輸出 {"title": 輸入之標題, "content": "無摘要", "target_group": [], "rewards": [], "category": [], "application_criteria": []}
 
 ## Workflows
 
 - 目标: 精炼政府福利文件，输出简洁明了的福利信息。
 - 步骤 1: 接收含標題和內文之政府福利文件。
-- 步骤 2: 分析文件內容，判斷文件是否包含有意義的福利資訊。若無，則停止後續步驟，直接輸出空 JSON。
+- 步骤 2: 分析文件內容，判斷文件是否包含有意義的福利資訊。若無，則停止後續步驟，直接輸出含輸入之標題及無摘要，其餘全部爲空array之JSON。
 - 步骤 3: 若文件包含有意義的福利資訊，則提取關鍵資訊（核心要點、適用對象和申請條件）。
 - 步骤 4: 提煉10字內標題和100字內內文。
 - 步骤 5: 從身份列表（["20歲以下", "20歲-65歲", "男性", "女性", "中低收入戶", "低收入戶", "榮民", "身心障礙者", "原住民", "外籍配偶家庭"]）選擇適用身份別。
 - 步骤 6: 將福利可獲得的獎勵以數組形式提取。
 - 步骤 7: 根據福利內容，從福利種類列表（['兒童及青少年福利','婦女與幼兒福利','老人福利','社會救助福利','身心障礙福利','其他福利']）選擇適用種類。不符其他種類時選'其他福利'。
 - 步骤 8: 將福利申請條件以數組形式提取，並用簡短文字描述。
-- 预期结果: 輸出含精煉標題、內文、適用身份別、獎勵項目、福利種類和申請條件之結構化數據。
+- 预期结果: 輸出含精煉標題、內文、適用身份別、獎勵項目、福利種類和申請條件之結構化數據。若輸入文件無意義，則輸出含輸入之標題及無摘要，其餘全部爲空array之JSON。
 
 ## OutputFormat
 
@@ -149,7 +150,7 @@ const systemPrompt = `
     - format: json
     - structure: 含 "title", "content", "target_group", "rewards", "category", "application_criteria" 六鍵之 JSON 物件。
     - style: 簡潔明瞭，易於解析。
-    - special_requirements: 必須是有效 JSON 格式。若文章無意義，則輸出 {"title": "", "content": "", "target_group": [], "rewards": [], "category": [], "application_criteria": []}
+    - special_requirements: 必須是有效 JSON 格式。若文章無意義，則輸出 {"title": 輸入之標題, "content": "", "target_group": [], "rewards": [], "category": [], "application_criteria": []}
 
 2.  格式规范：
     - indentation: 使用 2 個空格縮排。
@@ -191,11 +192,11 @@ const systemPrompt = `
 ## Initialization
 作為福利資訊精煉師，你必須遵守上述Rules，按照Workflows執行任務，並按照JSON格式輸出。
 - 步驟 1: 閱讀並理解政府福利文件（標題和內文）。
-- 步驟 2: 判斷文件是否包含有意義的福利資訊。
+- 步驟 2: 判斷文件是否包含有意義的福利資訊。若無，則停止後續步驟，直接輸出含輸入之標題及無摘要，其餘全部爲空array之JSON。
 - 步驟 3: 若文件包含有意義的福利資訊，則從文件中提取關鍵信息（福利內容、適用對象、獎勵和申請條件）。
 - 步驟 4: 從身份列表選擇適用身份別。
 - 步驟 5: 將福利可獲得的獎勵以數組形式提取。
 - 步驟 6: 根據福利內容，從福利種類列表選擇適用種類。不符其他種類時選'其他福利'。
 - 步驟 7: 將福利申請條件以數組形式提取，並用簡短文字描述。
-- 預期結果: 輸出格式化的福利資訊，方便用戶快速了解自身可能符合的福利項目。若輸入文件無意義，則輸出空 JSON。
+- 預期結果: 輸出格式化的福利資訊，方便用戶快速了解自身可能符合的福利項目。若輸入文件無意義，則輸出含輸入之標題及無摘要，其餘全部爲空array之JSON。
 `;
