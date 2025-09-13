@@ -24,7 +24,7 @@ export class WelfareService {
     private readonly welfareRepository: Repository<Welfare>,
     private readonly constDataService: ConstDataService,
     private readonly familyService: FamilyService,
-    private readonly userService: UserService,
+    private readonly userService: UserService
   ) {}
 
   async create(createWelfareDto: CreateWelfareDto) {
@@ -79,7 +79,7 @@ export class WelfareService {
 
     const categoryIds = this.filterByNames(
       dto.categories,
-      this.constDataService.getCategories(),
+      this.constDataService.getCategories()
     );
     if (categoryIds.length > 0) {
       queryBuilder.andWhere("categories.id IN (:...categoryIds)", {
@@ -89,7 +89,7 @@ export class WelfareService {
 
     const locationIds = this.filterByNames(
       dto.locations,
-      this.constDataService.getLocations(),
+      this.constDataService.getLocations()
     );
     if (locationIds.length > 0) {
       queryBuilder.andWhere("location.id IN (:...locationIds)", {
@@ -115,7 +115,7 @@ export class WelfareService {
         responseList,
         dto.userID,
         identities,
-        familyID,
+        familyID
       );
     }
 
@@ -149,7 +149,7 @@ export class WelfareService {
         [response],
         dto.userID,
         user.identities,
-        dto.familyID,
+        dto.familyID
       );
     }
 
@@ -180,7 +180,7 @@ export class WelfareService {
 
   getWelfareLight(
     welfareIdentities: Identity[],
-    userIdentities: Identity[],
+    userIdentities: Identity[]
   ): number {
     if (!userIdentities) {
       return LightStatus.NoIdentity;
@@ -231,7 +231,7 @@ export class WelfareService {
 
   private filterByNames(
     dtoValues: string[] | undefined,
-    allData: { id: number; name: string }[],
+    allData: { id: number; name: string }[]
   ): number[] {
     if (!dtoValues || dtoValues.length === 0) return [];
     return allData
@@ -247,6 +247,7 @@ export class WelfareService {
       summary: welfare.summary,
       link: welfare.link,
       forward: welfare.forward,
+      applicationCriteria: welfare.applicationCriteria,
       publicationDate: welfare.publicationDate
         ? welfare.publicationDate.toISOString().split("T")[0]
         : "",
@@ -264,7 +265,7 @@ export class WelfareService {
     dtoList: WelfareResponseDTO[],
     userID: string,
     identities: Identity[],
-    familyID?: string,
+    familyID?: string
   ) {
     const user = await this.userService.findOneByID(userID);
     let family: Family | null = null;
@@ -278,7 +279,7 @@ export class WelfareService {
       if (!isMember) throw new NotFoundException("用戶不在家庭中");
 
       otherFamilyMembers = family.userFamilies.filter(
-        (uf) => uf.user.id !== user.id,
+        (uf) => uf.user.id !== user.id
       );
     }
 
@@ -292,7 +293,13 @@ export class WelfareService {
 
       if (family) {
         dto.familyMember = otherFamilyMembers
-          .filter((uf) => this.getWelfareLight(welfare.identities, uf.user.identities) === 1||2||3)
+          .filter(
+            (uf) =>
+              this.getWelfareLight(welfare.identities, uf.user.identities) ===
+                1 ||
+              2 ||
+              3
+          )
           .map((uf) => ({
             avatarUrl: uf.user.avatarUrl,
             lightStatus: 1, // 已經確定為 1，可直接寫死或保留原方法也可

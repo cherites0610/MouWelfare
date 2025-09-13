@@ -20,14 +20,15 @@ import { CrawlerModule } from "./crawler/crawler.module.js";
 import { BullModule } from "@nestjs/bullmq";
 import { dirname } from "path";
 import { fileURLToPath } from "url";
-import { VertexModule } from './vertex/vertex.module.js';
+import { VertexModule } from "./vertex/vertex.module.js";
+import { AIModule } from "./ai/ai.module.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 @Module({
   imports: [
     ConfigModule.forRoot({
-      envFilePath: '.env.develop',
+      envFilePath: ".env.develop",
       isGlobal: true,
     }),
     TypeOrmModule.forRootAsync({
@@ -38,7 +39,6 @@ const __dirname = dirname(__filename);
         username: configService.get("DB_USER"),
         password: configService.get("DB_PASSWORD"),
         database: configService.get("DB_NAME"),
-        // dropSchema: true,
         autoLoadEntities: true,
         synchronize: configService.get("DB_SYNCHRONIZE"),
       }),
@@ -87,6 +87,7 @@ const __dirname = dirname(__filename);
     NotificationModule,
     CrawlerModule,
     VertexModule,
+    AIModule,
   ],
   controllers: [AppController],
   providers: [

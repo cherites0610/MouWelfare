@@ -34,8 +34,37 @@ export class Welfare {
   @Column()
   link: string;
 
-  @Column()
-  forward: string;
+  @Column({
+    type: "text",
+    transformer: {
+      // 3. 提供轉換器
+      to(value: string[]): string {
+        if (!value) return "[]";
+        return JSON.stringify(value);
+      },
+      from(value: string): string[] {
+        if (!value) return [];
+        return JSON.parse(value);
+      },
+    },
+  })
+  forward: string[];
+
+  @Column({
+    type: "text",
+    transformer: {
+      // 3. 提供轉換器
+      to(value: string[]): string {
+        if (!value) return "[]";
+        return JSON.stringify(value);
+      },
+      from(value: string): string[] {
+        if (!value) return [];
+        return JSON.parse(value);
+      },
+    },
+  })
+  applicationCriteria: string[];
 
   @Column({
     nullable: true,

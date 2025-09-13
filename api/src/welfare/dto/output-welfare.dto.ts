@@ -13,7 +13,8 @@ export class WelfareResponseDTO {
   detail: string;
   summary: string;
   link: string;
-  forward: string;
+  forward: string[];
+  applicationCriteria: string[];
   publicationDate: string;
   status: number;
   location: string;

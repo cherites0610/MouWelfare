@@ -6,6 +6,7 @@ import { BullModule } from "@nestjs/bullmq";
 import { DataProcessingService } from "./data-processing.service.js";
 import { WelfareModule } from "../welfare/welfare.module.js";
 import { WelfareService } from "../welfare/welfare.service.js";
+import { AIModule } from "../ai/ai.module.js";
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { WelfareService } from "../welfare/welfare.service.js";
       name: "data-processing",
     }),
     WelfareModule,
+    AIModule,
   ],
   controllers: [CrawlerController],
   providers: [CrawlerService, DataProcessingService],

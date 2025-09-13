@@ -31,15 +31,15 @@ export class CrawlerService {
   constructor(
     @InjectQueue("data-processing")
     private readonly dataQueue: Queue,
-    private readonly welfareService: WelfareService,
-  ) { }
+    private readonly welfareService: WelfareService
+  ) {}
 
   async crawlAllCities(): Promise<void> {
     const existingLinks = new Set(await this.welfareService.findAllLink());
     const config = loadCityConfigs();
 
     const cityTasks = Object.entries(config).map(([cityName, cityConfig]) =>
-      this.crawlSingleCity(cityName, cityConfig, existingLinks),
+      this.crawlSingleCity(cityName, cityConfig, existingLinks)
     );
 
     const allResultsNested = await Promise.all(cityTasks);
@@ -50,7 +50,11 @@ export class CrawlerService {
     await fsExtra.ensureDir(outputDir);
 
     const outputPath = join(outputDir, "results.json");
-    await fsExtra.writeFile(outputPath, JSON.stringify(allResults, null, 2), "utf8");
+    await fsExtra.writeFile(
+      outputPath,
+      JSON.stringify(allResults, null, 2),
+      "utf8"
+    );
     this.logger.log(`原始資料已輸出至 ${outputPath}`);
 
     this.logger.log(`所有城市爬取完成`);
@@ -68,7 +72,7 @@ export class CrawlerService {
   private async crawlSingleCity(
     cityName: string,
     config,
-    existingLinks: Set<string>,
+    existingLinks: Set<string>
   ): Promise<any[]> {
     this.logger.log(`🔍 開始爬取 ${cityName}`);
     const cityResults = await this.bfsCrawl(cityName, config, existingLinks);
@@ -79,7 +83,7 @@ export class CrawlerService {
   private async bfsCrawl(
     cityName: string,
     config,
-    existingLinks: Set<string>,
+    existingLinks: Set<string>
   ): Promise<any[]> {
     const { baseUrl, city: cityDisplayName } = config;
 
@@ -103,7 +107,7 @@ export class CrawlerService {
           this.logger.debug(`[${taskId}] 開始處理 ${url}`);
           const response = await this.withTimeout(
             axios.get(url),
-            this.timeoutMs,
+            this.timeoutMs
           );
           const $ = cheerio.load(response.data);
 
@@ -199,7 +203,7 @@ export class CrawlerService {
 
   private async runWithConcurrency<T>(
     tasks: (() => Promise<T>)[],
-    concurrencyLimit: number,
+    concurrencyLimit: number
   ): Promise<(T | null)[]> {
     const results: (T | null)[] = [];
     const executing: Promise<T | null>[] = [];
@@ -227,7 +231,7 @@ export class CrawlerService {
 
   private async withTimeout<T>(
     promise: Promise<T>,
-    timeoutMs: number,
+    timeoutMs: number
   ): Promise<T> {
     return new Promise<T>((resolve, reject) => {
       const timeout = setTimeout(() => {

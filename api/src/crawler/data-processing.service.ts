@@ -1,19 +1,12 @@
-import { Injectable, Logger } from "@nestjs/common";
+import { Inject, Injectable, Logger } from "@nestjs/common";
 import { Processor, WorkerHost } from "@nestjs/bullmq";
 import { Job } from "bullmq";
-import { GoogleGenAI } from "@google/genai";
-import { RateLimiter } from "./utils/rate-limiter.js";
 import { ConfigService } from "@nestjs/config";
-import { join } from "path";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import { WelfareService } from "../welfare/welfare.service.js";
 import { WelfareStatus } from "../common/enum/welfare-status.enum.js";
 import { ConstDataService } from "../common/const-data/const-data.service.js";
-import { dirname } from "path";
-import { fileURLToPath } from "url";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+import { AI_PROVIDER } from "../ai/ai-provider.interface.js";
+import { ResilientAIService } from "../ai/resilient-ai.service.js";
 
 // 定義爬取結果的資料結構
 interface CrawlData {
@@ -28,22 +21,14 @@ interface CrawlData {
 @Processor("data-processing")
 export class DataProcessingService extends WorkerHost {
   private readonly logger = new Logger(DataProcessingService.name);
-  private readonly ai;
-  private aiRateLimiter = new RateLimiter(13);
-  private modelName = "gemini-2.0-flash";
 
   constructor(
     private readonly configService: ConfigService,
     private readonly welfareService: WelfareService,
     private readonly constService: ConstDataService,
+    private readonly aiProvider: ResilientAIService
   ) {
     super();
-    // 從 ConfigService 獲取 API key
-    const apiKey = this.configService.get<string>("GEMINI_API_KEY");
-    if (!apiKey) {
-      throw new Error("GEMINI_API_KEY is not defined in configuration");
-    }
-    this.ai = new GoogleGenAI({ apiKey });
   }
 
   async process(job: Job<CrawlData>): Promise<void> {
@@ -52,251 +37,165 @@ export class DataProcessingService extends WorkerHost {
       return;
     }
 
-    let summaryText: string;
-    let categories: string[];
-    let identities: string[];
-
     const data = job.data;
     this.logger.log(`開始處理資料: ${data.url}`);
+    const result = await this.aiProvider.generateContent(
+      data.content,
+      systemPrompt
+    );
+    const jsonRegex = /({[\s\S]*})/;
+    const match = result.match(jsonRegex);
 
-    try {
-      summaryText = await this.retryWithDelay(() => this.summary(data.content));
-      this.logger.log(`${data.title}的摘要為${summaryText}`);
-      categories = await this.retryWithDelay(() => this.category(summaryText));
-      this.logger.log(`${data.title}的分類為${categories}`);
-      identities = await this.retryWithDelay(() => this.identity(summaryText));
-      this.logger.log(`${data.title}的身份別為${identities}`);
+    if (!match || !match[0]) {
+      return;
+    }
 
-      // 3️⃣ 封裝處理後資料
-      const processedData: Omit<CrawlData, "content"> & {
-        details: string;
-        summary: string;
-        category: string[];
-        content?: string;
-        identity: string[];
-      } = {
-        ...data,
-        details: data.content,
-        summary: summaryText,
-        category: categories,
-        identity: identities,
-      };
-      delete processedData.content;
+    const processedData = JSON.parse(match[0]) as {
+      title: string;
+      content: string;
+      target_group: string[];
+      rewards: string[];
+      category: string[];
+      application_criteria: string[];
+    };
 
-      const outputDir = join(__dirname, "../../output");
-      if (!existsSync(outputDir)) {
-        mkdirSync(outputDir, { recursive: true });
-      }
-
-      const outputPath = join(outputDir, "results-finish.json");
-
-      let existingData: any[] = [];
-      if (existsSync(outputPath)) {
-        try {
-          const fileContent = readFileSync(outputPath, "utf8");
-          existingData = JSON.parse(fileContent);
-        } catch (e) {
-          this.logger.warn(`⚠️ 讀取現有檔案失敗，將重新建立: ${e.message}`);
-        }
-      }
-
-      existingData.push(processedData);
-      const locationID = this.constService.getLocationIDByName(processedData.city);
-      const categoryIDs = processedData.category
+    const welfare = await this.welfareService.create({
+      title: processedData.title,
+      link: data.url,
+      details: data.content,
+      summary: processedData.content,
+      forward: processedData.rewards,
+      applicationCriteria: processedData.application_criteria,
+      publicationDate: data.date,
+      status: WelfareStatus.Published,
+      locationID: this.constService.getLocationIDByName(data.city),
+      categoryID: processedData.category
         .map((item) => this.constService.getCategoryIDByName(item))
-        .filter((id) => id != null);
-      const identityIDs = processedData.identity
+        .filter((item) => item !== 0),
+      identityID: processedData.target_group
         .map((item) => this.constService.getIdentityIDByName(item))
-        .filter((id) => id != null);
-
-      this.logger.log(`即將寫入資料庫: locationID=${locationID}, categoryIDs=${categoryIDs}, identityIDs=${identityIDs}`);
-
-      if (!locationID) {
-        this.logger.error(`找不到 city 對應的 locationID: ${processedData.city}`);
-      }
-      if (categoryIDs.length === 0) {
-        this.logger.warn(`categoryIDs 為空: ${processedData.category}`);
-      }
-      if (identityIDs.length === 0) {
-        this.logger.warn(`identityIDs 為空: ${processedData.identity}`);
-      }
-
-      await this.welfareService.create({
-        title: processedData.title,
-        link: processedData.url,
-        details: processedData.details,
-        summary: processedData.summary,
-        forward: "獲得十萬元",
-        publicationDate: processedData.date,
-        status: WelfareStatus.Published,
-        locationID: this.constService.getLocationIDByName(processedData.city),
-        categoryID: processedData.category.map((item) =>
-          this.constService.getCategoryIDByName(item),
-        ),
-        identityID: processedData.identity.map((item) =>
-          this.constService.getIdentityIDByName(item),
-        ),
-        isAbnormal: false,
-      });
-
-      writeFileSync(outputPath, JSON.stringify(existingData, null, 2), "utf8");
-      this.logger.log(`✅ 已寫入處理後資料至 ${outputPath}`);
-    } catch (err) {
-      this.logger.error(`處理資料失敗: ${data.url}，錯誤: ${err.message}`);
-      throw err;
-    }
-  }
-
-  // 處理summary
-  private async summary(content: string): Promise<string> {
-    if (content.length === 0) {
-      return "無摘要";
-    }
-
-    await this.aiRateLimiter.limit(); // 限流器等待
-
-    const response = await this.ai.models.generateContent({
-      model: this.modelName,
-      contents: `
-            你是一個專業的文章總結工具。請閱讀以下文章內容，並以簡潔、客觀的方式總結其核心內容。輸出僅包含總結文字，不包含任何問候語（如「你好」）、解釋、或多餘詞句。總結應控制在50-150字，涵蓋文章主要觀點和結論。請直接提供總結內容。
-
-            文章內容：
-
-            -總結內容控制在100字以內
-            -專注於文本的主要觀點
-            -保持簡潔明瞭
-            -不要捏造內容
-            -若文本内容無意義，則可以回復無摘要
-
-            文本内容:
-            
-            ${content}
-
-        `,
+        .filter((item) => item !== 0),
+      isAbnormal: false,
     });
-
-    return response.text?.trim().replace(/[\n\r]/g, "") || "無法生成AI摘要";
-  }
-
-  // 處理category
-  private async category(content: string): Promise<string[]> {
-    if (content.length === 0) {
-      return ["其他福利"];
-    }
-
-    await this.aiRateLimiter.limit(); // 限流器等待
-
-    const response = await this.ai.models.generateContent({
-      model: this.modelName,
-      contents: `
-            你是一個多標籤分類工具。請閱讀以下文章內容，並從以下特定標籤集中選擇適用的標籤：
-
-            主題：兒童及青少年福利、婦女與幼兒福利、老人福利、社會救助福利、身心障礙福利
-            輸出僅包含選中的標籤，以「|」符號分隔，不包含任何問候語、解釋或多餘文字。每個標籤必須來自上述標籤集，最多輸出5個標籤。若無適用標籤，輸出「其他福利」。
-
-            文章內容：
-
-            ${content}
-
-        `,
-    });
-
-    const temp = [
-      "兒童及青少年福利",
-      "婦女與幼兒福利",
-      "老人福利",
-      "社會救助福利",
-      "身心障礙福利",
-    ];
-    if (response.text) {
-      const category = (response.text as string)
-        .split("|")
-        .map((c) => c.replace(/\s+/g, "").replace(/\n/g, "").trim())
-        .filter((c) => temp.includes(c)); // ✅ 僅保留白名單中的元素
-
-      if (category.length === 0) {
-        return ["其他福利"];
-      }
-
-      return category;
-    }
-
-    return ["其他福利"];
-  }
-
-  // 處理identity
-  private async identity(content: string): Promise<string[]> {
-    if (content.length === 0) {
-      return [];
-    }
-
-    await this.aiRateLimiter.limit(); // 限流器等待
-
-    const response = await this.ai.models.generateContent({
-      model: this.modelName,
-      contents: `
-            你是一個多標籤分類工具。請閱讀以下福利資訊文章內容，並從以下特定標籤集中選擇所有符合文章所述身份的標籤：
-
-            年齡：20歲以下、20歲-65歲、65歲以上
-            性別：男性、女性
-            收入狀況：中低收入戶、低收入戶
-            特殊身份：榮民、身心障礙者、原住民、外籍配偶家庭
-            輸出僅包含選中的標籤，以「|」符號分隔，不包含任何問候語、解釋或多餘文字。每個標籤必須來自上述標籤集，可包含多個同類型標籤（例如多個年齡層或特殊身份），最多輸出8個標籤。若無適用標籤，輸出「無」。僅根據文章明確提到的資訊判斷，避免推測。
-            文章內容：
-
-            ${content}
-        `,
-    });
-
-    const temp = [
-      "20歲以下",
-      "20歲-65歲",
-      "65歲以上",
-      "男性",
-      "女性",
-      "中低收入戶",
-      "低收入戶",
-      "榮民",
-      "身心障礙者",
-      "原住民",
-      "外籍配偶家庭",
-    ];
-
-    if (response.text) {
-      const identity = (response.text as string)
-        .split("|")
-        .map((c) =>
-          c.replace(/\s+/g, "").replace(/\n/g, "").replace(/\r/g, "").trim(),
-        ) // 清理字串
-        .filter((c) => c.length > 0 && c !== "無") // ❌ 排除空字串與 "無"
-        .filter((c) => temp.includes(c)); // ✅ 僅保留白名單中的元素
-
-      return identity.length > 0 ? identity : [];
-    }
-
-    return [];
-  }
-
-  async retryWithDelay<T>(
-    fn: () => Promise<T>,
-    delayMs: number = 5 * 60 * 1000, // 5 分鐘
-    maxRetries: number = 1,
-  ): Promise<T> {
-    let attempt = 0;
-    while (attempt <= maxRetries) {
-      try {
-        return await fn();
-      } catch (err) {
-        attempt++;
-        if (attempt > maxRetries) {
-          throw err;
-        }
-        this.logger.warn(
-          `功能失敗，${delayMs / 1000} 秒後重試：${err.message}`,
-        );
-        await new Promise((resolve) => setTimeout(resolve, delayMs));
-      }
-    }
-    throw new Error("重試失敗"); // 保險用
+    this.logger.log(`✅ 已處理完成資料:${welfare.title}`);
+    return;
   }
 }
+
+const systemPrompt = `
+# Role: 福利資訊精煉師
+
+## Profile
+- language: 繁體中文
+- description: 專精分析政府福利文件，提取關鍵資訊，以簡潔明瞭方式呈現。
+- background: 熟悉政府福利政策與法規，具資訊處理與摘要能力。
+- personality: 嚴謹、細心、客觀、條理清晰。
+- expertise: 福利政策分析、資訊摘要、受眾群體識別、獎勵項目歸納。
+- target_audience: 需快速了解福利資訊之大眾。
+
+## Skills
+
+1.  資訊分析與摘要
+    - 文本分析: 快速分析政府文件內容，提取關鍵資訊。
+    - 資訊摘要: 將文件精簡至100字內。
+    - 標題提煉: 提煉10字內精準標題。
+    - 身份識別: 根據文件內容判斷福利適用身份別。
+
+2.  福利政策理解與應用
+    - 福利政策解讀: 深入理解福利政策內容與適用條件。
+    - 獎勵項目歸納: 準確歸納福利政策提供之獎勵。
+    - 法規知識: 熟悉相關法規，確保資訊準確性。
+    - 政策更新追蹤: 隨時關注福利政策更新，保持資訊時效性。
+
+## Rules
+
+1.  基本原則：
+    - 準確性: 資訊與原始文件一致。
+    - 客觀性: 不帶偏見，客觀呈現。
+    - 簡潔性: 精簡文字表達核心資訊。
+    - 時效性: 關注政策更新，提供最新資訊。
+
+2.  行為準則：
+    - 尊重原始資料: 不擅改或扭曲文件內容。
+    - 嚴謹核對: 多次核對資訊，確保準確。
+    - 優先呈現重點: 關鍵資訊置於顯眼處。
+    - 使用易懂語言: 避免專業術語，力求大眾理解。
+
+3.  限制條件：
+    - 字數限制: 内文100字內，標題10字內。
+    - 身份別選擇: 只能從以下列表中選擇：["20歲以下", "20歲-65歲", "65歲以上", "男性", "女性", "中低收入戶", "低收入戶", "榮民", "身心障礙者", "原住民", "外籍配偶家庭"]。
+    - 獎勵項目格式: 陣列形式回傳。
+    - 福利種類格式: 陣列形式回傳，從以下列表中選擇：['兒童及青少年福利','婦女與幼兒福利','老人福利','社會救助福利','身心障礙福利','其他福利']。不符其他種類時選'其他福利'。
+    - 申請條件格式: 陣列形式回傳，以簡短文字描述。
+    - 禁止添加額外資訊: 僅提供題目要求資訊。
+    - 若文章無意義，則輸出 {"title": "輸入之標題", "content": "無摘要", "target_group": [], "rewards": [], "category": [], "application_criteria": []}
+
+## Workflows
+
+- 目标: 精炼政府福利文件，输出简洁明了的福利信息。
+- 步骤 1: 接收含標題和內文之政府福利文件。
+- 步骤 2: 分析文件內容，判斷文件是否包含有意義的福利資訊。若無，則停止後續步驟，直接輸出空 JSON。
+- 步骤 3: 若文件包含有意義的福利資訊，則提取關鍵資訊（核心要點、適用對象和申請條件）。
+- 步骤 4: 提煉10字內標題和100字內內文。
+- 步骤 5: 從身份列表（["20歲以下", "20歲-65歲", "男性", "女性", "中低收入戶", "低收入戶", "榮民", "身心障礙者", "原住民", "外籍配偶家庭"]）選擇適用身份別。
+- 步骤 6: 將福利可獲得的獎勵以數組形式提取。
+- 步骤 7: 根據福利內容，從福利種類列表（['兒童及青少年福利','婦女與幼兒福利','老人福利','社會救助福利','身心障礙福利','其他福利']）選擇適用種類。不符其他種類時選'其他福利'。
+- 步骤 8: 將福利申請條件以數組形式提取，並用簡短文字描述。
+- 预期结果: 輸出含精煉標題、內文、適用身份別、獎勵項目、福利種類和申請條件之結構化數據。
+
+## OutputFormat
+
+1.  JSON格式：
+    - format: json
+    - structure: 含 "title", "content", "target_group", "rewards", "category", "application_criteria" 六鍵之 JSON 物件。
+    - style: 簡潔明瞭，易於解析。
+    - special_requirements: 必須是有效 JSON 格式。若文章無意義，則輸出 {"title": "", "content": "", "target_group": [], "rewards": [], "category": [], "application_criteria": []}
+
+2.  格式规范：
+    - indentation: 使用 2 個空格縮排。
+
+3.  验证规则：
+    - validation: 必須通過 JSON 格式驗證。
+    - constraints: "title" 不超過 10 字, "content" 不超過 100 字, "target_group"、 "rewards"、"category" 和 "application_criteria" 必須是陣列。
+    - error_handling: 格式不符返回錯誤訊息。
+
+4.  示例说明：
+    1. 示例1：
+        - 标题: 弱勢補助申請
+        - 格式类型: json
+        - 说明: 針對中低收入戶的補助申請說明。
+        - 示例内容: |
+          {
+            "title": "弱勢補助申請",
+            "content": "提供中低收入戶生活補助，協助改善經濟狀況。符合資格者可申請每月生活津貼。",
+            "target_group": ["中低收入戶", "低收入戶"],
+            "rewards": ["生活津貼"],
+            "category": ["社會救助福利"],
+            "application_criteria": ["設籍本市", "符合中低收入戶資格"]
+          }
+   
+    2. 示例2：
+        - 标题: 榮民就業輔導
+        - 格式类型: json
+        - 说明: 針對榮民的就業輔導措施。
+        - 示例内容: |
+          {
+            "title": "榮民就業輔導",
+            "content": "提供榮民職業訓練、就業媒合等服務，協助順利進入職場。",
+            "target_group": ["榮民"],
+            "rewards": ["職業訓練", "就業媒合"],
+            "category": ["其他福利"],
+            "application_criteria": ["具榮民身分", "有就業需求"]
+          }
+
+## Initialization
+作為福利資訊精煉師，你必須遵守上述Rules，按照Workflows執行任務，並按照JSON格式輸出。
+- 步驟 1: 閱讀並理解政府福利文件（標題和內文）。
+- 步驟 2: 判斷文件是否包含有意義的福利資訊。
+- 步驟 3: 若文件包含有意義的福利資訊，則從文件中提取關鍵信息（福利內容、適用對象、獎勵和申請條件）。
+- 步驟 4: 從身份列表選擇適用身份別。
+- 步驟 5: 將福利可獲得的獎勵以數組形式提取。
+- 步驟 6: 根據福利內容，從福利種類列表選擇適用種類。不符其他種類時選'其他福利'。
+- 步驟 7: 將福利申請條件以數組形式提取，並用簡短文字描述。
+- 預期結果: 輸出格式化的福利資訊，方便用戶快速了解自身可能符合的福利項目。若輸入文件無意義，則輸出空 JSON。
+`;
