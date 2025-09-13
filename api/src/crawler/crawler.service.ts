@@ -4,6 +4,7 @@ import * as cheerio from "cheerio";
 import { loadCityConfigs } from "./config/read-config.js";
 import { Queue } from "bullmq";
 import { writeFileSync } from "fs";
+import fsExtra from "fs-extra";
 import path, { join } from "path";
 import { parseDateToISO } from "./utils/parse-date.js";
 import { resolveUrl } from "./utils/resolve-url.js";
@@ -44,8 +45,12 @@ export class CrawlerService {
     const allResultsNested = await Promise.all(cityTasks);
     const allResults = allResultsNested.flat();
 
-    const outputPath = join(__dirname, "../../output/results.json");
-    writeFileSync(outputPath, JSON.stringify(allResults, null, 2), "utf8");
+    // 確保 output 資料夾存在
+    const outputDir = join(__dirname, "../../output");
+    await fsExtra.ensureDir(outputDir);
+
+    const outputPath = join(outputDir, "results.json");
+    await fsExtra.writeFile(outputPath, JSON.stringify(allResults, null, 2), "utf8");
     this.logger.log(`原始資料已輸出至 ${outputPath}`);
 
     this.logger.log(`所有城市爬取完成`);
@@ -83,6 +88,12 @@ export class CrawlerService {
     ];
     const result: any[] = [];
 
+    // 建立資料夾
+    const outputDir = join(__dirname, "../../output");
+    const htmlDir = join(outputDir, "html");
+    await fsExtra.ensureDir(outputDir);
+    await fsExtra.ensureDir(htmlDir);
+
     while (queue.length) {
       const currentBatch = queue.splice(0, this.concurrency);
 
@@ -98,11 +109,11 @@ export class CrawlerService {
 
           const htmlContent = response.data;
 
-          // 將抓到的 HTML 存檔，檔名可以用 URL 來命名，替換掉特殊字元
-          const safeFilename = url.replace(/[^a-zA-Z0-9]/g, '_') + '.html';
-          fs.writeFile(safeFilename, htmlContent);
-
-          this.logger.log(`HTML 內容已儲存至: ${safeFilename}`);
+          const safeFilename =
+            url.replace(/[^a-zA-Z0-9]/g, "_").slice(0, 100) + ".html";
+          const htmlPath = join(htmlDir, safeFilename);
+          await fsExtra.writeFile(htmlPath, htmlContent, "utf8");
+          this.logger.log(`HTML 內容已儲存至: ${htmlPath}`);
 
           // 最深層資料擷取
           if ($(config.stopSelector).length > 0) {

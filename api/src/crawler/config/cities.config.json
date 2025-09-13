@@ -157,5 +157,38 @@
       "date": ".publish_info li:first-child",
       "content": ".cp"
     }
+  },
+  "taichung": {
+    "city": "台中市",
+    "baseUrl": "https://www.society.taichung.gov.tw/",
+    "startUrl": "https://www.society.taichung.gov.tw/13735/Normalnodelist",
+    "levels": [
+      {
+        "selector": ".center .np ul li a",
+        "getUrlAttr": "href"
+      },
+      {
+        "selector": ".center .np ul li a",
+        "getUrlAttr": "href"
+      },
+      {
+        "selector": ".center .list a",
+        "getUrlAttr": "href"
+      },
+      {
+        "selector": ".next a",
+        "getUrlAttr": "href"
+      },
+      {
+        "selector": ".center .list a",
+        "getUrlAttr": "href"
+      }
+    ],
+    "stopSelector": ".pubInfo",
+    "extractSelectors": {
+      "title": "header h2",
+      "date": ".pubInfo li:nth-child(3)",
+      "content": ".cpArticle"
+    }
   }
 }

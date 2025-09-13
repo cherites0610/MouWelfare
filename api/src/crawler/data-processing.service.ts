@@ -101,6 +101,25 @@ export class DataProcessingService extends WorkerHost {
       }
 
       existingData.push(processedData);
+      const locationID = this.constService.getLocationIDByName(processedData.city);
+      const categoryIDs = processedData.category
+        .map((item) => this.constService.getCategoryIDByName(item))
+        .filter((id) => id != null);
+      const identityIDs = processedData.identity
+        .map((item) => this.constService.getIdentityIDByName(item))
+        .filter((id) => id != null);
+
+      this.logger.log(`即將寫入資料庫: locationID=${locationID}, categoryIDs=${categoryIDs}, identityIDs=${identityIDs}`);
+
+      if (!locationID) {
+        this.logger.error(`找不到 city 對應的 locationID: ${processedData.city}`);
+      }
+      if (categoryIDs.length === 0) {
+        this.logger.warn(`categoryIDs 為空: ${processedData.category}`);
+      }
+      if (identityIDs.length === 0) {
+        this.logger.warn(`identityIDs 為空: ${processedData.identity}`);
+      }
 
       await this.welfareService.create({
         title: processedData.title,
