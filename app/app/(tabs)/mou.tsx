@@ -23,7 +23,8 @@ import {WelfareApiParams} from "../type/welfareType";
 import {fetchWelfareApi} from "@/src/api/welfareApi";
 import Markdown from 'react-native-markdown-display';
 import { AppConfig } from '@/src/config/app.config';
-
+import { useSelector } from 'react-redux'; // 1. 匯入 useSelector
+import { RootState } from '@/src/store'; // 2. 匯入 RootState 型別
 // 定義類型
 interface Item {
   id: number;
@@ -60,7 +61,8 @@ const App: React.FC = () => {
   const [selectedService, setSelectedService] = useState<number>(0);
   const scrollViewRef = useRef<ScrollView>(null);
   const { width } = Dimensions.get('window');
-
+  // 3. 使用 useSelector 從 Redux store 中獲取 user 物件
+  const { user } = useSelector((state: RootState) => state.user);
   // 數據
   const serviceIdToCategoryMap: { [key: number]: string } = {
   1: '兒童及青少年福利',
@@ -171,16 +173,23 @@ useEffect(() => {
   // 新建並獲取 chatID
   const getOrCreateChatId = async () => {
     try {
+      // 4. 在這裡檢查 user 是否存在
+    if (!user || !user.id) {
+      console.error("無法創建聊天室：使用者未登入或 user.id 不存在");
+      // 你可以在這裡引導使用者去登入
+      // router.replace('/auth/login'); 
+      return null;
+    }
 
       const response = await axios.post(AppConfig.api.endpoints.conversations, {
-        userId: AppConfig.user.mockId,
+        userId: user.id,
         title: '新對話' // 可以給一個預設標題
       });
       
       const newChatId = response.data.id.toString();
       setChatID(newChatId);
       // 這裡不再將新的 chatID 儲存到 AsyncStorage，因為我們希望每次都創建新的
-      console.log("從後端獲取新的 chatID:", newChatId);
+      console.log(user.id,"後端獲取新的 chatID:", newChatId);
       return newChatId; // 返回新的 chatID
 
     } 
@@ -191,10 +200,10 @@ useEffect(() => {
     }
   };
   const loadChatHistory = async (currentChatId: string): Promise<Message[]> => {
-  if (!currentChatId) return [];
-
+  // if (!currentChatId) return [];
+if (!currentChatId || !user || !user.id) return [];
   try {
-    const url = `${AppConfig.api.endpoints.conversations}/${AppConfig.user.mockId}/${currentChatId}`;
+    const url = `${AppConfig.api.endpoints.conversations}/${user.id}/${currentChatId}`;
     const response = await axios.get(url);
     
     // *** 確保這裡有完整的 map 邏輯 ***
@@ -230,12 +239,16 @@ useEffect(() => {
   
   // 發送消息到後端
   const sendMessageToModel = async (message: string, conversationIdOverride?: string): Promise<{ content: string; cards: ResultItem[]; }> => {
+    if (!user || !user.id) {
+      console.error("無法發送訊息：使用者未登入");
+      return { content: "錯誤：使用者未登入", cards: [] };
+    }
     try {
        // 優先使用傳入的 conversationIdOverride，如果沒有，才用 state 中的 chatID
     const finalChatId = conversationIdOverride || chatID;
 
     const response = await axios.post(AppConfig.api.endpoints.search, {
-      userId: AppConfig.user.mockId,
+      userId: user.id,
       // 使用我們最終確定的 ID
       conversationId: finalChatId ? parseInt(finalChatId) : undefined, 
       query: message
@@ -403,6 +416,7 @@ useEffect(() => {
   };
    // 新增或修改：根據福利類別和地區查詢福利卡片
   const fetchWelfareCards = async (serviceId: number, locationName: string): Promise<ResultItem[]> => {
+    if (!user || !user.id) return [];
     try {
       // 1. 把福利類別的數字 ID 轉換成名稱
       const categoryName = serviceIdToCategoryMap[serviceId];
@@ -415,7 +429,7 @@ useEffect(() => {
       const params: WelfareApiParams = {
         locations: [locationName], // 地區名稱，放在陣列裡
         categories: [categoryName], // 福利類別名稱，放在陣列裡
-        userID: AppConfig.user.mockId, // 您的用戶 ID，請替換成實際的
+        userID: user.id, // 您的用戶 ID，請替換成實際的
         // 如果後端 API 支援分頁，您也可以加上 page: 1, pageSize: 10 等參數
       };
 
