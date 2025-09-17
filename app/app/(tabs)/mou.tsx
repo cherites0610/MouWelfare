@@ -40,6 +40,7 @@ interface ResultItem {
   summary?: string;
   location?: string;
   forward?: string;
+  categories?: string;
 }
 
 interface Message {
@@ -121,6 +122,14 @@ const App: React.FC = () => {
   ];
 
   const botAvatar = require("@/assets/images/logo.jpeg")
+
+  // 建立一個包含所有縣市名稱的 Set，方便快速查找
+  const allLocations = new Set([
+    ...northItems.map(i => i.name),
+    ...midItems.map(i => i.name),
+    ...southItems.map(i => i.name),
+    ...eastItems.map(i => i.name),
+  ]);
 
   // 初始化
   useEffect(() => {
@@ -222,6 +231,7 @@ useEffect(() => {
             summary: card.summary, 
             location: card.location, 
             forward: card.forward, 
+            categories:card.categories
           }))
         };
       } else {
@@ -281,7 +291,9 @@ useEffect(() => {
             summary: card.summary, 
             location: card.location, 
             forward: card.forward, 
+            categories:card.categories
           }));
+          console.log("card",response.data.welfareCards)
         }
 
       } else if (typeof response.data === 'string') {
@@ -411,6 +423,7 @@ useEffect(() => {
           summary: card.summary, 
           location: card.location, 
           forward: card.forward, 
+          categories:card.categories
           // 如果您的 Welfare 類型還有其他欄位，請在這裡補充映射
           // 例如：imageUrl: card.imageUrl,
         }));
@@ -490,6 +503,8 @@ useEffect(() => {
   getOrCreateChatId(); 
 };
 
+const allCategories = new Set(ewlfareItems.map(i => i.name));
+
 const performAiSearch = async (query: string) => {
     // 1. 在畫面上顯示使用者（或系統）的查詢意圖
     setMessages((prev) => [...prev, { type: "user", content: query }]);
@@ -498,21 +513,67 @@ const performAiSearch = async (query: string) => {
     setMessages((prev) => [...prev, { type: "loading" }]);
 
     try {
-      // 3. 呼叫後端 API
-      const { content: aiResponseContent, cards: welfareCards } = await sendMessageToModel(query);
+      // 3. 呼叫後端 API，獲取 AI 回答和未經過濾的福利卡片
+      const { content: aiResponseContent, cards: rawWelfareCards } = await sendMessageToModel(query);
 
-      // 4. 移除載入中，並顯示 AI 的回覆
+      // 4. 移除載入中，並顯示 AI 的文字回覆
       setMessages((prev) => {
         const withoutLoading = prev.filter(m => m.type !== 'loading');
         return [...withoutLoading, { type: "bot", content: aiResponseContent }];
       });
 
-      // 5. 如果有返回福利卡片，也顯示出來
-      if (welfareCards && welfareCards.length > 0) {
-        setMessages((prev) => [
-          ...prev,
-          { type: "result", resultItems: welfareCards }
-        ]);
+      // *** 關鍵：前端二次過濾邏輯 ***
+      if (rawWelfareCards && rawWelfareCards.length > 0) {
+        console.log('--- 過濾前的原始福利卡片 ---');
+      console.log(`使用者查詢: "${query}"`);
+      console.log(`共收到 ${rawWelfareCards.length} 張原始卡片:`);
+      // 使用 console.table 可以讓陣列資料在控制台中以更美觀的表格形式顯示
+      console.table(rawWelfareCards); 
+        // 找出使用者查詢中是否包含明確的地區和類別
+        let targetLocation: string | undefined;
+        let targetCategory: string | undefined;
+
+        allLocations.forEach(loc => {
+          if (query.includes(loc)) {
+            targetLocation = loc;
+          }
+        });
+
+        allCategories.forEach(cat => {
+          if (query.includes(cat)) {
+            targetCategory = cat;
+          }
+        });
+
+        // 根據找出的目標來過濾卡片
+        const filteredCards = rawWelfareCards.filter(card => {
+          let isMatch = true; // 預設為匹配
+
+          // 如果查詢中有明確地區，則卡片的地區必須相符
+          if (targetLocation && card.location !== targetLocation) {
+            isMatch = false;
+          }
+
+          // 如果查詢中有明確類別，則卡片的類別 (forward) 必須相符
+          // 注意：這裡假設 forward 欄位存的是福利類別
+          if (targetCategory && Array.isArray(card.categories) && !card.categories.includes(targetCategory)) {
+            isMatch = false;
+          }
+          
+          return isMatch;
+        });
+
+        // 只有當過濾後還有卡片時，才顯示它們
+        if (filteredCards.length > 0) {
+          setMessages((prev) => [
+            ...prev,
+            { type: "result", resultItems: filteredCards }
+          ]);
+        } else {
+          // 如果二次過濾後一張卡片都不剩，可以選擇顯示一個更精確的提示
+          // 或者像現在這樣，乾脆不顯示 result 卡片，只保留 AI 的文字回答
+          console.log(`二次過濾後，沒有找到完全符合 "${query}" 的福利卡片。`);
+        }
       }
     } catch (error) {
       // 錯誤處理

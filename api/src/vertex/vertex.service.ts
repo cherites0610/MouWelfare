@@ -152,6 +152,7 @@ export class VertexService {
             link: r.document?.structData?.link,
             location: r.document?.structData?.location,
             publicationDate: r.document?.structData?.publicationDate,
+            categories: r.document?.structData?.categories,
         }));
     }
 
