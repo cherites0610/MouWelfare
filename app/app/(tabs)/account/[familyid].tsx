@@ -254,6 +254,8 @@ const styles = StyleSheet.create({
         fontSize: 16,
         minWidth: 200,
         marginBottom: 0, // Consistent spacing
+        padding: 12,
+        marginRight: 8,
     },
     avatar: {
         width: 60,

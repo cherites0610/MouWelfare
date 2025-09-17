@@ -258,6 +258,8 @@ const styles = StyleSheet.create({
     height: '100%',
     fontSize: 16,
     color: '#333',
+    padding: 12,
+    marginRight: 8,
   },
 
   // ---- Button Styles ----

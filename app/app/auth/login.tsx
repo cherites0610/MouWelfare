@@ -189,6 +189,7 @@ const styles = StyleSheet.create({
     marginBottom: 15, // 輸入框間距
     paddingHorizontal: 15, // 左右內邊距
     backgroundColor: '#fff', // 背景白色
+    
   },
   inputIcon: {
     marginRight: 10, // 圖示右邊距
@@ -198,6 +199,8 @@ const styles = StyleSheet.create({
     height: '100%', // 高度撐滿容器
     fontSize: 16,
     color: '#333',
+    padding: 12,
+    marginRight: 8,
   },
   forgotPasswordContainer: {
     width: '100%',
