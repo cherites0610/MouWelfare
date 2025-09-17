@@ -199,9 +199,10 @@ useEffect(() => {
       return null; // 發生錯誤時返回 null
     }
   };
+
   const loadChatHistory = async (currentChatId: string): Promise<Message[]> => {
   // if (!currentChatId) return [];
-if (!currentChatId || !user || !user.id) return [];
+  if (!currentChatId || !user || !user.id) return [];
   try {
     const url = `${AppConfig.api.endpoints.conversations}/${user.id}/${currentChatId}`;
     const response = await axios.get(url);
@@ -317,39 +318,10 @@ if (!currentChatId || !user || !user.id) return [];
     Alert.alert("錯誤", "請輸入問題");
     return;
   }
-
-  // 插入用戶消息
-  setMessages((prev) => [...prev, { type: "user", content: inputText }]);
-  setInputText("");
-
-  // 插入加載中
-  setMessages((prev) => [...prev, { type: "loading" }]);
-
-  try {
-    // 呼叫 sendMessageToModel，它現在返回一個物件 { content, cards }
-    const { content: aiResponseContent, cards: welfareCards } = await sendMessageToModel(inputText);
-
-    // 移除加載中，插入 AI 的文字回答
-    setMessages((prev) => [...prev.slice(0, -1), { type: "bot", content: aiResponseContent, showAvatar: false }]);
-
-    // 如果有福利卡片，則將它們作為新的訊息類型插入
-    if (welfareCards && welfareCards.length > 0) {
-      setMessages((prev) => [
-        ...prev,
-        { type: "result", resultItems: welfareCards } // 使用 resultItems 來顯示卡片
-      ]);
-    }
-    // 自動滾動到底部
-  scrollViewRef.current?.scrollToEnd({ animated: true });
-
-  } catch (error) {
-    // 移除加載中，插入錯誤提示
-    setMessages((prev) => [...prev.slice(0, -1), { type: "bot", content: "發生錯誤，請重新輸入" }]);
-  }
-
-  // 自動滾動到底部
-  scrollViewRef.current?.scrollToEnd({ animated: true });
-};
+  const query = inputText;
+    setInputText(""); // 清空輸入框
+    await performAiSearch(query); // 呼叫共用的查詢函式
+  };
 
   // 檢查選擇項
   const checkIndex = (name: string): [number, number, string, number] => {
@@ -377,15 +349,7 @@ if (!currentChatId || !user || !user.id) return [];
 
   // 服務卡片點擊
   const handleServiceClick = (name: string) => {
-    const index = checkIndex(name);
-    if (index[1] === 1) {
-      setMessages((prev) => [
-        ...prev,
-        { type: 'user', content: index[2] },
-        { type: 'place', items: taiwanItems },
-      ]);
-      scrollViewRef.current?.scrollToEnd({ animated: true });
-    }
+    performAiSearch(name); 
   };
 
   // 地區卡片點擊
@@ -414,6 +378,7 @@ if (!currentChatId || !user || !user.id) return [];
     }
     scrollViewRef.current?.scrollToEnd({ animated: true });
   };
+
    // 新增或修改：根據福利類別和地區查詢福利卡片
   const fetchWelfareCards = async (serviceId: number, locationName: string): Promise<ResultItem[]> => {
     if (!user || !user.id) return [];
@@ -459,6 +424,7 @@ if (!currentChatId || !user || !user.id) return [];
       return [];
     }
   };
+
   // 新增：處理機器人頭像點擊事件
   const handleBotAvatarClick = async (currentChatId: string) => {
     // 1. 顯示「載入中」訊息，讓用戶知道程式正在處理
@@ -523,6 +489,43 @@ if (!currentChatId || !user || !user.id) return [];
   // 之後的所有 UI 更新都會由 useEffect[chatID] 自動處理
   getOrCreateChatId(); 
 };
+
+const performAiSearch = async (query: string) => {
+    // 1. 在畫面上顯示使用者（或系統）的查詢意圖
+    setMessages((prev) => [...prev, { type: "user", content: query }]);
+    
+    // 2. 顯示載入中動畫
+    setMessages((prev) => [...prev, { type: "loading" }]);
+
+    try {
+      // 3. 呼叫後端 API
+      const { content: aiResponseContent, cards: welfareCards } = await sendMessageToModel(query);
+
+      // 4. 移除載入中，並顯示 AI 的回覆
+      setMessages((prev) => {
+        const withoutLoading = prev.filter(m => m.type !== 'loading');
+        return [...withoutLoading, { type: "bot", content: aiResponseContent }];
+      });
+
+      // 5. 如果有返回福利卡片，也顯示出來
+      if (welfareCards && welfareCards.length > 0) {
+        setMessages((prev) => [
+          ...prev,
+          { type: "result", resultItems: welfareCards }
+        ]);
+      }
+    } catch (error) {
+      // 錯誤處理
+      setMessages((prev) => {
+        const withoutLoading = prev.filter(m => m.type !== 'loading');
+        return [...withoutLoading, { type: "bot", content: "查詢時發生錯誤，請稍後再試。" }];
+      });
+    } finally {
+      // 無論成功或失敗，都滾動到底部
+      scrollViewRef.current?.scrollToEnd({ animated: true });
+    }
+  };
+  
 
   // 渲染消息
   const renderMessage = ({ item,index }: { item: Message,index:number }) => {
@@ -623,6 +626,7 @@ if (!currentChatId || !user || !user.id) return [];
                     <TouchableOpacity
                       style={styles.resultCard} // 將在此樣式中設定寬高
                       onPress={() => {
+                        console.log("item",item,"result",result);
                         // 檢查 result.id 是否存在，以避免路徑變成 'home/undefined'
                         if (result.id) {
                           // 使用 navigate 和手動拼接字串的方式
