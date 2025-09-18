@@ -73,6 +73,23 @@ const App: React.FC = () => {
   5: '身心障礙福利',
   6: '其他',
 };
+const categorySynonyms: { [key: string]: string }= {
+    '兒童': '兒童及青少年福利',
+    '小孩': '兒童及青少年福利',
+    '兒少': '兒童及青少年福利',
+    '青少年': '兒童及青少年福利',
+    '婦女': '婦女與幼兒福利',
+    '幼兒': '婦女與幼兒福利',
+    '老人': '老人福利',
+    '長者': '老人福利',
+    '長輩': '老人福利',
+    '救助': '社會救助福利',
+    '低收入': '社會救助福利',
+    '身心障礙': '身心障礙福利',
+    '身障': '身心障礙福利',
+    '殘障': '身心障礙福利',
+    // 你可以根據需要繼續擴充這個字典
+  };
 
   const ewlfareItems: Item[] = [
     { id: 1, name: '兒童及青少年福利', image: require("@/assets/images/Mou/baby.jpeg") },
@@ -124,13 +141,22 @@ const App: React.FC = () => {
   const botAvatar = require("@/assets/images/logo.jpeg")
 
   // 建立一個包含所有縣市名稱的 Set，方便快速查找
-  const allLocations = new Set([
-    ...northItems.map(i => i.name),
-    ...midItems.map(i => i.name),
-    ...southItems.map(i => i.name),
-    ...eastItems.map(i => i.name),
-  ]);
-
+  const sortedCategories = React.useMemo(() => 
+    [
+      ...Object.keys(categorySynonyms), // 取得所有同義詞，如 ['兒童', '小孩', ...]
+      ...ewlfareItems.map(i => i.name) // 取得所有正式類別名稱
+    ].sort((a, b) => b.length - a.length),
+    []
+  );
+const sortedLocations = React.useMemo(() => 
+    [
+      ...northItems.map(i => i.name),
+      ...midItems.map(i => i.name),
+      ...southItems.map(i => i.name),
+      ...eastItems.map(i => i.name),
+    ].sort((a, b) => b.length - a.length),
+    [] // 空依賴陣列，確保只計算一次
+  );
   // 初始化
   useEffect(() => {
   if (!isInitialized) {
@@ -503,17 +529,50 @@ useEffect(() => {
   getOrCreateChatId(); 
 };
 
-const allCategories = new Set(ewlfareItems.map(i => i.name));
-
 const performAiSearch = async (query: string) => {
     // 1. 在畫面上顯示使用者（或系統）的查詢意圖
-    setMessages((prev) => [...prev, { type: "user", content: query }]);
-    
-    // 2. 顯示載入中動畫
-    setMessages((prev) => [...prev, { type: "loading" }]);
+    // *** 關鍵修改：我們需要先更新 messages 狀態，再用它來分析上下文 ***
+    // 所以我們將 setMessages 的呼叫從 callback 形式改為直接傳入新陣列
+    const userMessage: Message = { type: "user", content: query };
+    const loadingMessage: Message = { type: "loading" };
+    const nextMessages = [...messages, userMessage, loadingMessage];
+    setMessages(nextMessages);
 
     try {
-      // 3. 呼叫後端 API，獲取 AI 回答和未經過濾的福利卡片
+      // 步驟 A: 將新舊所有使用者訊息拼接成一個大的上下文字串
+      const conversationContext = nextMessages
+        .filter(m => m.type === 'user') // 只關心使用者說過的話
+        .map(m => m.content)             // 取出文字內容
+        .join(' ');                      // 用空格拼接起來
+      console.log("完整的對話上下文:", conversationContext);
+
+      // 步驟 B: 從這個完整的上下文中，找出最後提到的地區和類別
+      let targetLocation: string | undefined;
+      let targetCategory: string | undefined;
+
+      // --- 地區提取 (從長到短排序檢查) ---
+      for (const loc of sortedLocations) {
+        const shortLoc = loc.slice(0, -1);
+        if (conversationContext.includes(loc)) {
+          targetLocation = loc;
+          break; 
+        }
+        if (conversationContext.includes(shortLoc)) {
+          targetLocation = loc;
+          break; 
+        }
+      }
+
+      // --- 類別提取 (使用同義詞字典 + 從長到短排序檢查) ---
+      for (const keyword of sortedCategories) {
+        if (conversationContext.includes(keyword)) {
+          targetCategory = categorySynonyms[keyword] || keyword;
+          break; 
+        }
+      }
+    console.log(`從上下文中提取的過濾條件 -> 地區: ${targetLocation || '無'}, 類別: ${targetCategory || '無'}`);
+
+      // 3. 呼叫後端 API (這部分不變)
       const { content: aiResponseContent, cards: rawWelfareCards } = await sendMessageToModel(query);
 
       // 4. 移除載入中，並顯示 AI 的文字回覆
@@ -522,40 +581,16 @@ const performAiSearch = async (query: string) => {
         return [...withoutLoading, { type: "bot", content: aiResponseContent }];
       });
 
-      // *** 關鍵：前端二次過濾邏輯 ***
+      // 5. 二次過濾邏輯 (現在它會使用從上下文中提取的關鍵詞)
       if (rawWelfareCards && rawWelfareCards.length > 0) {
-        console.log('--- 過濾前的原始福利卡片 ---');
-      console.log(`使用者查詢: "${query}"`);
-      console.log(`共收到 ${rawWelfareCards.length} 張原始卡片:`);
-      // 使用 console.table 可以讓陣列資料在控制台中以更美觀的表格形式顯示
-      console.table(rawWelfareCards); 
-        // 找出使用者查詢中是否包含明確的地區和類別
-        let targetLocation: string | undefined;
-        let targetCategory: string | undefined;
-
-        allLocations.forEach(loc => {
-          if (query.includes(loc)) {
-            targetLocation = loc;
-          }
-        });
-
-        allCategories.forEach(cat => {
-          if (query.includes(cat)) {
-            targetCategory = cat;
-          }
-        });
-
-        // 根據找出的目標來過濾卡片
+        
         const filteredCards = rawWelfareCards.filter(card => {
-          let isMatch = true; // 預設為匹配
+          let isMatch = true;
 
-          // 如果查詢中有明確地區，則卡片的地區必須相符
           if (targetLocation && card.location !== targetLocation) {
             isMatch = false;
           }
 
-          // 如果查詢中有明確類別，則卡片的類別 (forward) 必須相符
-          // 注意：這裡假設 forward 欄位存的是福利類別
           if (targetCategory && Array.isArray(card.categories) && !card.categories.includes(targetCategory)) {
             isMatch = false;
           }
@@ -563,16 +598,13 @@ const performAiSearch = async (query: string) => {
           return isMatch;
         });
 
-        // 只有當過濾後還有卡片時，才顯示它們
         if (filteredCards.length > 0) {
           setMessages((prev) => [
             ...prev,
             { type: "result", resultItems: filteredCards }
           ]);
         } else {
-          // 如果二次過濾後一張卡片都不剩，可以選擇顯示一個更精確的提示
-          // 或者像現在這樣，乾脆不顯示 result 卡片，只保留 AI 的文字回答
-          console.log(`二次過濾後，沒有找到完全符合 "${query}" 的福利卡片。`);
+          console.log(`二次過濾後，沒有找到完全符合條件的福利卡片。`);
         }
       }
     } catch (error) {
@@ -610,21 +642,46 @@ const performAiSearch = async (query: string) => {
             
           </View>
         );
-           case 'bot':
-            return (
-              <View style={styles.botMessage}>
-                  {/* 根據我們的規則來決定是否渲染頭像 */}
-                  {shouldShowAvatar ? (
-                    <Image source={botAvatar} style={styles.avatar} />
-                  ) : (
-                    // 如果不顯示頭像，放一個等寬的空白 View 來佔位，確保訊息能對齊
-                    <View style={styles.avatarPlaceholder} />
-                  )}
-                  <View style={styles.botTextContainer}>
-                    <Markdown style={markdownStyles}>{item.content}</Markdown>
-                  </View>
-                </View>
-            );
+         case 'bot':
+          return (
+            <View style={styles.botMessage}>
+            {shouldShowAvatar ? (
+              <Image source={botAvatar} style={styles.avatar} />
+            ) : (
+              // 如果不顯示頭像，放一個等寬的空白 View 來佔位，確保訊息能對齊
+              <View style={styles.avatarPlaceholder} />
+            )}
+            {/* <View style={styles.botTextContainer}>
+              <Markdown style={markdownStyles}>{item.content}</Markdown>
+            </View> */}
+              <View style={styles.botTextContainer}>
+                <Markdown 
+                  style={markdownStyles}
+                  onLinkPress={(url) => {
+                    console.log('攔截到 Markdown 連結點擊，URL:', url);
+
+                    if (url.startsWith('/home/')) {
+                      router.replace(url as any);
+                      // *** 關鍵修改：明確返回 true，阻止預設行為 ***
+                      return true; 
+                    }
+                    
+                    if (url.startsWith('http' )) {
+                      Linking.openURL(url);
+                      // *** 關鍵修改：明確返回 true，阻止預設行為 ***
+                      return true;
+                    }
+
+                    console.warn('未知的連結格式:', url);
+                    // 對於未知的格式，返回 false，讓套件自己處理（如果它有預設行為的話）
+                    return false;
+                  }}
+                >
+                  {item.content}
+                </Markdown>
+              </View>
+            </View>
+          );
       case 'service':
         return (
           <View style={styles.botMessage}>

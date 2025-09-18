@@ -62,14 +62,21 @@ export class VertexService {
         return tokenResponse.token;
     }
 
-    // /** 呼叫 Answer API (AI對話) */
-    /** 呼叫 Answer API (AI對話) */
-    private async callAnswerApi(userQuery: string,contentText: string) {
+    
+    private async callAnswerApi(userQuery: string, contextText: string, welfareInfoText: string) {
         // const historyText = this.conversationHistory
         // .map(h => `User: ${h.user}\nAI: ${h.ai}`)
         // .join('\n');
 
-        const combinedPrompt = `以下是我們之前的對話：\n${contentText}\n\n這是我的新問題：${userQuery}`;
+        const combinedPrompt = `
+        這是之前的對話：
+        ${contextText}
+
+        這是為您找到的相關福利清單，請根據這些資料來回答：
+        ${welfareInfoText}
+
+        這是我的新問題：${userQuery}
+      `;
 
         const accessToken = await this.getAccessToken();
         const apiEndpoint = `https://discoveryengine.googleapis.com/v1alpha/projects/${this.projectId}/locations/global/collections/${this.collectionId}/engines/${this.engineId}/servingConfigs/default_search:answer`;
@@ -94,11 +101,13 @@ export class VertexService {
                         你的任務是根據所提供的資料庫內容，為使用者提供政府福利相關的資訊。
 
                         回答原則：
+                        0. 首次打招呼必須專注於介紹自己與提問獲取更多用戶訊息。 
                         1. 回答內容必須嚴格基於所提供的資料庫。
                         2. 清楚說明福利的名稱和相關內容，並以專業、熱心的口吻回答。
-                        3. 每個回答的字數必須維持在 200 字以內，並力求簡潔明瞭。
-                        4. 當使用者提供的資料不明確或不夠完整時，在回應的最後持續追問更多資訊，例如「請問您是哪個縣市的居民呢？」或「您方便提供更具體的資料嗎？」，以幫助使用者找到適合自己的福利。
-                        5. 如果資料庫中找不到使用者提問的資訊，請禮貌地告知使用者目前無法提供相關資訊，並避免編造或猜測答案。`
+                        3. 單次回答的總字數必須維持在 100 字以內，提供0至3筆福利，並力求簡潔明瞭。
+                        4. 對於提到的每一筆福利，都必須使用 Markdown 格式附上連結。格式為：[福利標題](內部路由)。例如：如果清單中有一筆福利的內部路由是 /home/some-uuid，你就必須生成像 [育兒津貼](/home/some-uuid) 這樣的連結。
+                        5. 當使用者提供的資料不明確或不夠完整時，在回應的最後持續追問更多資訊，例如「請問您是哪個縣市的居民呢？」或「您方便提供更具體的資料嗎？」，以幫助使用者找到適合自己的福利。
+                        6. 如果資料庫中找不到使用者提問的資訊，請禮貌地告知使用者目前無法提供相關資訊，並避免編造或猜測答案。`
                 },
                 modelSpec: {
                     modelVersion: 'stable'
@@ -158,31 +167,41 @@ export class VertexService {
 
 
     /** 主函式 回傳 AI 答案 + 福利資訊 */
-    async getAiAnswer(userQuery: string, userId: string, conversationId?: number) {
-    // 步驟 1: 確保我們有一個有效的 conversationId
-    if (!conversationId) {
-        const newConversation = await this.conversationService.createConversation(userId, '未命名對話');
-        conversationId = newConversation.id;
-    }
+   async getAiAnswer(userQuery: string, userId: string, conversationId?: number) { 
+  // 步驟 1: 確保我們有一個有效的 conversationId
+  if (!conversationId) {
+    const newConversation = await this.conversationService.createConversation(userId, '未命名對話');
+    conversationId = newConversation.id;
+  }
 
-    // 步驟 2: 從資料庫中獲取【只屬於這個 conversationId 的】歷史紀錄
-    const historyFromDb = await this.conversationService.getRecentMessages(conversationId, 5);
+  // 步驟 2: 從資料庫中獲取歷史紀錄
+  const historyFromDb = await this.conversationService.getRecentMessages(conversationId, 5);
 
-    // 步驟 3: 將資料庫的歷史紀錄轉換成純文字的上下文
-    //         這是之前在 callAnswerApi 中做的，現在移到這裡來
-    const contextText = historyFromDb
-        .map(m => `${m.role === 'user' ? 'User' : 'AI'}: ${m.content}`)
-        .reverse() // 從舊到新排序
-        .join('\n');
+  // 步驟 3: 將歷史紀錄轉換成純文字的上下文
+  const contextText = historyFromDb
+    .map(m => `${m.role === 'user' ? 'User' : 'AI'}: ${m.content}`)
+    .reverse()
+    .join('\n');
 
-    // 步驟 4: 將【動態生成】的上下文傳遞給底層的 API 呼叫函式
-    const { answerText } = await this.callAnswerApi(userQuery, contextText);
-    const welfareCards = await this.callSearchApi(userQuery);
+  // 步驟 4: 呼叫 Search API，獲取相關的福利卡片
+  const welfareCards = await this.callSearchApi(userQuery);
 
-    // 步驟 5: 將新的問答儲存到【正確的】conversationId 中
-    await this.conversationService.addMessage(conversationId, 'user', userQuery);
-    await this.conversationService.addMessage(conversationId, 'ai', answerText, { welfareCards });
+  // 步驟 5: 將福利卡片轉換為包含【完整路由】的文字資訊，供 AI 參考
+  const welfareInfoText = welfareCards
+    .map(card => 
+      `福利標題: ${card.title}, 摘要: ${card.summary}, 內部路由: /home/${card.id}`
+    )
+    .join('\n\n'); 
 
-    return { conversationId, answer: answerText, welfareCards };
-    }
+  // 步驟 6: 將所有準備好的資訊傳遞給 AI，獲取最終的文字回答
+  const { answerText } = await this.callAnswerApi(userQuery, contextText, welfareInfoText);
+
+  // 步驟 7: 將新的問答儲存到資料庫
+  await this.conversationService.addMessage(conversationId, 'user', userQuery);
+  await this.conversationService.addMessage(conversationId, 'ai', answerText, { welfareCards });
+
+  // 步驟 8: 將結果返回給前端
+  return { conversationId, answer: answerText, welfareCards };
+}
+
 }
