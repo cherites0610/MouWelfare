@@ -53,6 +53,7 @@ interface Message {
   items?: Item[];
   resultItems?: ResultItem[];
   showAvatar?: boolean;
+  conversationId?: string;
 }
 
 // 主組件
@@ -62,7 +63,8 @@ const App: React.FC = () => {
   // const [inputText, setInputText] = useState<string>('');
   const [inputText, setInputText] = useState('');
   const router = useRouter();
-  const [chatID, setChatID] = useState<string>('');
+  // const [chatID, setChatID] = useState<string>('');
+  const [chatID, setChatID] = useState<number | undefined>(undefined);
   const [selectedService, setSelectedService] = useState<number>(0);
   const scrollViewRef = useRef<ScrollView>(null);
   const { width } = Dimensions.get('window');
@@ -174,128 +176,56 @@ const sortedLocations = React.useMemo(() =>
 
 // --- 新增這個 useEffect 來實現 UI 與 chatID 的連動 ---
 useEffect(() => {
-  // 當 chatID 發生變化時（包括從空字串變為初始 ID）
-  // 這個 effect 就會被觸發
-
-  // 如果 chatID 不是一個有效的 ID，就什麼都不做
-  if (!chatID) {
+  if (chatID === undefined) { // 檢查是否為初始的 undefined 狀態
     return;
   }
-
   console.log(`chatID 已變更為: ${chatID}，準備更新 UI...`);
-
-  // 定義一個函式來載入新聊天室的內容
-  const loadNewChat = async () => {
-    // 1. 立刻清空畫面上的舊訊息
-    setMessages([]); 
-
-    // 2. 顯示一個載入中的提示
-    setMessages([{ type: 'loading' }]);
-
-    // 3. 從後端獲取這個 chatID 的歷史紀錄
-    const history = await loadChatHistory(chatID); // <--- 我們會修改 loadChatHistory
-
-    // 4. 移除載入中提示，並顯示歷史紀錄
-    setMessages(history);
-
-    // 如果是全新的聊天室（沒有歷史紀錄），可以顯示一個歡迎訊息
-    if (history.length === 0) {
-      // 這裡可以再次呼叫機器人打招呼，或者顯示一個靜態的歡迎卡片
-      await handleBotAvatarClick(chatID);
-    }
-  };
-
-  loadNewChat();
-
+  // 當 chatID 首次被設定（從 undefined 變為一個數字）時，發送一個初始的「你好」訊息
+  // 這樣後端會創建對話並返回第一個 AI 回覆
+  if (messages.length === 0) { // 避免重複發送歡迎訊息
+    handleBotAvatarClick(chatID); // 觸發歡迎訊息，並將 chatID 傳入
+  }
 }, [chatID]); 
 
   // 新建並獲取 chatID
-  const getOrCreateChatId = async () => {
-    try {
-      // 4. 在這裡檢查 user 是否存在
+  const getOrCreateChatId = async (): Promise<number | null> => {
     if (!user || !user.id) {
       console.error("無法創建聊天室：使用者未登入或 user.id 不存在");
-      // 你可以在這裡引導使用者去登入
-      // router.replace('/auth/login'); 
+      router.navigate('/auth/login'); 
       return null;
     }
-
+    try {
       const response = await axios.post(AppConfig.api.endpoints.conversations, {
         userId: user.id,
         title: '新對話' // 可以給一個預設標題
       });
       
-      const newChatId = response.data.id.toString();
-      setChatID(newChatId);
-      // 這裡不再將新的 chatID 儲存到 AsyncStorage，因為我們希望每次都創建新的
-      console.log(user.id,"後端獲取新的 chatID:", newChatId);
-      return newChatId; // 返回新的 chatID
+      const newChatId: number = response.data.id; // 後端返回的 id 應該是 number
+      setChatID(newChatId); // 更新為 number 類型
+      console.log(user.id, "後端獲取新的 chatID:", newChatId);
+      return newChatId; 
 
     } 
     catch (error) {
       console.error('無法獲取或創建 chatID:', error);
-      // Alert.alert('錯誤', '無法獲取或創建 chatID');
-      return null; // 發生錯誤時返回 null
+      return null;
     }
   };
-
-  const loadChatHistory = async (currentChatId: string): Promise<Message[]> => {
-  // if (!currentChatId) return [];
-  if (!currentChatId || !user || !user.id) return [];
-  try {
-    const url = `${AppConfig.api.endpoints.conversations}/${user.id}/${currentChatId}`;
-    const response = await axios.get(url);
-    
-    // *** 確保這裡有完整的 map 邏輯 ***
-    const historyMessages: Message[] = response.data.messages.map((msg: any) => {
-      let type: Message['type'] = msg.role === 'user' ? 'user' : 'bot';
-      
-      if (type === 'bot' && msg.welfareCards && msg.welfareCards.length > 0) {
-        return { 
-          type: type, 
-          content: msg.content, 
-          resultItems: msg.welfareCards.map((card: any) => ({
-            id: card.id,
-            title: card.title,
-            url: `home/${card.id}`,   
-            summary: card.summary, 
-            location: card.location, 
-            forward: card.forward, 
-            categories:card.categories,
-            detail: card.detail,
-            publicationDate: card.publicationDate,
-            applicationCriteria: card.applicationCriteria
-          }))
-        };
-      } else {
-        return { type: type, content: msg.content };
-      }
-    });
-    
-    return historyMessages; 
-
-  } catch (error) {
-    console.error('載入歷史對話失敗:', error);
-    Alert.alert('錯誤', '無法載入歷史對話');
-    return []; // 發生錯誤時也返回空陣列
-  }
-};
   
   // 發送消息到後端
-  const sendMessageToModel = async (message: string, conversationIdOverride?: string): Promise<{ content: string; cards: ResultItem[]; }> => {
+  const sendMessageToModel = async (message: string, conversationIdOverride?: number): Promise<{ content: string; cards: ResultItem[]; newConversationId?: number; }> => {
     if (!user || !user.id) {
       console.error("無法發送訊息：使用者未登入");
       return { content: "錯誤：使用者未登入", cards: [] };
     }
     try {
-       // 優先使用傳入的 conversationIdOverride，如果沒有，才用 state 中的 chatID
-    const finalChatId = conversationIdOverride || chatID;
+      // 優先使用傳入的 conversationIdOverride，如果沒有，才用 state 中的 chatID
+      const finalChatId = conversationIdOverride !== undefined ? conversationIdOverride : chatID;
 
-    const response = await axios.post(AppConfig.api.endpoints.search, {
-      userId: user.id,
-      // 使用我們最終確定的 ID
-      conversationId: finalChatId ? parseInt(finalChatId) : undefined, 
-      query: message
+      const response = await axios.post(AppConfig.api.endpoints.search, {
+        userId: user.id,
+        conversationId: finalChatId, // 直接傳遞 number 類型，undefined 也會被正確處理
+        query: message
       }, {
         timeout: 30000, // 30 秒超時
         headers: {
@@ -306,44 +236,37 @@ useEffect(() => {
       // 處理回應資料
       let aiAnswer: string = '';
       let welfareCards: ResultItem[] = [];
+      let returnedConversationId: number | undefined = undefined;
       
-      // 檢查 response.data 是否為物件，並提取 answer 和 welfareCards
       if (response.data && typeof response.data === 'object') {
-        if (response.data.answer) {
-          aiAnswer = response.data.answer;
-        } else {
-          aiAnswer = JSON.stringify(response.data);
-        }
+        aiAnswer = response.data.answer || ''; // 後端直接返回 answer 字段
+        returnedConversationId = response.data.conversationId; // 提取後端返回的 conversationId
 
-        // 提取 welfareCards
         if (response.data.welfareCards && Array.isArray(response.data.welfareCards)) {
           welfareCards = response.data.welfareCards.map((card: any) => ({
-            id:card.id,
+            id: card.id,
             title: card.title,
             url: `home/${card.id}`,   
             summary: card.summary, 
             location: card.location, 
             forward: card.forward, 
-            categories:card.categories,
+            categories: card.categories,
             detail: card.detail,
             publicationDate: card.publicationDate,
             applicationCriteria: card.applicationCriteria
           }));
-          console.log("card",response.data.welfareCards)
         }
-
       } else if (typeof response.data === 'string') {
         aiAnswer = response.data;
       } else {
         aiAnswer = '收到回應但格式不正確';
       }
 
-      // 返回一個包含 AI 回答和福利卡片的物件
-      return { content: aiAnswer || '抱歉，沒有收到有效回應', cards: welfareCards };
+      // 返回一個包含 AI 回答、福利卡片和新的 conversationId 的物件
+      return { content: aiAnswer || '抱歉，沒有收到有效回應', cards: welfareCards, newConversationId: returnedConversationId };
       
     } catch (error) {
       console.error('Vertex AI 查詢失敗:', error);
-      
       let errorMessage = '發生未知錯誤，請稍後再試';
       if (axios.isAxiosError(error)) {
         if (error.response) {
@@ -476,22 +399,22 @@ useEffect(() => {
   };
 
   // 新增：處理機器人頭像點擊事件
-  const handleBotAvatarClick = async (currentChatId: string) => {
-    // 1. 顯示「載入中」訊息，讓用戶知道程式正在處理
+  const handleBotAvatarClick = async (currentChatId?: number) => {
     setMessages((prev) => [...prev, { type: 'loading' }]);
-
     try {
-       // 使用傳入的、最可靠的 chatID
-    const { content, cards } = await sendMessageToModel('你好', currentChatId);
+      const { content, cards, newConversationId } = await sendMessageToModel('你好', currentChatId);
 
-    setMessages((prev) => {
-      const withoutLoading = prev.filter(m => m.type !== 'loading');
-      return [...withoutLoading, { type: 'bot', content: content }];
-    });
-    setMessages((prev) => [...prev, { type: 'service', items: ewlfareItems }]);
+      if (newConversationId !== undefined) {
+        setChatID(newConversationId); // 更新 chatID 為後端返回的最新對話 ID
+      }
+
+      setMessages((prev) => {
+        const withoutLoading = prev.filter(m => m.type !== 'loading');
+        return [...withoutLoading, { type: 'bot', content: content }];
+      });
+      setMessages((prev) => [...prev, { type: 'service', items: ewlfareItems }]);
     } catch (error) {
-      // 錯誤處理
-      setMessages((prev) => prev.slice(0, -1));
+      setMessages((prev) => prev.filter(m => m.type !== 'loading')); // 移除 loading 訊息
       setMessages((prev) => [...prev, { type: 'bot', content: '呼叫服務卡片時發生錯誤，請稍後再試。' }]);
     }
   };
@@ -535,15 +458,12 @@ useEffect(() => {
 
   const handleNewChat = () => {
   console.log("使用者請求開啟新的聊天室...");
-  // 直接呼叫我們現有的函式來獲取一個全新的 chatID
-  // 之後的所有 UI 更新都會由 useEffect[chatID] 自動處理
-  getOrCreateChatId(); 
+  setMessages([]); // 清空當前訊息列表
+  setChatID(undefined);
 };
 
 const performAiSearch = async (query: string) => {
     // 1. 在畫面上顯示使用者（或系統）的查詢意圖
-    // *** 關鍵修改：我們需要先更新 messages 狀態，再用它來分析上下文 ***
-    // 所以我們將 setMessages 的呼叫從 callback 形式改為直接傳入新陣列
     const userMessage: Message = { type: "user", content: query };
     const loadingMessage: Message = { type: "loading" };
     const nextMessages = [...messages, userMessage, loadingMessage];
@@ -584,8 +504,10 @@ const performAiSearch = async (query: string) => {
     console.log(`從上下文中提取的過濾條件 -> 地區: ${targetLocation || '無'}, 類別: ${targetCategory || '無'}`);
 
       // 3. 呼叫後端 API (這部分不變)
-      const { content: aiResponseContent, cards: rawWelfareCards } = await sendMessageToModel(query);
-
+      const { content: aiResponseContent, cards: rawWelfareCards,newConversationId  } = await sendMessageToModel(query,chatID);
+      if (newConversationId !== undefined) {
+              setChatID(newConversationId); // 更新 chatID 為後端返回的最新對話 ID
+            }
       // 4. 移除載入中，並顯示 AI 的文字回覆
       setMessages((prev) => {
         const withoutLoading = prev.filter(m => m.type !== 'loading');
