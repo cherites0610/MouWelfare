@@ -19,6 +19,9 @@ export class Conversation {
   @ManyToOne('User', 'conversations', { onDelete: 'CASCADE' })
   user: any;
 
+  @Column({ nullable: true })   // 新增 sessionName
+  sessionName?: string;
+
   @OneToMany('Message', 'conversation', { cascade: true })
   messages: any[];
 

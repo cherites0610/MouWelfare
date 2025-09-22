@@ -16,6 +16,36 @@ export class ConversationService {
     private readonly userRepo: Repository<User>,
   ) {}
 
+  /**
+   * 根據對話 ID 獲取最新的訊息
+   * @param conversationId 對話 ID
+   * @returns 最新的訊息物件，如果沒有則回傳 null
+   */
+  async getLastMessage(conversationId: number) {
+    // 使用 findOne 搭配 order by 來取得最新的一筆訊息
+    const latestMessage = await this.messageRepo.findOne({
+      where: { conversation: { id: conversationId } },
+      order: { created_at: 'DESC' },
+    });
+    return latestMessage;
+  }
+
+  /**
+ * 根據對話 ID 獲取最新的 AI 訊息
+ * @param conversationId 對話 ID
+ * @returns 最新的 AI 訊息物件，如果沒有則回傳 null
+ */
+async getLastAiMessage(conversationId: number) {
+  const latestAiMessage = await this.messageRepo.findOne({
+    where: { 
+      conversation: { id: conversationId },
+      role: 'ai'  // 只查找 AI 訊息
+    },
+    order: { created_at: 'DESC' },
+  });
+  return latestAiMessage;
+}
+
   // 建立新的對話
   async createConversation(userId: string, title?: string) {
     const user = await this.userRepo.findOne({ where: { id: userId } });
@@ -28,27 +58,30 @@ export class ConversationService {
     return await this.conversationRepo.save(conversation);
   }
 
-  // 新增訊息
+  /**
+   * 新增訊息
+   * @param conversationId 對話 ID
+   * @param role 角色 ('user' 或 'ai')
+   * @param content 訊息內容
+   * @param metadata 額外的訊息資訊，用於儲存 session ID
+   */
   async addMessage(
     conversationId: number,
     role: 'user' | 'ai',
     content: string,
-    extra?: { welfareCards?: any[] },
+    metadata?: Record<string, any>,
   ) {
     const conversation = await this.conversationRepo.findOne({ where: { id: conversationId } });
     if (!conversation) throw new Error('Conversation not found');
 
-    const messageData: any = {
-      conversation,
+    // 修正點：直接將 metadata 物件儲存
+    const message = this.messageRepo.create({
+      conversation, // 確保對話物件被正確關聯
       role,
       content,
-    };
+      metadata: metadata || {},
+    });
 
-    if (role === 'ai') {
-      messageData.welfareCards = extra?.welfareCards || [];
-    }
-
-    const message = this.messageRepo.create(messageData);
     return await this.messageRepo.save(message);
   }
 
@@ -56,7 +89,7 @@ export class ConversationService {
   async getConversationById(conversationId: number, includeMessages = true) {
     return this.conversationRepo.findOne({
       where: { id: conversationId },
-      relations:  ['messages', 'user'] ,
+      relations: ['messages', 'user'],
       order: includeMessages ? { messages: { created_at: 'ASC' } } : undefined,
     });
   }
@@ -88,5 +121,28 @@ export class ConversationService {
   // 刪除對話
   async deleteConversation(conversationId: number) {
     return await this.conversationRepo.delete(conversationId);
+  }
+
+  async checkLastMessage(conversationId: number) {
+    const lastMessage = await this.messageRepo.findOne({
+      where: { conversation: { id: conversationId } },
+      order: { created_at: 'DESC' },
+      relations: ['conversation'] // 載入 conversation 關聯
+    });
+
+    console.log('--- 檢查最後一則訊息 ---');
+    console.log('對話 ID:', lastMessage?.conversation?.id);
+    console.log('角色:', lastMessage?.role);
+    console.log('內容:', lastMessage?.content);
+    console.log('Metadata:', lastMessage?.metadata);
+
+    // 檢查 metadata 是否包含 sessionName ID
+    if (lastMessage?.metadata?.sessionName) {
+      console.log('✅ 成功：找到 Session ID！');
+      console.log('Session ID:', lastMessage.metadata.sessionName);
+    } else {
+      console.log('❌ 失敗：未找到 Session ID。');
+    }
+    return lastMessage;
   }
 }
