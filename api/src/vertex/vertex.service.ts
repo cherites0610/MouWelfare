@@ -141,6 +141,7 @@ export class VertexService {
         location: r.document?.structData?.location,
         publicationDate: r.document?.structData?.publicationDate,
         categories: r.document?.structData?.categories,
+        applicationCriteria:r.document?.structData?.applicationCriteria
       }));
 
       return { welfareCards };
@@ -186,19 +187,6 @@ export class VertexService {
     // 添加 session 和 queryId（如果存在）
     if (sessionName) {
       data.session = sessionName;
-        const results = response.data.results || [];
-        return results.map(r => ({
-            id: r.document?.structData?.id || r.document?.id,
-            title: r.document?.structData?.title || r.document?.displayName,
-            summary: r.document?.structData?.summary || r.document?.snippet,
-            detail: r.document?.structData?.detail,
-            forward: r.document?.structData?.forward,
-            link: r.document?.structData?.link,
-            location: r.document?.structData?.location,
-            publicationDate: r.document?.structData?.publicationDate,
-            categories: r.document?.structData?.categories,
-            applicationCriteria: r.document?.structData?.applicationCriteria,
-        }));
     }
     if (queryId) {
       data.query.queryId = queryId;
