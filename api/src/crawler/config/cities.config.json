@@ -190,5 +190,256 @@
       "date": ".pubInfo li:nth-child(3)",
       "content": ".cpArticle"
     }
+  },
+    "kaohsiung": {
+    "city": "高雄市",
+    "baseUrl": "https://socbu.kcg.gov.tw/index.php",
+    "startUrl": "https://socbu.kcg.gov.tw/index.php?prog=1&b_id=25",
+    "levels": [
+      {
+        "selector": ".divrec_a1 a.aa1",
+        "getUrlAttr": "href"
+      },
+      {
+        "selector": ".divbody .diva1 a",
+        "getUrlAttr": "href"
+      }
+    ],
+    "stopSelector": ".fb-share-link",
+    "extractSelectors": {
+      "title": "h3",
+      "date": "",
+      "content": ".diva1 > :not(#download):not([align='CENTER']):not(#download_b)"
+    }
+  },
+  "hualien": {
+    "city": "花蓮市",
+    "baseUrl": "https://sa.hl.gov.tw",
+    "startUrl": "https://sa.hl.gov.tw/List_sp/0c9cde4096e14a83bc3535d68da539b1?listPage=50",
+    "levels": [
+      {
+        "selector": ".all_list .list_table a",
+        "getUrlAttr": "href"
+      },
+      {
+        "selector": ".all_list .list_table a",
+        "getUrlAttr": "href"
+      },
+      {
+        "selector": ".all_list .list_table a",
+        "getUrlAttr": "href"
+      }
+    ],
+    "stopSelector": ".sec",
+    "extractSelectors": {
+      "title": "h2",
+      "date": ".sec span:nth-of-type(2)",
+      "content": ".detail_box .edit_box"
+    }
+  },
+  "yilan": {
+    "city": "宜蘭市",
+    "baseUrl": "https://sntroot.e-land.gov.tw/",
+    "startUrl": "https://sntroot.e-land.gov.tw/cl.aspx?n=10099",
+    "levels": [
+      {
+        "selector": ".group.base-section .group-list .in .ct .in ul li a",
+        "getUrlAttr": "href"
+      },
+      {
+        "selector": ".area-table .in .ct .in a",
+        "getUrlAttr": "href"
+      }
+    ],
+    "stopSelector": ".div",
+    "extractSelectors": {
+      "title": ".in h3",
+      "date": ".group.page-footer .list-text.detail .in ul li",
+      "content": ".div"
+    }
+  },
+  "tainan": {
+    "city": "台南市",
+    "baseUrl": "https://sab.tainan.gov.tw/",
+    "startUrl": "https://sab.tainan.gov.tw/cl.aspx?n=21367",
+    "levels": [
+      {
+        "selector": ".group.base-extend .list-text.link .in .ct .in ul[data-child='10'] > li:nth-child(n+6):nth-child(-n+10) a",
+        "getUrlAttr": "href"
+      },
+      {
+        "selector": ".group-list.content .list-text.content-list ul li a",
+        "getUrlAttr": "href"
+      },
+      {
+        "selector": ".area-table a",
+        "getUrlAttr": "href"
+      }
+    ],
+    "stopSelector": ".essay",
+    "extractSelectors": {
+      "title": ".in h3",
+      "date": ".list-text.detail .in ul li:nth-child(2)",
+      "content": ".essay .p" 
+    }
+  },
+  "penghu": {
+    "city": "澎湖市",
+    "baseUrl": "https://www.penghu.gov.tw/society/",
+    "startUrl": "https://www.penghu.gov.tw/society/home.jsp?id=1",
+    "levels": [
+      {
+        "selector": ".medium .ed_list01 a",
+        "getUrlAttr": "href"
+      },
+      {
+        "selector": ".medium .ed_list01 a",
+        "getUrlAttr": "href"
+      },
+      {
+        "selector": ".list .con a",
+        "getUrlAttr": "href"
+      }
+    ],
+    "stopSelector": ".sub .min_title",
+    "extractSelectors": {
+      "title": ".medium .headlines",
+      "date": ".sub ul li:nth-child(1)",
+      "content": ".sub ul p"
+    }
+  },
+  "taitung": {
+    "city": "台東市",
+    "baseUrl": "https://taisoc.taitung.gov.tw/WebSite/Service/",
+    "startUrl": "https://taisoc.taitung.gov.tw/WebSite/Service/serviceMain.aspx?menuid=lW%2bfKiAxClc%3d#cate122",
+    "levels": [
+      {
+        "selector": ".inside_main ul li a",
+        "getUrlAttr": "href"
+      },
+      {
+        "selector": ".GridViewTable a",
+        "getUrlAttr": "href"
+      }
+    ],
+    "stopSelector": "table[border='0'][cellpadding='3']",
+    "extractSelectors": {
+      "title": "td[align='left'][background*='bg_news.gif'] strong font",
+      "date": "td[align='center'][background*='bg_news.gif'] strong font",
+      "content": "table[border='0'][cellpadding='3'] table tr"
+    }
+  },
+  "changhua": {
+    "city": "彰化市",
+    "baseUrl": "https://social.chcg.gov.tw/07other/",
+    "startUrl": "https://social.chcg.gov.tw/07other/other01_list.aspx?topsn=6210",
+    "levels": [
+      {
+        "selector": ".cat-one a",
+        "getUrlAttr": "href"
+      }
+    ],
+    "stopSelector": ".article-title",
+    "extractSelectors": {
+      "title": ".article-title h3",
+      "date": "",
+      "content": ".article-desc"
+    }
+  },
+  "kinmen": {
+    "city": "金門市",
+    "baseUrl": "https://social.kinmen.gov.tw/",
+    "startUrl": "https://social.kinmen.gov.tw/Content_List.aspx?n=B709941748334ACA",
+    "levels": [
+      {
+        "selector": ".group-list.content .list-text.content-list ul li a[title*='福利服務項目']",
+        "getUrlAttr": "href"
+      },
+      {
+        "selector":".list-text.classify ul li a",
+        "getUrlAttr":"href"
+      }
+    ],
+    "stopSelector": ".area-editor.user-edit",
+    "extractSelectors": {
+      "title": ".list-text.classify ul li.is-active a",
+      "date": ".list-text.detail ul li:nth-child(1)",
+      "content": ".area-editor.user-edit"
+    }
+  },
+  "taipei": {
+  "city": "臺北市",
+  "baseUrl": "https://dosw.gov.taipei/",
+  "startUrl": "https://dosw.gov.taipei/Content_List.aspx?n=A9C028834E9BDC90",
+  "stopSelector": ".list-text.detail.bottom-detail",
+  "extractSelectors": {
+    "title": "h2.h3",
+    "date": ".list-text.detail.bottom-detail ul li:nth-child(2)",
+    "content": ".area-editor.user-edit, .area-editor.user-edit td[colspan='3'], .div .essay"
+  }
+  },
+"nantou": {
+  "city": "南投市",
+  "baseUrl": "https://welfare.nantou.gov.tw/",
+  "startUrl": "https://welfare.nantou.gov.tw/1486/WebMap/ListView/3654/zh-Hant-TW",
+  "postData": {
+    "__RequestVerificationToken": "{{token}}",
+    "page": "1",
+    "PartialUrl": "/1486/WebMap/PageListPartial_ListView",
+    "ActionWeb": "/1486/WebMap/ListView/3654/zh-Hant-TW",
+    "DivList": "#ListData",
+    "OrderTxt": "MNU_ORDER",
+    "OrderBy": "asc",
+    "MNU_ID": "3654"
+  },
+  "levels": [
+    {
+      "selector": ".table-responsive ul li ul li ul li ul li ul li a",
+      "getUrlAttr": "href"
+    }
+  ],
+  "stopSelector": ".breadcrumb",
+  "extractSelectors": {
+    "title": "h2",
+    "date": ".table tr:nth-child(2) td:nth-child(2)",
+    "content": ".table tr:nth-child(4) p"
+  },
+  "downloadSelector": ".table tr:nth-child(5) a",
+  "pageCount": 5
+},
+  "matsu": {
+  "city": "連江市",
+  "baseUrl": "https://www.matsu.gov.tw/",
+  "startUrl": "https://www.matsu.gov.tw/chhtml/download/371030000A0001/5972",
+  "levels": [
+    {
+      "selector": ".IN_MENU a",
+      "getUrlAttr": "href"
+    }
+  ],
+  "stopSelector": "",
+  "extractSelectors": {
+    "title": "h2",
+    "date": "",
+    "content": ".table tr:nth-child(4) p"
+  }
+  },
+  "miaoli": {
+  "city": "苗栗市",
+  "baseUrl": "https://www.miaoli.gov.tw/social_affairs/",
+  "startUrl": "https://www.miaoli.gov.tw/social_affairs/News.aspx?n=8644&sms=14225&page=1&PageSize=20",
+  "levels": [
+    {
+      "selector": ".area-table.rwd-straight a",
+      "getUrlAttr": "href"
+    }
+  ],
+  "stopSelector": ".essay",
+  "extractSelectors": {
+    "title": ".simple-text.title",
+    "date": "",
+    "content": ".essay"
+  },
+  "pageCount": 20
   }
 }

@@ -1,28 +1,23 @@
-import { 
-  Entity, 
-  PrimaryGeneratedColumn, 
-  Column, 
-  ManyToOne, 
-  CreateDateColumn 
-} from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne } from 'typeorm';
+import { Conversation } from './conversation.entity.js';
 
-@Entity('messages')
+@Entity('message')
 export class Message {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @ManyToOne('Conversation', 'messages', { onDelete: 'CASCADE' })
-  conversation: any;
+  @ManyToOne(() => Conversation, (conversation) => conversation.messages)
+  conversation: Conversation;
 
-  @Column({ type: 'enum', enum: ['user', 'ai'] })
-  role: 'user' | 'ai';
+  @Column()
+  role: string; // 'user' or 'ai'
 
-  @Column({ type: 'json', nullable: true })
-  welfareCards: any[];
-
-  @Column('text')
+  @Column({ type: 'text' })
   content: string;
 
-  @CreateDateColumn()
+  @Column({ type: 'json', nullable: true })
+  metadata: Record<string, any>;
+
+  @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   created_at: Date;
 }
