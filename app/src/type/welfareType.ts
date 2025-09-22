@@ -6,8 +6,8 @@ export interface Welfare {
     detail: string;
     link: string;
     location: string;
-    publication_date: string;
-    identities: string[];
+    publicationDate: string;
+    applicationCriteria: string[];
     categories: string[];
     forward: string[];
     status: boolean;

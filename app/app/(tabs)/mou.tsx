@@ -19,7 +19,7 @@ import axios from 'axios';
 import { useRouter } from 'expo-router';
 import { Platform,Linking } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import {WelfareApiParams} from "../type/welfareType";
+import {WelfareApiParams,Welfare} from "../type/welfareType";
 import {fetchWelfareApi} from "@/src/api/welfareApi";
 import Markdown from 'react-native-markdown-display';
 import { AppConfig } from '@/src/config/app.config';
@@ -40,7 +40,11 @@ interface ResultItem {
   summary?: string;
   location?: string;
   forward?: string;
-  categories?: string;
+  categories?: string[];
+  detail?: string;
+  publicationDate?: string;
+  applicationCriteria?: string[];
+  lightStatus?: number;
 }
 
 interface Message {
@@ -257,7 +261,10 @@ useEffect(() => {
             summary: card.summary, 
             location: card.location, 
             forward: card.forward, 
-            categories:card.categories
+            categories:card.categories,
+            detail: card.detail,
+            publicationDate: card.publicationDate,
+            applicationCriteria: card.applicationCriteria
           }))
         };
       } else {
@@ -317,7 +324,10 @@ useEffect(() => {
             summary: card.summary, 
             location: card.location, 
             forward: card.forward, 
-            categories:card.categories
+            categories:card.categories,
+            detail: card.detail,
+            publicationDate: card.publicationDate,
+            applicationCriteria: card.applicationCriteria
           }));
           console.log("card",response.data.welfareCards)
         }
@@ -449,9 +459,10 @@ useEffect(() => {
           summary: card.summary, 
           location: card.location, 
           forward: card.forward, 
-          categories:card.categories
-          // 如果您的 Welfare 類型還有其他欄位，請在這裡補充映射
-          // 例如：imageUrl: card.imageUrl,
+          categories:card.categories,
+          detail: card.detail,
+          publicationDate: card.publicationDate,
+          applicationCriteria: card.applicationCriteria
         }));
       } else {
         console.warn("後端返回的福利卡片格式不正確或為空:", response);
@@ -763,9 +774,12 @@ const performAiSearch = async (query: string) => {
                     >
                       <Text style={styles.resultTitle} numberOfLines={3} ellipsizeMode="tail">{result.title}</Text>
                       {result.location && <Text style={styles.resultLocation}>地點: {result.location}</Text>}
+                      {result.categories && <Text style={styles.resultLocation}>類別:{result.categories}</Text>}
+                      {result.applicationCriteria && <Text style={styles.resultLocation}>申請條件:{result.applicationCriteria}</Text>}
+                      
                       {result.forward && <Text style={styles.resultForward}>福利: {result.forward}</Text>}
                       
-                      {/* {result.summary && <Text style={styles.resultSummary}>{result.summary}</Text>} */}
+                      
                     </TouchableOpacity>
                   )}
                   keyExtractor={(item, index) => index.toString()}
@@ -948,7 +962,7 @@ const styles = StyleSheet.create({
     color: '#666',
     marginBottom: 2,
   },
-  resultSummary: { // 如果您決定顯示 summary，請添加此樣式
+  resultCatege: { // 如果您決定顯示 summary，請添加此樣式
     fontSize: 14,
     color: '#555',
     marginTop: 2,

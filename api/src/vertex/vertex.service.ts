@@ -162,6 +162,7 @@ export class VertexService {
             location: r.document?.structData?.location,
             publicationDate: r.document?.structData?.publicationDate,
             categories: r.document?.structData?.categories,
+            applicationCriteria: r.document?.structData?.applicationCriteria,
         }));
     }
 

@@ -84,7 +84,7 @@ const WelfareInfo = () => {
         <ScrollView>
           <View style={styles.container}>
             <Text style={styles.title}>{welfare.title}</Text>
-            <Text style={{...styles.releaseDate,marginBottom:3}}>發佈日期: {welfare.publication_date||"無法取得發佈日期"}</Text>
+            <Text style={{...styles.releaseDate,marginBottom:3}}>發佈日期: {welfare.publicationDate||"無法取得發佈日期"}</Text>
             <Text style={styles.releaseDate}>福利種類: {welfare.categories.join(',')||"無法取得福利種類"}</Text>
 
             <Text style={styles.sectionTitle}>簡要原文(AI生成，請自行鑒別):</Text>
@@ -94,12 +94,12 @@ const WelfareInfo = () => {
             <FlatList
               style={styles.list}
               scrollEnabled={false}
-              data={welfare.identities}
+              data={welfare.applicationCriteria}
               renderItem={({ item, index }) => (
                 <View
                   style={[
                     styles.listRow,
-                    index === welfare.identities.length - 1 && styles.lastItemRow,
+                    index === welfare.applicationCriteria.length - 1 && styles.lastItemRow,
                   ]}
                 >
                   <Text style={styles.listIndex}>{index + 1}</Text>
