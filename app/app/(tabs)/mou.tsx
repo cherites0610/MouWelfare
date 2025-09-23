@@ -25,6 +25,9 @@ import Markdown from 'react-native-markdown-display';
 import { AppConfig } from '@/src/config/app.config';
 import { useSelector } from 'react-redux'; // 1. 匯入 useSelector
 import { RootState } from '@/src/store'; // 2. 匯入 RootState 型別
+import RightDrawer from '../../src/components/Mou/RightDrawer'; 
+import { Ionicons } from '@expo/vector-icons'; 
+
 // 定義類型
 interface Item {
   id: number;
@@ -145,6 +148,11 @@ const categorySynonyms: { [key: string]: string }= {
   ];
 
   const botAvatar = require("@/assets/images/logo.jpeg")
+  const [isDrawerVisible, setIsDrawerVisible] = useState(false); 
+
+  const toggleRightDrawer = () => {
+    setIsDrawerVisible(!isDrawerVisible);
+  };
 
   // 建立一個包含所有縣市名稱的 Set，方便快速查找
   const sortedCategories = React.useMemo(() => 
@@ -725,6 +733,13 @@ const performAiSearch = async (query: string) => {
 
   return (
     <SafeAreaView style={{ flex: 1 }}>
+      {/* 新增：頂部導航欄 */}
+    <View style={styles.header}>
+      <Text style={styles.headerTitle}>AI 助理</Text>
+      <TouchableOpacity onPress={toggleRightDrawer} style={styles.settingsIcon}>
+        <Ionicons name="options-outline" size={24} color="#374151" /> {/* 齒輪圖標 */}
+      </TouchableOpacity>
+    </View>
       <View style={styles.container}>
         <ScrollView
           ref={scrollViewRef}
@@ -753,6 +768,10 @@ const performAiSearch = async (query: string) => {
           </TouchableOpacity>
         </View>
       </View>
+      <RightDrawer
+      isVisible={isDrawerVisible}
+      onClose={toggleRightDrawer}
+    />
     </SafeAreaView>
 
   );
@@ -761,6 +780,26 @@ const performAiSearch = async (query: string) => {
 // 樣式
 const { width } = Dimensions.get('window');
 const styles = StyleSheet.create({
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1f2937',
+  },
+  settingsIcon: {
+    padding: 8,
+    borderRadius: 20,
+    backgroundColor: '#f9fafb',
+  },
   container: {
     flex: 1,
     backgroundColor: '#f3f4f6',
