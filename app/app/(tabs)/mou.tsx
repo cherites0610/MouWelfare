@@ -163,6 +163,7 @@ const categorySynonyms: { [key: string]: string }= {
     { id: 2, name: '中區', image: require("@/assets/images/Mou/school.jpeg") },
     { id: 3, name: '南區', image: require("@/assets/images/Mou/school.jpeg") },
     { id: 4, name: '東區', image: require("@/assets/images/Mou/school.jpeg") },
+    { id: 5, name: '離島', image: require("@/assets/images/Mou/school.jpeg") },
   ];
 
   const northItems: Item[] = [
@@ -196,6 +197,12 @@ const categorySynonyms: { [key: string]: string }= {
     { id: 19, name: '台東縣', image: require("@/assets/images/Mou/school.jpeg") },
   ];
 
+  const offshoreItems: Item[] = [
+    { id: 20, name: '澎湖縣', image: require("@/assets/images/Mou/school.jpeg") },
+    { id: 21, name: '金門縣', image: require("@/assets/images/Mou/school.jpeg") },
+    { id: 22, name: '連江縣', image: require("@/assets/images/Mou/school.jpeg") },
+  ];
+
   const botAvatar = require("@/assets/images/logo.jpeg")
   const [isDrawerVisible, setIsDrawerVisible] = useState(false); 
 
@@ -217,15 +224,13 @@ const sortedLocations = React.useMemo(() =>
       ...midItems.map(i => i.name),
       ...southItems.map(i => i.name),
       ...eastItems.map(i => i.name),
+      ...offshoreItems.map(i => i.name),
     ].sort((a, b) => b.length - a.length),
     [] // 空依賴陣列，確保只計算一次
   );
   // 初始化
   useEffect(() => {
   if (!isInitialized) {
-    // 這個 effect 的職責只有一個：獲取一次 chatID
-    // 一旦 getOrCreateChatId 成功並呼叫了 setChatID
-    // 上面那個監聽 chatID 的 effect 就會自動被觸發，接管後續流程
     getOrCreateChatId(); 
     setIsInitialized(true);
   }
@@ -300,16 +305,15 @@ useEffect(() => {
 
       // 6. 更新畫面
       setMessages((prev) => {
-        const withoutLoading = prev.filter(m => m.type !== 'loading');
+      const withoutLoading = prev.filter(m => m.type !== 'loading');
         const botMessage: Message = { type: 'bot', content: content };
-        if (isPersonalized && cards && cards.length > 0) {
-            const resultMessage: Message = { type: 'result', resultItems: cards };
-            return [...withoutLoading, botMessage, resultMessage];
-        }
+        const newMessages = [...withoutLoading, botMessage];
 
-        // 其他所有情況（包括所有通用對話），都強制顯示福利類別卡片
+        // 不論如何，都接著顯示通用的福利類別卡片
         const serviceMessage: Message = { type: 'service', items: ewlfareItems };
-        return [...withoutLoading, botMessage, serviceMessage];
+        newMessages.push(serviceMessage);
+        
+        return newMessages;
       });
 
     } catch (error) {
@@ -469,6 +473,7 @@ useEffect(() => {
       else if (index[0] === 2) items = midItems;
       else if (index[0] === 3) items = southItems;
       else if (index[0] === 4) items = eastItems;
+      else if (index[0] === 5) items = offshoreItems;
       setMessages((prev) => [
         ...prev,
         { type: 'user', content: index[2] },
