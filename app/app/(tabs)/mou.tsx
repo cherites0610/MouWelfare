@@ -390,6 +390,7 @@ useEffect(() => {
             publicationDate: card.publicationDate,
             applicationCriteria: card.applicationCriteria
           }));
+          console.log(response.data.welfareCards)
         }
       } else if (typeof response.data === 'string') {
         aiAnswer = response.data;
@@ -535,30 +536,30 @@ useEffect(() => {
   };
 
   // 新增：處理機器人頭像點擊事件
-  const handleBotAvatarClick = async () => {
-    setMessages((prev) => [...prev, { type: 'loading' }]);
-    const currentChatId = chatID ?? await getOrCreateChatId();
-    if (currentChatId === null) {
-      setMessages([{ type: 'bot', content: '抱歉，無法建立對話，請檢查登入狀態。' }]);
-      return;
-    }
-    try {
-      const { content, newConversationId } = await sendMessageToModel('你好', currentChatId);
+  // const handleBotAvatarClick = async () => {
+  //   setMessages((prev) => [...prev, { type: 'loading' }]);
+  //   const currentChatId = chatID ?? await getOrCreateChatId();
+  //   if (currentChatId === null) {
+  //     setMessages([{ type: 'bot', content: '抱歉，無法建立對話，請檢查登入狀態。' }]);
+  //     return;
+  //   }
+  //   try {
+  //     const { content, newConversationId } = await sendMessageToModel('你好', currentChatId);
 
-      if (newConversationId !== undefined) {
-        setChatID(newConversationId); // 更新 chatID 為後端返回的最新對話 ID
-      }
+  //     if (newConversationId !== undefined) {
+  //       setChatID(newConversationId); // 更新 chatID 為後端返回的最新對話 ID
+  //     }
 
-      setMessages((prev) => {
-        const withoutLoading = prev.filter(m => m.type !== 'loading');
-        return [...withoutLoading, { type: 'bot', content: content }];
-      });
-      setMessages((prev) => [...prev, { type: 'service', items: ewlfareItems }]);
-    } catch (error) {
-      setMessages((prev) => prev.filter(m => m.type !== 'loading')); // 移除 loading 訊息
-      setMessages((prev) => [...prev, { type: 'bot', content: '呼叫服務卡片時發生錯誤，請稍後再試。' }]);
-    }
-  };
+  //     setMessages((prev) => {
+  //       const withoutLoading = prev.filter(m => m.type !== 'loading');
+  //       return [...withoutLoading, { type: 'bot', content: content }];
+  //     });
+  //     setMessages((prev) => [...prev, { type: 'service', items: ewlfareItems }]);
+  //   } catch (error) {
+  //     setMessages((prev) => prev.filter(m => m.type !== 'loading')); // 移除 loading 訊息
+  //     setMessages((prev) => [...prev, { type: 'bot', content: '呼叫服務卡片時發生錯誤，請稍後再試。' }]);
+  //   }
+  // };
 
   // 處理最終結果
   // 修改：處理最終結果
@@ -736,17 +737,9 @@ const performAiSearch = async (query: string, options?: { asNewConversation?: bo
                     console.log('攔截到 Markdown 連結點擊，URL:', url);
 
                     if (url.startsWith('/home/')) {
-                      router.replace(url as any);
-                      // *** 關鍵修改：明確返回 true，阻止預設行為 ***
+                      router.navigate(url as any);
                       return true; 
                     }
-                    
-                    if (url.startsWith('http' )) {
-                      Linking.openURL(url);
-                      // *** 關鍵修改：明確返回 true，阻止預設行為 ***
-                      return true;
-                    }
-
                     console.warn('未知的連結格式:', url);
                     // 對於未知的格式，返回 false，讓套件自己處理（如果它有預設行為的話）
                     return false;
@@ -803,7 +796,6 @@ const performAiSearch = async (query: string, options?: { asNewConversation?: bo
       case 'result':
         return (
             <View style={styles.botMessage}>
-              {/* 同樣的邏輯應用在所有機器人發出的訊息類型上 */}
               {shouldShowAvatar ? (
                 <TouchableOpacity onPress={handleNewChat}>
                   <Image source={botAvatar} style={styles.avatar} />
@@ -838,10 +830,11 @@ const performAiSearch = async (query: string, options?: { asNewConversation?: bo
                     >
                       <Text style={styles.resultTitle} numberOfLines={3} ellipsizeMode="tail">{result.title}</Text>
                       {result.location && <Text style={styles.resultLocation}>地點: {result.location}</Text>}
-                      {result.categories && <Text style={styles.resultLocation}>類別:{result.categories}</Text>}
-                      {result.applicationCriteria && <Text style={styles.resultLocation}>申請條件:{result.applicationCriteria}</Text>}
+
+                      {result.categories && <Text style={styles.resultLocation}numberOfLines={2} ellipsizeMode="tail">{`類別: ${result.categories.join('、')}`}</Text>}
+                      {/* {result.applicationCriteria && <Text style={styles.resultLocation}>申請條件:{result.applicationCriteria}</Text>} */}
                       
-                      {result.forward && <Text style={styles.resultForward}>福利: {result.forward}</Text>}
+                      {result.forward && <Text style={styles.resultForward} numberOfLines={2} ellipsizeMode="tail">福利: {result.forward}</Text>}
                       
                       
                     </TouchableOpacity>
@@ -1022,7 +1015,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   resultCard: {
-    width: 160, // 設定固定寬度
+      width: 160, // 設定固定寬度
       height: 224, // 設定固定高度
       backgroundColor: '#fff',
       padding: 15,
@@ -1042,13 +1035,13 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     color: '#333',
-    marginBottom: 2,
-    lineHeight: 24,  
+    // marginBottom: 1,
+    // lineHeight: 24,  
   },
   resultLocation: {
     fontSize: 14,
     color: '#666',
-    marginBottom: 2,
+    // marginBottom: 2,
   },
   resultForward: {
     fontSize: 14,
