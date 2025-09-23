@@ -382,16 +382,6 @@
   "city": "南投市",
   "baseUrl": "https://welfare.nantou.gov.tw/",
   "startUrl": "https://welfare.nantou.gov.tw/1486/WebMap/ListView/3654/zh-Hant-TW",
-  "postData": {
-    "__RequestVerificationToken": "{{token}}",
-    "page": "1",
-    "PartialUrl": "/1486/WebMap/PageListPartial_ListView",
-    "ActionWeb": "/1486/WebMap/ListView/3654/zh-Hant-TW",
-    "DivList": "#ListData",
-    "OrderTxt": "MNU_ORDER",
-    "OrderBy": "asc",
-    "MNU_ID": "3654"
-  },
   "levels": [
     {
       "selector": ".table-responsive ul li ul li ul li ul li ul li a",
@@ -403,9 +393,7 @@
     "title": "h2",
     "date": ".table tr:nth-child(2) td:nth-child(2)",
     "content": ".table tr:nth-child(4) p"
-  },
-  "downloadSelector": ".table tr:nth-child(5) a",
-  "pageCount": 5
+  }
 },
   "matsu": {
   "city": "連江市",
