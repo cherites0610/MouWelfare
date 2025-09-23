@@ -3,4 +3,5 @@ export interface Config {
     autoFilterUserData: boolean; // 是否自動篩選用戶資料
     authToken: string; // 存放認證 token
     appLaunchCount: number; // 應用程式開啟次數
+    needsNewChat?: 'personalized' | 'general' | null;
 }

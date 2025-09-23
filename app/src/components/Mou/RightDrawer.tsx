@@ -5,24 +5,33 @@ import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '@/src/store';
 import { updateConfig, writeConfig } from '@/src/store/slices/configSlice';
 import { COLORS } from '@/src/utils/colors';
+import { useRouter } from 'expo-router';
 
 interface RightDrawerProps {
   isVisible: boolean;
   onClose: () => void;
 }
 
+
 const RightDrawer: React.FC<RightDrawerProps> = ({ isVisible, onClose }) => {
   const dispatch = useDispatch<AppDispatch>();
-
+  const router = useRouter(); 
   // 從 Redux 取得設定狀態
   const autoFilterUserData = useSelector(
     (state: RootState) => state.config.autoFilterUserData
   );
 
-  // 切換設定開關
-  const handleAutoSelectChangeInDrawer = (value: boolean) => {
-    dispatch(updateConfig({ autoFilterUserData: value }));
-    dispatch(writeConfig()); // 如果要寫入 AsyncStorage
+  const handleAutoSelectChange = (newValue: boolean) => {
+     if (newValue) {
+      // ✅ 開啟開關：發出 'personalized' 信號
+      dispatch(updateConfig({ autoFilterUserData: true, needsNewChat: 'personalized' }));
+    } else {
+      // ✅ 關閉開關：發出 'general' 信號
+      dispatch(updateConfig({ autoFilterUserData: false, needsNewChat: 'general' }));
+    }
+    // 無論開關，都寫入設定並返回
+    dispatch(writeConfig());
+    onClose(); 
   };
 
   return (
@@ -58,7 +67,7 @@ const RightDrawer: React.FC<RightDrawerProps> = ({ isVisible, onClose }) => {
                     trackColor={{ false: "#ccc", true: COLORS.background }}
                     thumbColor={autoFilterUserData ? "#fff" : "#888"}
                     ios_backgroundColor="#3e3e3e"
-                    onValueChange={handleAutoSelectChangeInDrawer}
+                    onValueChange={handleAutoSelectChange}
                     value={autoFilterUserData}
                   />
                 </View>

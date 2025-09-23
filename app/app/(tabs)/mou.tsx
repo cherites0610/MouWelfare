@@ -23,10 +23,12 @@ import {WelfareApiParams,Welfare} from "../type/welfareType";
 import {fetchWelfareApi} from "@/src/api/welfareApi";
 import Markdown from 'react-native-markdown-display';
 import { AppConfig } from '@/src/config/app.config';
-import { useSelector } from 'react-redux'; // 1. 匯入 useSelector
-import { RootState } from '@/src/store'; // 2. 匯入 RootState 型別
+import { useDispatch, useSelector } from 'react-redux'; // 1. 匯入 useSelector
+import { AppDispatch, RootState } from '@/src/store'; // 2. 匯入 RootState 型別
 import RightDrawer from '../../src/components/Mou/RightDrawer'; 
 import { Ionicons } from '@expo/vector-icons'; 
+import { resetNewChatSignal } from '../../src/store/slices/configSlice'; 
+import { User } from '@/src/type/user';
 
 // 定義類型
 interface Item {
@@ -58,6 +60,50 @@ interface Message {
   showAvatar?: boolean;
   conversationId?: string;
 }
+const generateUserProfilePrompt = (user: User | null): string => {
+  if (!user) {
+    return '';
+  }
+
+  const profileParts: string[] = [];
+
+  // 1. 處理地區
+  if (user.location?.name) {
+    profileParts.push(`居住在 ${user.location.name}`);
+  }
+
+  // 2. 處理身分
+  if (user.identities && user.identities.length > 0) {
+    const identityNames = user.identities.map(id => id.name).join('、');
+    profileParts.push(`身分為 ${identityNames}`);
+  }
+
+  // 3. 處理生日/年齡 (如果後端 AI 能理解年齡更好)
+  if (user.birthday) {
+    // 簡單起見，可以直接傳遞生日，或是在前端計算年齡
+    const birthDate = new Date(user.birthday);
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const m = today.getMonth() - birthDate.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+        age--;
+    }
+    profileParts.push(`目前年齡大約 ${age} 歲`);
+  }
+  
+  // 4. 處理性別
+  if (user.gender) {
+      profileParts.push(`性別為 ${user.gender}`);
+  }
+
+
+  if (profileParts.length === 0) {
+    return '';
+  }
+
+  // 將所有部分組合成一句話
+  return `我的個人背景資料是：${profileParts.join('，')}。`;
+};
 
 // 主組件
 const App: React.FC = () => {
@@ -73,6 +119,9 @@ const App: React.FC = () => {
   const { width } = Dimensions.get('window');
   // 3. 使用 useSelector 從 Redux store 中獲取 user 物件
   const { user } = useSelector((state: RootState) => state.user);
+  const [isStartingChat, setIsStartingChat] = useState(false);
+  const { autoFilterUserData,needsNewChat  } = useSelector((state: RootState) => state.config);
+  const dispatch = useDispatch<AppDispatch>();
   // 數據
   const serviceIdToCategoryMap: { [key: number]: string } = {
   1: '兒童及青少年福利',
@@ -182,18 +231,92 @@ const sortedLocations = React.useMemo(() =>
   }
 }, [isInitialized]);
 
-// --- 新增這個 useEffect 來實現 UI 與 chatID 的連動 ---
 useEffect(() => {
-  if (chatID === undefined) { // 檢查是否為初始的 undefined 狀態
-    return;
-  }
-  console.log(`chatID 已變更為: ${chatID}，準備更新 UI...`);
-  // 當 chatID 首次被設定（從 undefined 變為一個數字）時，發送一個初始的「你好」訊息
-  // 這樣後端會創建對話並返回第一個 AI 回覆
-  if (messages.length === 0) { // 避免重複發送歡迎訊息
-    handleBotAvatarClick(chatID); // 觸發歡迎訊息，並將 chatID 傳入
-  }
-}, [chatID]); 
+    const initializeChat = async () => {
+      if (isStartingChat) return;
+      setIsStartingChat(true);
+
+      // 簡化後的 switch 邏輯
+      switch (needsNewChat) {
+        case 'personalized':
+          console.log("偵測到 'personalized' 信號，啟動個人化新對話...");
+          await startNewChat(true);
+          break;
+        case 'general':
+          console.log("偵測到 'general' 信號，啟動通用新對話...");
+          await startNewChat(false);
+          break;
+        default:
+          // 只有在首次渲染時 (isInitialized 為 false)，才執行此處
+          console.log("App 首次加載，啟動普通新對話...");
+          await startNewChat(false);
+          break;
+      }
+      
+      if (needsNewChat) {
+        dispatch(resetNewChatSignal());
+      }
+      
+      setIsStartingChat(false);
+    };
+
+    // 簡化後的觸發條件
+    if (!isInitialized) {
+      initializeChat();
+      setIsInitialized(true);
+    } else if (needsNewChat) {
+      initializeChat();
+    }
+}, [isInitialized, needsNewChat, dispatch]);
+
+  const startNewChat = async (isPersonalized: boolean) => {
+    // 1. 清空畫面
+    setMessages([]);
+    
+    // 2. 顯示載入中
+    setMessages([{ type: 'loading' }]);
+
+    // 3. 獲取新的 chatID (如果需要)
+    const newChatId = await getOrCreateChatId();
+    if (newChatId === null) {
+      setMessages([{ type: 'bot', content: '抱歉，無法建立新的對話，請檢查您的網路連線或登入狀態。' }]);
+      return;
+    }
+
+    // 4. 準備問候語
+    let initialQuery = '你好';
+    // 只有在明確要求個人化，且條件滿足時，才拼接個人資料
+    if (isPersonalized && autoFilterUserData && user) {
+        const userProfilePrompt = generateUserProfilePrompt(user);
+        if (userProfilePrompt) {
+            initialQuery = `你好 (${userProfilePrompt})`;
+        }
+    }
+    console.log(`啟動新對話，isPersonalized: ${isPersonalized}, 查詢:`, initialQuery);
+
+    // 5. 使用這個問候語發送第一個請求
+    try {
+      const { content, cards } = await sendMessageToModel(initialQuery, newChatId);
+
+      // 6. 更新畫面
+      setMessages((prev) => {
+        const withoutLoading = prev.filter(m => m.type !== 'loading');
+        const botMessage: Message = { type: 'bot', content: content };
+        if (isPersonalized && cards && cards.length > 0) {
+            const resultMessage: Message = { type: 'result', resultItems: cards };
+            return [...withoutLoading, botMessage, resultMessage];
+        }
+
+        // 其他所有情況（包括所有通用對話），都強制顯示福利類別卡片
+        const serviceMessage: Message = { type: 'service', items: ewlfareItems };
+        return [...withoutLoading, botMessage, serviceMessage];
+      });
+
+    } catch (error) {
+      setMessages((prev) => prev.filter(m => m.type !== 'loading'));
+      setMessages((prev) => [...prev, { type: 'bot', content: '抱歉，初始化對話時發生錯誤。' }]);
+    }
+  };
 
   // 新建並獲取 chatID
   const getOrCreateChatId = async (): Promise<number | null> => {
@@ -407,10 +530,15 @@ useEffect(() => {
   };
 
   // 新增：處理機器人頭像點擊事件
-  const handleBotAvatarClick = async (currentChatId?: number) => {
+  const handleBotAvatarClick = async () => {
     setMessages((prev) => [...prev, { type: 'loading' }]);
+    const currentChatId = chatID ?? await getOrCreateChatId();
+    if (currentChatId === null) {
+      setMessages([{ type: 'bot', content: '抱歉，無法建立對話，請檢查登入狀態。' }]);
+      return;
+    }
     try {
-      const { content, cards, newConversationId } = await sendMessageToModel('你好', currentChatId);
+      const { content, newConversationId } = await sendMessageToModel('你好', currentChatId);
 
       if (newConversationId !== undefined) {
         setChatID(newConversationId); // 更新 chatID 為後端返回的最新對話 ID
@@ -468,98 +596,99 @@ useEffect(() => {
   console.log("使用者請求開啟新的聊天室...");
   setMessages([]); // 清空當前訊息列表
   setChatID(undefined);
+  setIsInitialized(false); 
 };
 
-const performAiSearch = async (query: string) => {
-    // 1. 在畫面上顯示使用者（或系統）的查詢意圖
+const performAiSearch = async (query: string, options?: { asNewConversation?: boolean }) => {
+    const isNewConversation = options?.asNewConversation ?? false;
+
     const userMessage: Message = { type: "user", content: query };
     const loadingMessage: Message = { type: "loading" };
-    const nextMessages = [...messages, userMessage, loadingMessage];
-    setMessages(nextMessages);
+    
+    const baseMessages = isNewConversation ? [] : messages;
+    setMessages([...baseMessages, userMessage, loadingMessage]);
 
     try {
-      // 步驟 A: 將新舊所有使用者訊息拼接成一個大的上下文字串
-      const conversationContext = nextMessages
-        .filter(m => m.type === 'user') // 只關心使用者說過的話
-        .map(m => m.content)             // 取出文字內容
-        .join(' ');                      // 用空格拼接起來
-      console.log("完整的對話上下文:", conversationContext);
-
-      // 步驟 B: 從這個完整的上下文中，找出最後提到的地區和類別
-      let targetLocation: string | undefined;
-      let targetCategory: string | undefined;
-
-      // --- 地區提取 (從長到短排序檢查) ---
-      for (const loc of sortedLocations) {
-        const shortLoc = loc.slice(0, -1);
-        if (conversationContext.includes(loc)) {
-          targetLocation = loc;
-          break; 
-        }
-        if (conversationContext.includes(shortLoc)) {
-          targetLocation = loc;
-          break; 
+      let finalQuery = query; 
+      if (autoFilterUserData && user) {
+        const userProfilePrompt = generateUserProfilePrompt(user);
+        if (userProfilePrompt) {
+          finalQuery = `${query} (${userProfilePrompt})`;
+          console.log("自動篩選已啟用，增強後的查詢:", finalQuery);
         }
       }
-
-      // --- 類別提取 (使用同義詞字典 + 從長到短排序檢查) ---
-      for (const keyword of sortedCategories) {
-        if (conversationContext.includes(keyword)) {
-          targetCategory = categorySynonyms[keyword] || keyword;
-          break; 
-        }
-      }
-    console.log(`從上下文中提取的過濾條件 -> 地區: ${targetLocation || '無'}, 類別: ${targetCategory || '無'}`);
-
-      // 3. 呼叫後端 API (這部分不變)
-      const { content: aiResponseContent, cards: rawWelfareCards,newConversationId  } = await sendMessageToModel(query,chatID);
+      
+      const conversationId = isNewConversation ? undefined : chatID;
+      
+      const { content: aiResponseContent, cards: rawWelfareCards, newConversationId } = await sendMessageToModel(finalQuery, conversationId);
+      
       if (newConversationId !== undefined) {
-              setChatID(newConversationId); // 更新 chatID 為後端返回的最新對話 ID
-            }
-      // 4. 移除載入中，並顯示 AI 的文字回覆
+        setChatID(newConversationId);
+      }
+      
       setMessages((prev) => {
-        const withoutLoading = prev.filter(m => m.type !== 'loading');
-        return [...withoutLoading, { type: "bot", content: aiResponseContent }];
+        const prevMessages = isNewConversation ? [userMessage] : prev.filter(m => m.type !== "loading");
+        return [...prevMessages, { type: "bot", content: aiResponseContent }];
       });
 
-      // 5. 二次過濾邏輯 (現在它會使用從上下文中提取的關鍵詞)
+      // 確保前端二次過濾邏輯始終被應用
       if (rawWelfareCards && rawWelfareCards.length > 0) {
+        // 重新構建對話上下文，確保包含當前用戶的查詢
+        // 注意：這裡的 conversationContext 應該基於當前所有訊息，包括新發送的 userMessage
+        const conversationContext = [...baseMessages, userMessage].filter(m => m.type === 'user').map(m => m.content).join(' ');
         
+        let targetLocation: string | undefined;
+        let targetCategory: string | undefined;
+
+        // 提取地點
+        for (const loc of sortedLocations) {
+          if (conversationContext.includes(loc) || conversationContext.includes(loc.slice(0, -1))) {
+            targetLocation = loc;
+            break; 
+          }
+        }
+
+        // 提取類別
+        for (const keyword of sortedCategories) {
+          if (conversationContext.includes(keyword)) {
+            targetCategory = categorySynonyms[keyword] || keyword;
+            break; 
+          }
+        }
+
+        // 應用過濾
         const filteredCards = rawWelfareCards.filter(card => {
           let isMatch = true;
-
+          // 如果有目標地點，且卡片地點不匹配，則不匹配
           if (targetLocation && card.location !== targetLocation) {
             isMatch = false;
           }
-
+          // 如果有目標類別，且卡片類別不包含目標類別，則不匹配
           if (targetCategory && Array.isArray(card.categories) && !card.categories.includes(targetCategory)) {
             isMatch = false;
           }
-          
           return isMatch;
         });
 
         if (filteredCards.length > 0) {
-          setMessages((prev) => [
-            ...prev,
-            { type: "result", resultItems: filteredCards }
-          ]);
+          setMessages((prev) => [...prev, { type: "result", resultItems: filteredCards }]);
         } else {
-          console.log(`二次過濾後，沒有找到完全符合條件的福利卡片。`);
+          // 如果過濾後沒有卡片，可以考慮顯示一個提示，或者不顯示卡片
+          console.log("前端過濾後沒有找到符合條件的卡片。");
+          // 如果希望在過濾後沒有結果時，也顯示一個「無結果」的卡片，可以取消註解下面這段
+          // setMessages((prev) => [...prev, { type: "result", resultItems: [{ title: '未找到符合條件的福利', url: '#' }] }]);
         }
       }
+
     } catch (error) {
-      // 錯誤處理
       setMessages((prev) => {
-        const withoutLoading = prev.filter(m => m.type !== 'loading');
-        return [...withoutLoading, { type: "bot", content: "查詢時發生錯誤，請稍後再試。" }];
+        const prevMessages = isNewConversation ? [userMessage] : prev.filter(m => m.type !== "loading");
+        return [...prevMessages, { type: "bot", content: "查詢時發生錯誤，請稍後再試。" }];
       });
     } finally {
-      // 無論成功或失敗，都滾動到底部
       scrollViewRef.current?.scrollToEnd({ animated: true });
     }
   };
-  
 
   // 渲染消息
   const renderMessage = ({ item,index }: { item: Message,index:number }) => {
@@ -733,11 +862,10 @@ const performAiSearch = async (query: string) => {
 
   return (
     <SafeAreaView style={{ flex: 1 }}>
-      {/* 新增：頂部導航欄 */}
     <View style={styles.header}>
-      <Text style={styles.headerTitle}>AI 助理</Text>
+      <Text style={styles.headerTitle}>阿哞</Text>
       <TouchableOpacity onPress={toggleRightDrawer} style={styles.settingsIcon}>
-        <Ionicons name="options-outline" size={24} color="#374151" /> {/* 齒輪圖標 */}
+        <Ionicons name="options-outline" size={24} color="#374151" />
       </TouchableOpacity>
     </View>
       <View style={styles.container}>
@@ -773,7 +901,6 @@ const performAiSearch = async (query: string) => {
       onClose={toggleRightDrawer}
     />
     </SafeAreaView>
-
   );
 };
 

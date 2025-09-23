@@ -11,6 +11,7 @@ const initialState: Config = {
     autoFilterUserData: false,
     authToken: "",
     appLaunchCount: 0,
+    needsNewChat: null
 };
 
 export const loadConfig = createAsyncThunk<Config, void, { rejectValue: string }>(
@@ -61,6 +62,9 @@ const configSlice = createSlice({
             // Immer handles immutable updates here
             Object.assign(state, action.payload);
         },
+        resetNewChatSignal: (state) => {
+            state.needsNewChat = null;
+        },
         incrementAppLaunchCount: (state) => {
             state.appLaunchCount += 1;
         },
@@ -94,7 +98,8 @@ export const {
     updateConfig,
     incrementAppLaunchCount,
     setAuthToken,
-    clearAuthToken
+    clearAuthToken,
+    resetNewChatSignal 
 } = configSlice.actions;
 
 export default configSlice.reducer;
