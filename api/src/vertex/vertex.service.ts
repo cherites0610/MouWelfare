@@ -4,6 +4,7 @@ import { Injectable, Logger } from "@nestjs/common";
 import axios from "axios";
 import { google } from 'googleapis';
 import { ConversationService } from './conversation.service.js';
+import { WelfareService } from '../welfare/welfare.service.js';
 
 @Injectable()
 export class VertexService {
@@ -17,6 +18,7 @@ export class VertexService {
   constructor(
     private readonly configService: ConfigService,
     private readonly conversationService: ConversationService,
+    private readonly welfareService: WelfareService,
   ) {
     const keyFileBase64 = this.configService.get<string>('GOOGLE_APPLICATION_CREDENTIALS_BASE64');
 
@@ -48,7 +50,7 @@ export class VertexService {
   }
 
   /** 呼叫 Search API（僅用於新對話的第一次查詢） */
-  private async callSearchApi(userQuery: string) {
+  private async callSearchApi(userQuery: string, userId: string) {
     const accessToken = await this.getAccessToken();
     const apiEndpoint = `https://discoveryengine.googleapis.com/v1alpha/projects/${this.projectId}/locations/global/collections/${this.collectionId}/engines/${this.engineId}/servingConfigs/default_search:search`;
 
@@ -96,7 +98,21 @@ export class VertexService {
         applicationCriteria:r.document?.structData?.applicationCriteria
       }));
 
-      return { welfareCards, sessionName, queryId };
+      const enrichedWelfareCards = await Promise.all(welfareCards.map(async (card) => {
+        if (card.id && userId) { // 確保有福利 ID 和用戶 ID
+          try {
+            // 使用 this.welfareService 呼叫服務
+            const lightStatus = await this.welfareService.getWelfareLightStatus (card.id, userId);
+            this.logger.debug(`card.id=${card.id}, lightStatus=${lightStatus}`);
+            return { ...card, lightStatus };
+          } catch (error) {
+            this.logger.warn(`獲取福利 ${card.id} 的 lightStatus 失敗:`, error.message);
+            return { ...card, lightStatus: undefined }; // 失敗時設置為 undefined
+          }
+        }
+        return { ...card, lightStatus: undefined }; // 沒有 ID 或用戶 ID 時設置為 undefined
+      }));
+      return { welfareCards: enrichedWelfareCards, sessionName, queryId };
 
     } catch (error) {
       this.logger.error('Search API 錯誤:', error.response?.data || error.message);
@@ -105,7 +121,7 @@ export class VertexService {
   }
 
   /** 呼叫 Search API（用於延續對話，使用現有 session） */
-  private async callSearchApiWithSession(userQuery: string, sessionName: string) {
+  private async callSearchApiWithSession(userQuery: string, sessionName: string, userId: string) {
     const accessToken = await this.getAccessToken();
     const apiEndpoint = `https://discoveryengine.googleapis.com/v1alpha/projects/${this.projectId}/locations/global/collections/${this.collectionId}/engines/${this.engineId}/servingConfigs/default_search:search`;
 
@@ -145,7 +161,24 @@ export class VertexService {
         applicationCriteria:r.document?.structData?.applicationCriteria
       }));
 
-      return { welfareCards };
+      const enrichedWelfareCards = await Promise.all(
+      welfareCards.map(async (card) => {
+        if (card.id && userId) {
+          try {
+            const lightStatus = await this.welfareService.getWelfareLightStatus(
+              card.id,
+              userId,
+            );
+            return { ...card, lightStatus };
+          } catch (error) {
+            this.logger.warn(`獲取福利 ${card.id} 的 lightStatus 失敗:`, error.message);
+            return { ...card, lightStatus: undefined };
+          }
+        }
+        return { ...card, lightStatus: undefined };
+      }),
+    );
+      return { welfareCards: enrichedWelfareCards };
 
     } catch (error) {
       this.logger.error('Search API (延續對話) 錯誤:', error.response?.data || error.message);
@@ -232,7 +265,7 @@ export class VertexService {
       newConversationId = newConversation.id;
 
       // 先呼叫 Search API 生成 sessionName
-      const searchResult = await this.callSearchApi(userQuery);
+      const searchResult = await this.callSearchApi(userQuery,userId);
       sessionName = searchResult.sessionName;
       queryId = searchResult.queryId;
       welfareCards = searchResult.welfareCards;
@@ -253,7 +286,7 @@ export class VertexService {
         const newConversation = await this.conversationService.createConversation(userId, '未命名對話');
         newConversationId = newConversation.id;
 
-        const searchResult = await this.callSearchApi(userQuery);
+        const searchResult = await this.callSearchApi(userQuery, userId);
         sessionName = searchResult.sessionName;
         queryId = searchResult.queryId;
         welfareCards = searchResult.welfareCards;
@@ -262,7 +295,7 @@ export class VertexService {
       } else {
         // 找到 sessionName → 延續對話查詢福利
         try {
-          const searchResult = await this.callSearchApiWithSession(userQuery, sessionName);
+          const searchResult = await this.callSearchApiWithSession(userQuery, sessionName,userId);
           welfareCards = searchResult.welfareCards;
           this.logger.log(`延續對話搜尋到 ${welfareCards.length} 筆福利資料`);
         } catch (error) {

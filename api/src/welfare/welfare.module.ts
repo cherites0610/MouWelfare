@@ -5,9 +5,10 @@ import { TypeOrmModule } from "@nestjs/typeorm";
 import { Welfare } from "./entities/welfare.entity.js";
 import { FamilyModule } from "../family/family.module.js";
 import { UserModule } from "../user/user.module.js";
+import { User } from '../user/entities/user.entity.js';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Welfare]), FamilyModule, UserModule],
+  imports: [TypeOrmModule.forFeature([Welfare,User]), FamilyModule, UserModule],
   controllers: [WelfareController],
   providers: [WelfareService],
   exports: [WelfareService],

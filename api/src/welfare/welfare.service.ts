@@ -14,6 +14,7 @@ import { WelfareResponseDTO } from "./dto/output-welfare.dto.js";
 import { FindOneDTO } from "./dto/find-one.dto.js";
 import { UserFamily } from "../user-family/entities/user-family.entity.js";
 import { LightStatus } from "../common/enum/light-status.enum.js";
+import { User } from "../user/entities/user.entity.js";
 
 @Injectable()
 export class WelfareService {
@@ -24,7 +25,9 @@ export class WelfareService {
     private readonly welfareRepository: Repository<Welfare>,
     private readonly constDataService: ConstDataService,
     private readonly familyService: FamilyService,
-    private readonly userService: UserService
+    private readonly userService: UserService,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
   ) {}
 
   async create(createWelfareDto: CreateWelfareDto) {
@@ -317,4 +320,27 @@ export class WelfareService {
 
     return welfares.map((welfare) => this.mapWelfareToDTO(welfare));
   }
+
+  async getWelfareLightStatus(welfareId: string, userId: string): Promise<number> {
+  // 1. 找 welfare 的身份陣列
+  const welfare = await this.welfareRepository.findOne({
+    where: { id: String(welfareId) },
+    relations: ['identities'],
+  });
+  if (!welfare) {
+    throw new Error(`找不到 welfare (id=${welfareId})`);
+  }
+
+  // 2. 找 user 的身份陣列
+  const user = await this.userRepository.findOne({
+    where: { id: String(userId) },
+    relations: ['identities'],
+  });
+  if (!user) {
+    throw new Error(`找不到 user (id=${userId})`);
+  }
+
+  // 3. 呼叫既有邏輯判斷
+  return this.getWelfareLight(welfare.identities, user.identities);
+}
 }

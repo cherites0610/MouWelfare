@@ -17,9 +17,7 @@ import {
 } from 'react-native';
 import axios from 'axios';
 import { useRouter } from 'expo-router';
-import { Platform,Linking } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import {WelfareApiParams,Welfare} from "../type/welfareType";
+import {WelfareApiParams} from "../type/welfareType";
 import {fetchWelfareApi} from "@/src/api/welfareApi";
 import Markdown from 'react-native-markdown-display';
 import { AppConfig } from '@/src/config/app.config';
@@ -60,24 +58,47 @@ interface Message {
   showAvatar?: boolean;
   conversationId?: string;
 }
+
+const getLightColor = (status: number | undefined) => {
+  switch (status) {
+    case 1:
+        return COLORS.light_green;
+      case 2:
+        return COLORS.light_yellow;
+      case 3:
+        return COLORS.light_red;
+      default:
+        return COLORS.light_yellow;
+  }
+};
+
+const getLightText = (status: number | undefined) => {
+  switch (status) {
+    case 1:
+        return '符合領取資格!';
+      case 2:
+        return '不一定符合領取資格!';
+      case 3:
+        return '不符合領取資格!';
+      default:
+        return '不一定符合領取資格!';
+  }
+};
+
 const generateUserProfilePrompt = (user: User | null): string => {
   if (!user) {
     return '';
   }
-
   const profileParts: string[] = [];
-
   // 1. 處理地區
   if (user.location?.name) {
     profileParts.push(`居住在 ${user.location.name}`);
   }
-
   // 2. 處理身分
   if (user.identities && user.identities.length > 0) {
     const identityNames = user.identities.map(id => id.name).join('、');
     profileParts.push(`身分為 ${identityNames}`);
   }
-
   // 3. 處理生日/年齡 (如果後端 AI 能理解年齡更好)
   if (user.birthday) {
     // 簡單起見，可以直接傳遞生日，或是在前端計算年齡
@@ -90,17 +111,13 @@ const generateUserProfilePrompt = (user: User | null): string => {
     }
     profileParts.push(`目前年齡大約 ${age} 歲`);
   }
-  
   // 4. 處理性別
   if (user.gender) {
       profileParts.push(`性別為 ${user.gender}`);
   }
-
-
   if (profileParts.length === 0) {
     return '';
   }
-
   // 將所有部分組合成一句話
   return `我的個人背景資料是：${profileParts.join('，')}。`;
 };
@@ -109,19 +126,17 @@ const generateUserProfilePrompt = (user: User | null): string => {
 const App: React.FC = () => {
   const [isInitialized, setIsInitialized] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
-  // const [inputText, setInputText] = useState<string>('');
   const [inputText, setInputText] = useState('');
-  const router = useRouter();
-  // const [chatID, setChatID] = useState<string>('');
   const [chatID, setChatID] = useState<number | undefined>(undefined);
   const [selectedService, setSelectedService] = useState<number>(0);
   const scrollViewRef = useRef<ScrollView>(null);
-  const { width } = Dimensions.get('window');
-  // 3. 使用 useSelector 從 Redux store 中獲取 user 物件
-  const { user } = useSelector((state: RootState) => state.user);
   const [isStartingChat, setIsStartingChat] = useState(false);
+  const { width } = Dimensions.get('window');
+  const { user } = useSelector((state: RootState) => state.user);
   const { autoFilterUserData,needsNewChat  } = useSelector((state: RootState) => state.config);
-  const dispatch = useDispatch<AppDispatch>();
+  const dispatch = useDispatch<AppDispatch>(); 
+  const router = useRouter();
+
   // 數據
   const serviceIdToCategoryMap: { [key: number]: string } = {
   1: '兒童及青少年福利',
@@ -130,8 +145,8 @@ const App: React.FC = () => {
   4: '社會救助福利',
   5: '身心障礙福利',
   6: '其他',
-};
-const categorySynonyms: { [key: string]: string }= {
+  };
+  const categorySynonyms: { [key: string]: string }= {
     '兒童': '兒童及青少年福利',
     '小孩': '兒童及青少年福利',
     '兒少': '兒童及青少年福利',
@@ -146,7 +161,6 @@ const categorySynonyms: { [key: string]: string }= {
     '身心障礙': '身心障礙福利',
     '身障': '身心障礙福利',
     '殘障': '身心障礙福利',
-    // 你可以根據需要繼續擴充這個字典
   };
 
   const ewlfareItems: Item[] = [
@@ -202,7 +216,6 @@ const categorySynonyms: { [key: string]: string }= {
     { id: 21, name: '金門縣', image: require("@/assets/images/Mou/school.jpeg") },
     { id: 22, name: '連江縣', image: require("@/assets/images/Mou/school.jpeg") },
   ];
-
   const botAvatar = require("@/assets/images/logo.jpeg")
   const [isDrawerVisible, setIsDrawerVisible] = useState(false); 
 
@@ -218,7 +231,7 @@ const categorySynonyms: { [key: string]: string }= {
     ].sort((a, b) => b.length - a.length),
     []
   );
-const sortedLocations = React.useMemo(() => 
+  const sortedLocations = React.useMemo(() => 
     [
       ...northItems.map(i => i.name),
       ...midItems.map(i => i.name),
@@ -228,15 +241,16 @@ const sortedLocations = React.useMemo(() =>
     ].sort((a, b) => b.length - a.length),
     [] // 空依賴陣列，確保只計算一次
   );
-  // 初始化
-  useEffect(() => {
-  if (!isInitialized) {
-    getOrCreateChatId(); 
-    setIsInitialized(true);
-  }
-}, [isInitialized]);
 
-useEffect(() => {
+  // 初始化
+  // useEffect(() => {
+  // if (!isInitialized) {
+  //   getOrCreateChatId(); 
+  //   setIsInitialized(true);
+  // }
+  // }, [isInitialized]);
+
+  useEffect(() => {
     const initializeChat = async () => {
       if (isStartingChat) return;
       setIsStartingChat(true);
@@ -272,7 +286,7 @@ useEffect(() => {
     } else if (needsNewChat) {
       initializeChat();
     }
-}, [isInitialized, needsNewChat, dispatch]);
+  }, [isInitialized, needsNewChat, dispatch]);
 
   const startNewChat = async (isPersonalized: boolean) => {
     // 1. 清空畫面
@@ -301,18 +315,18 @@ useEffect(() => {
 
     // 5. 使用這個問候語發送第一個請求
     try {
-      const { content, cards } = await sendMessageToModel(initialQuery, newChatId);
+      const { content, cards: rawWelfareCards } = await sendMessageToModel(initialQuery, newChatId);
 
       // 6. 更新畫面
       setMessages((prev) => {
-      const withoutLoading = prev.filter(m => m.type !== 'loading');
+        const withoutLoading = prev.filter(m => m.type !== 'loading');
         const botMessage: Message = { type: 'bot', content: content };
         const newMessages = [...withoutLoading, botMessage];
 
         // 不論如何，都接著顯示通用的福利類別卡片
         const serviceMessage: Message = { type: 'service', items: ewlfareItems };
         newMessages.push(serviceMessage);
-        
+          
         return newMessages;
       });
 
@@ -334,12 +348,10 @@ useEffect(() => {
         userId: user.id,
         title: '新對話' // 可以給一個預設標題
       });
-      
       const newChatId: number = response.data.id; // 後端返回的 id 應該是 number
       setChatID(newChatId); // 更新為 number 類型
       console.log(user.id, "後端獲取新的 chatID:", newChatId);
       return newChatId; 
-
     } 
     catch (error) {
       console.error('無法獲取或創建 chatID:', error);
@@ -388,9 +400,10 @@ useEffect(() => {
             categories: card.categories,
             detail: card.detail,
             publicationDate: card.publicationDate,
-            applicationCriteria: card.applicationCriteria
+            applicationCriteria: card.applicationCriteria,
+            lightStatus:card.lightStatus
           }));
-          console.log(response.data.welfareCards)
+          console.log("AI回",response.data.welfareCards)
         }
       } else if (typeof response.data === 'string') {
         aiAnswer = response.data;
@@ -522,7 +535,8 @@ useEffect(() => {
           categories:card.categories,
           detail: card.detail,
           publicationDate: card.publicationDate,
-          applicationCriteria: card.applicationCriteria
+          applicationCriteria: card.applicationCriteria,
+          lightStatus:card.lightStatus
         }));
       } else {
         console.warn("後端返回的福利卡片格式不正確或為空:", response);
@@ -580,6 +594,7 @@ useEffect(() => {
       // 4. 根據是否有找到福利卡片來顯示結果
       if (welfareCards.length > 0) {
         // 如果找到了，就顯示這些福利卡片
+
         setMessages((prev) => [
           ...prev,
           { type: 'result', resultItems: welfareCards }
@@ -828,13 +843,26 @@ const performAiSearch = async (query: string, options?: { asNewConversation?: bo
                         }
                       }}
                     >
+                      
                       <Text style={styles.resultTitle} numberOfLines={3} ellipsizeMode="tail">{result.title}</Text>
+                      {result.lightStatus !== undefined && (
+                        <View style={styles.lightStatusContainer}> {/* 新增一個容器來包裹燈號 */} 
+                          <View
+                            style={[
+                              styles.circleIndicator,
+                              { backgroundColor: getLightColor(result.lightStatus) },
+                            ]}
+                          />
+                          <Text style={styles.lightStatusText}>{getLightText(result.lightStatus)}</Text>
+                        </View>
+                      )}
+                  
                       {result.location && <Text style={styles.resultLocation}>地點: {result.location}</Text>}
 
                       {result.categories && <Text style={styles.resultLocation}numberOfLines={2} ellipsizeMode="tail">{`類別: ${result.categories.join('、')}`}</Text>}
                       {/* {result.applicationCriteria && <Text style={styles.resultLocation}>申請條件:{result.applicationCriteria}</Text>} */}
                       
-                      {result.forward && <Text style={styles.resultForward} numberOfLines={2} ellipsizeMode="tail">福利: {result.forward}</Text>}
+                      {result.forward && <Text style={styles.resultForward} numberOfLines={5} ellipsizeMode="tail">{`福利:${result.forward.join('、')}`}</Text>}
                       
                       
                     </TouchableOpacity>
@@ -1030,6 +1058,22 @@ const styles = StyleSheet.create({
       shadowRadius: 3,
       elevation: 3, // Android 陰影
       justifyContent: 'space-between', // 讓內容在卡片內垂直分佈
+  },
+  lightStatusContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 5, // 調整間距
+    marginBottom: 5,
+  },
+  circleIndicator: {
+    width: 12, // 調整大小以適應卡片
+    height: 12,
+    borderRadius: 6,
+    marginRight: 5,
+  },
+  lightStatusText: {
+    fontSize: 12, // 調整字體大小
+    color: '#333',
   },
   resultTitle: {
     fontSize: 18,
