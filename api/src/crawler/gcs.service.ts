@@ -19,8 +19,8 @@ export class GcsService {
         credentials: keyJson,
     });
 
-    this.bucketName = process.env.GCS_BUCKET_NAME || "welfare-ai-data";
-    this.fileName = process.env.GCS_FILE_NAME || "welfare-data.jsonl";
+    this.bucketName = process.env.GCS_BUCKET_NAME || "mouai_data";
+    this.fileName = process.env.GCS_FILE_NAME || "welfare_data.jsonl";
     }
 
   /** 把新資料 append 進 GCS 的 jsonl 檔案 */
