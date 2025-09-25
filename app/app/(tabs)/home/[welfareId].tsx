@@ -208,8 +208,9 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    marginTop: 16,
-    marginBottom: 8,
+    // marginTop: 16,
+    // marginBottom: 8,
+    marginRight: 6,
   },
   list: {
     marginLeft: 30,
@@ -262,8 +263,8 @@ const styles = StyleSheet.create({
   linkText: {
     color: 'blue',
     fontStyle: 'italic',
-    fontSize: 14,
-    textDecorationLine: "underline"
+    fontSize: 16,
+    textDecorationLine: "underline",
   },
   notes: {
     fontSize: 15,
