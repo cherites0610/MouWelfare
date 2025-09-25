@@ -7,6 +7,7 @@ import { DataProcessingService } from "./data-processing.service.js";
 import { WelfareModule } from "../welfare/welfare.module.js";
 import { WelfareService } from "../welfare/welfare.service.js";
 import { AIModule } from "../ai/ai.module.js";
+import { GcsService } from "./gcs.service.js";
 
 @Module({
   imports: [
@@ -18,6 +19,6 @@ import { AIModule } from "../ai/ai.module.js";
     AIModule,
   ],
   controllers: [CrawlerController],
-  providers: [CrawlerService, DataProcessingService],
+  providers: [CrawlerService, DataProcessingService,GcsService],
 })
 export class CrawlerModule {}

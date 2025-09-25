@@ -19,6 +19,7 @@ export class WelfareResponseDTO {
   status: number;
   location: string;
   categories: string[];
+  identities: string[];
   lightStatus?: number;
   familyMember?: welfareFamilyMember[];
   isAbnormal: boolean;

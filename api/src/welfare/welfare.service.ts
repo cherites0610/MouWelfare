@@ -254,6 +254,7 @@ export class WelfareService {
       status: welfare.status,
       location: welfare.location!.name,
       categories: welfare.categories.map((c) => c.name),
+      identities: welfare.identities?.map((i) => i.name) || [],
       lightStatus: undefined,
       familyMember: [],
       isAbnormal: welfare.isAbnormal,

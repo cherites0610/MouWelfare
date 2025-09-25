@@ -29,11 +29,11 @@ const __dirname = dirname(__filename);
 @Injectable()
 export class CrawlerService {
   private readonly logger = new Logger(CrawlerService.name);
-  private readonly concurrency = 10;
+  private readonly concurrency = 10; // 可調整
   private readonly timeoutMs = 15000;
 
   constructor(
-    @InjectQueue("data-processing")
+    @InjectQueue("data-processing") 
     private readonly dataQueue: Queue,
     private readonly welfareService: WelfareService
   ) {}
@@ -41,7 +41,6 @@ export class CrawlerService {
   async crawlAllCities(): Promise<void> {
     const existingLinks = new Set(await this.welfareService.findAllLink());
     const config = loadCityConfigs();
-
     const cityTasks = Object.entries(config).map(([cityName, cityConfig]) =>
       this.crawlSingleCity(cityName, cityConfig, existingLinks)
     );
@@ -51,38 +50,194 @@ export class CrawlerService {
 
     const outputDir = join(__dirname, "../../output");
     await fsExtra.ensureDir(outputDir);
-
     const outputPath = join(outputDir, "results.json");
-    await fsExtra.writeFile(
-      outputPath,
-      JSON.stringify(allResults, null, 2),
-      "utf8"
-    );
+    await fsExtra.writeFile(outputPath, JSON.stringify(allResults, null, 2), "utf8");
     this.logger.log(`原始資料已輸出至 ${outputPath}`);
-
     this.logger.log(`所有城市爬取完成`);
-    for (const result of allResults) {
-      await this.dataQueue.add("process", result, {
-        attempts: 3,
-        backoff: { type: "fixed", delay: 5000 },
-        removeOnComplete: true,
-      });
-      this.logger.log(`已將資料推送到隊列: ${result.url}`);
-    }
   }
 
-  private async crawlSingleCity(
+  private async crawlSingleCity(cityName: string, config, existingLinks: Set<string>) {
+    this.logger.log(`🔍 開始爬取 ${cityName}`);
+    const results: any[] = [];
+
+    const dynamicCities = ["taipei", "nantou"];
+    const staticCities = ["yilan", "tainan", "matsu"];
+
+    if (dynamicCities.includes(cityName)) {
+      return await this.crawlDynamicCity(cityName, config, existingLinks);
+    }
+
+    if (staticCities.includes(cityName)) {
+      return await this.crawlWithStrategy(cityName, config, results, existingLinks);
+    }
+
+    return await this.bfsCrawl(cityName, config, existingLinks);
+  }
+
+  /** 高效 BFS */
+  private async bfsCrawl(
     cityName: string,
     config,
     existingLinks: Set<string>
   ): Promise<any[]> {
-    this.logger.log(`🔍 開始爬取 ${cityName}`);
-    const cityResults = await this.bfsCrawl(cityName, config, existingLinks);
-    this.logger.log(`✅ 完成爬取 ${cityName}，共 ${cityResults.length} 筆`);
-    return cityResults;
+    const { city: cityDisplayName } = config;
+    const result: any[] = [];
+
+    const dynamicCities = ["taipei", "nantou"];
+    const staticCities = ["yilan", "tainan", "matsu"];
+
+    if (dynamicCities.includes(cityName)) {
+      return await this.crawlDynamicCity(cityName, config, existingLinks);
+    }
+
+    if (staticCities.includes(cityName)) {
+      return await this.crawlWithStrategy(cityName, config, result, existingLinks);
+    }
+
+    const queue: { url: string; level: number }[] = [];
+    if (config.pageCount) {
+      for (let p = 1; p <= config.pageCount; p++) {
+        const pageUrl = config.startUrl.replace("page=1", `page=${p}`);
+        queue.push({ url: pageUrl, level: 0 });
+      }
+    } else {
+      queue.push({ url: config.startUrl, level: 0 });
+    }
+
+    const outputDir = join(__dirname, "../../output");
+    const htmlDir = join(outputDir, "html");
+    await fsExtra.ensureDir(outputDir);
+    await fsExtra.ensureDir(htmlDir);
+
+    while (queue.length) {
+      const currentBatch = queue.splice(0, this.concurrency);
+      const tasks = currentBatch.map(({ url, level }, index) => async () => {
+        const taskId = `${cityName}-${level}-${index}`;
+        try {
+          const response = await this.withTimeout(axios.get(url), this.timeoutMs);
+          const $ = cheerio.load(response.data);
+
+          const htmlContent = response.data;
+          const safeFilename = url.replace(/[^a-zA-Z0-9]/g, "_").slice(0, 100) + ".html";
+          const htmlPath = join(htmlDir, safeFilename);
+          await fsExtra.writeFile(htmlPath, htmlContent, "utf8");
+
+          const levelConfig = config.levels[level];
+          if (levelConfig) {
+            $(levelConfig.selector).each((_, el) => {
+              const nextUrlRaw = $(el).attr(levelConfig.getUrlAttr);
+              if (nextUrlRaw) {
+                const nextUrl = resolveUrl(config.baseUrl, nextUrlRaw);
+                queue.push({ url: nextUrl, level: level + 1 });
+              }
+            });
+          }
+
+          if ($(config.stopSelector).length > 0) {
+            if (existingLinks.has(url)) {
+              this.logger.debug(`[${cityName}] 已存在，略過: ${url}`);
+              return;
+            }
+
+            const rawDate = $(config.extractSelectors.date).text().trim();
+            const isoDate = parseDateToISO(rawDate);
+
+            const contentElements = $(config.extractSelectors.content).clone();
+            contentElements.find('#download a').remove();
+            const content = contentElements
+              .map((_, el) => $(el).text().trim().replace(/\s+/g, " "))
+              .get()
+              .join(" ")
+              .trim();
+
+            if (!content) return;
+
+            const data = {
+              city: cityDisplayName,
+              url,
+              title: $(config.extractSelectors.title).text().trim(),
+              date: isoDate,
+              content,
+            };
+
+            existingLinks.add(url);
+            result.push(data);
+
+            // 寫入 results.json (可選)
+            const resultsPath = join(outputDir, "results.json");
+            await appendJson(resultsPath, data);
+
+            this.logger.log(`[${cityName}] 已抓到資料: ${data.title} (${url})`);
+          }
+        } catch (err) {
+          this.logger.warn(`[${taskId}] 訪問失敗 ${url}，錯誤：${err.message}`);
+        }
+      });
+
+      await this.runWithConcurrency(tasks, this.concurrency);
+    }
+
+    // ✅ 全部資料抓完後，再統一推送到 BullMQ
+    for (const data of result) {
+      await this.dataQueue.add("process", data, {
+        attempts: 3,
+        backoff: { type: "fixed", delay: 5000 },
+        removeOnComplete: true,
+      });
+      this.logger.log(`[${cityName}] 資料已新增到 queue: ${data.title} (${data.url})`);
+    }
+
+    return result;
   }
 
-  // 靜態爬蟲策略
+  /** 動態爬蟲 */
+  private async crawlDynamicCity(
+    cityName: string,
+    config,
+    existingLinks: Set<string>
+  ): Promise<any[]> {
+    this.logger.log(`🚀 開始動態爬取 ${cityName}`);
+    const result: any[] = [];
+
+    try {
+      const response = await axios.post(
+        "http://localhost:8001/crawl",
+        { url: config.startUrl, city: cityName },
+        { timeout: 600000 } // 給 10 分鐘
+      );
+
+      const dataList = response.data?.data;
+      if (!Array.isArray(dataList) || dataList.length === 0) {
+        this.logger.warn(`[${cityName}] Python API 沒有回傳有效資料`);
+        return result;
+      }
+
+      for (const data of dataList) {
+        if (!data.url) continue;
+        if (existingLinks.has(data.url)) {
+          this.logger.debug(`[${cityName}] 已存在，略過: ${data.url}`);
+          continue;
+        }
+
+        result.push(data);
+
+        // ⚠️ 動態爬蟲不寫 results.json，只推到 BullMQ
+        await this.dataQueue.add("process", data, {
+          attempts: 3,
+          backoff: { type: "fixed", delay: 5000 },
+          removeOnComplete: true,
+        });
+
+        this.logger.log(`[${cityName}] 已新增到 queue: ${data.url}`);
+      }
+    } catch (err) {
+      this.logger.warn(`[${cityName}] 動態爬蟲失敗: ${err.message}`);
+    }
+
+    return result;
+  }
+
+  /** strategy 爬蟲 */
   private async crawlWithStrategy(
     cityName: string,
     config,
@@ -150,165 +305,6 @@ export class CrawlerService {
     return (await strategy.crawlWithStrategy?.(cityName, config, result, existingLinks)) || result;
   }
 
-  //動態爬蟲
-  private async crawlDynamicCity(
-    cityName: string,
-    config,
-    existingLinks: Set<string>
-  ): Promise<any[]> {
-    this.logger.log(`🚀 開始動態爬取 ${cityName}`);
-    const result: any[] = [];
-
-    try {
-      const response = await axios.post(
-        "http://localhost:8001/crawl",
-        { url: config.startUrl, city: cityName },
-        { timeout: 600000 } // 給 10 分鐘
-      );
-
-      const dataList = response.data?.data;
-      if (!Array.isArray(dataList) || dataList.length === 0) {
-        this.logger.warn(`[${cityName}] Python API 沒有回傳有效資料`);
-        return result;
-      }
-
-      for (const data of dataList) {
-        if (!data.url) continue;
-        if (existingLinks.has(data.url)) {
-          this.logger.debug(`[${cityName}] 已存在，略過: ${data.url}`);
-          continue;
-        }
-
-        result.push(data);
-
-        // ⚠️ 動態爬蟲不寫 results.json，只推到 BullMQ
-        await this.dataQueue.add("process", data, {
-          attempts: 3,
-          backoff: { type: "fixed", delay: 5000 },
-          removeOnComplete: true,
-        });
-
-        this.logger.log(`[${cityName}] 已新增到 queue: ${data.url}`);
-      }
-    } catch (err) {
-      this.logger.warn(`[${cityName}] 動態爬蟲失敗: ${err.message}`);
-    }
-
-    return result;
-  }
-
-  private async bfsCrawl(
-    cityName: string,
-    config,
-    existingLinks: Set<string>
-  ): Promise<any[]> {
-    const { city: cityDisplayName } = config;
-    const result: any[] = [];
-
-    const dynamicCities = ["taipei", "nantou"];
-    const staticCities = ["yilan", "tainan", "matsu"];
-
-    if (dynamicCities.includes(cityName)) {
-      return await this.crawlDynamicCity(cityName, config, existingLinks);
-    }
-
-    if (staticCities.includes(cityName)) {
-      return await this.crawlWithStrategy(cityName, config, result, existingLinks);
-    }
-
-    // 其他城市 BFS
-    const queue: { url: string; level: number }[] = [];
-    if (config.pageCount) {
-      for (let p = 1; p <= config.pageCount; p++) {
-        const pageUrl = config.startUrl.replace("page=1", `page=${p}`);
-        queue.push({ url: pageUrl, level: 0 });
-      }
-    } else {
-      queue.push({ url: config.startUrl, level: 0 });
-    }
-
-    const outputDir = join(__dirname, "../../output");
-    const htmlDir = join(outputDir, "html");
-    await fsExtra.ensureDir(outputDir);
-    await fsExtra.ensureDir(htmlDir);
-
-    while (queue.length) {
-      const currentBatch = queue.splice(0, this.concurrency);
-      const tasks = currentBatch.map(({ url, level }, index) => async () => {
-        const taskId = `${cityName}-${level}-${index}`;
-        try {
-          const response = await this.withTimeout(axios.get(url), this.timeoutMs);
-          const $ = cheerio.load(response.data);
-
-          const htmlContent = response.data;
-          const safeFilename = url.replace(/[^a-zA-Z0-9]/g, "_").slice(0, 100) + ".html";
-          const htmlPath = join(htmlDir, safeFilename);
-          await fsExtra.writeFile(htmlPath, htmlContent, "utf8");
-
-          if ($(config.stopSelector).length > 0) {
-            if (existingLinks.has(url)) return;
-
-            const rawDate = $(config.extractSelectors.date).text().trim();
-            const isoDate = parseDateToISO(rawDate);
-
-            let content = "";
-            const contentElements = $(config.extractSelectors.content).clone();
-            contentElements.find('#download a').remove();
-            content = contentElements
-              .map((_, el) => $(el).text().trim().replace(/\s+/g, " "))
-              .get()
-              .join(" ")
-              .trim();
-
-            if (config.downloadSelector) {
-              const downloadLinks = $(config.downloadSelector)
-                .map((_, el) => $(el).attr("href"))
-                .get()
-                .filter(Boolean);
-
-              for (const link of downloadLinks) {
-                const fileUrl = resolveUrl(config.baseUrl, link);
-                try {
-                  const fileText = await this.downloadAndExtractText(fileUrl);
-                  if (fileText) content += "\n" + fileText;
-                } catch {}
-              }
-            }
-
-            const trimmedContent = content.trim();
-            if (!trimmedContent) return;
-
-            const data = {
-              city: cityDisplayName,
-              url,
-              title: $(config.extractSelectors.title).text().trim(),
-              date: isoDate,
-              content: trimmedContent,
-            };
-
-            result.push(data);
-            const resultsPath = join(outputDir, "results.json");
-            await appendJson(resultsPath, data);
-          }
-
-          const levelConfig = config.levels[level];
-          if (!levelConfig) return;
-
-          $(levelConfig.selector).each((_, el) => {
-            const nextUrlRaw = $(el).attr(levelConfig.getUrlAttr);
-            if (nextUrlRaw) queue.push({ url: resolveUrl(config.baseUrl, nextUrlRaw), level: level + 1 });
-          });
-        } catch (err) {
-          this.logger.warn(`[${taskId}] 訪問失敗 ${url}，錯誤：${err.message}`);
-        }
-      });
-
-      await this.runWithConcurrency(tasks, this.concurrency);
-    }
-
-    return result;
-  }
-
   private async runWithConcurrency<T>(
     tasks: (() => Promise<T>)[],
     concurrencyLimit: number
@@ -343,9 +339,10 @@ export class CrawlerService {
     });
   }
 
+  /** 非阻塞下載檔案解析 */
   private async downloadAndExtractText(url: string): Promise<string> {
     const res = await fetch(url);
-    if (!res.ok) throw new Error(`無法下載文件: ${url}`);
+    if (!res.ok) return "";
 
     const buffer = await res.buffer();
     const fileType = await fileTypeFromBuffer(buffer);
@@ -367,11 +364,10 @@ export class CrawlerService {
             resolve(txt.split("\n").slice(0, 100).join("\n"));
           });
         });
-      } else throw new Error(`不支援的文件格式: ${ext}`);
+      }
     } catch (err) {
       this.logger.warn(`📄 解析文件失敗: ${url}，原因: ${err.message}`);
     }
-
     return text.trim();
   }
 }
