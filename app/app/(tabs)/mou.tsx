@@ -14,19 +14,18 @@ import {
   Dimensions,
   SafeAreaView,
   ImageSourcePropType,
+  Linking,
 } from 'react-native';
 import axios from 'axios';
 import { useRouter } from 'expo-router';
-import {WelfareApiParams} from "../type/welfareType";
-import {fetchWelfareApi} from "@/src/api/welfareApi";
-import Markdown from 'react-native-markdown-display';
-import { AppConfig } from '@/src/config/app.config';
+import Markdown, { RenderRules  } from 'react-native-markdown-display';
+import { AppConfig } from '../../src/config/app.config';
 import { useDispatch, useSelector } from 'react-redux'; // 1. 匯入 useSelector
-import { AppDispatch, RootState } from '@/src/store'; // 2. 匯入 RootState 型別
+import { AppDispatch, RootState } from '../../src/store'; // 2. 匯入 RootState 型別
 import RightDrawer from '../../src/components/Mou/RightDrawer'; 
 import { Ionicons } from '@expo/vector-icons'; 
 import { resetNewChatSignal } from '../../src/store/slices/configSlice'; 
-import { User } from '@/src/type/user';
+import { User } from '../../src/type/user';
 
 // 定義類型
 interface Item {
@@ -42,7 +41,7 @@ interface ResultItem {
   id?:string;
   summary?: string;
   location?: string;
-  forward?: string;
+  forward?: string[];
   categories?: string[];
   detail?: string;
   publicationDate?: string;
@@ -128,6 +127,7 @@ const App: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
   const [chatID, setChatID] = useState<number | undefined>(undefined);
+  const [shouldRedirect, setShouldRedirect] = useState(false);
   const [selectedService, setSelectedService] = useState<number>(0);
   const scrollViewRef = useRef<ScrollView>(null);
   const [isStartingChat, setIsStartingChat] = useState(false);
@@ -138,14 +138,6 @@ const App: React.FC = () => {
   const router = useRouter();
 
   // 數據
-  const serviceIdToCategoryMap: { [key: number]: string } = {
-  1: '兒童及青少年福利',
-  2: '婦女與幼兒福利',
-  3: '老人福利',
-  4: '社會救助福利',
-  5: '身心障礙福利',
-  6: '其他',
-  };
   const categorySynonyms: { [key: string]: string }= {
     '兒童': '兒童及青少年福利',
     '小孩': '兒童及青少年福利',
@@ -170,14 +162,6 @@ const App: React.FC = () => {
     { id: 4, name: '社會救助福利', image: require("@/assets/images/Mou/elderly.jpeg") },
     { id: 5, name: '身心障礙福利', image: require("@/assets/images/Mou/accessibility.jpeg") },
     { id: 6, name: '其他', image: require("@/assets/images/Mou/school.jpeg") },
-  ];
-
-  const taiwanItems: Item[] = [
-    { id: 1, name: '北區', image: require("@/assets/images/Mou/school.jpeg") },
-    { id: 2, name: '中區', image: require("@/assets/images/Mou/school.jpeg") },
-    { id: 3, name: '南區', image: require("@/assets/images/Mou/school.jpeg") },
-    { id: 4, name: '東區', image: require("@/assets/images/Mou/school.jpeg") },
-    { id: 5, name: '離島', image: require("@/assets/images/Mou/school.jpeg") },
   ];
 
   const northItems: Item[] = [
@@ -218,7 +202,6 @@ const App: React.FC = () => {
   ];
   const botAvatar = require("@/assets/images/logo.jpeg")
   const [isDrawerVisible, setIsDrawerVisible] = useState(false); 
-
   const toggleRightDrawer = () => {
     setIsDrawerVisible(!isDrawerVisible);
   };
@@ -241,14 +224,6 @@ const App: React.FC = () => {
     ].sort((a, b) => b.length - a.length),
     [] // 空依賴陣列，確保只計算一次
   );
-
-  // 初始化
-  // useEffect(() => {
-  // if (!isInitialized) {
-  //   getOrCreateChatId(); 
-  //   setIsInitialized(true);
-  // }
-  // }, [isInitialized]);
 
   useEffect(() => {
     const initializeChat = async () => {
@@ -287,6 +262,12 @@ const App: React.FC = () => {
       initializeChat();
     }
   }, [isInitialized, needsNewChat, dispatch]);
+
+  useEffect(() => {
+  if (shouldRedirect) {
+    router.navigate('/auth/login');
+  }
+}, [shouldRedirect]);
 
   const startNewChat = async (isPersonalized: boolean) => {
     // 1. 清空畫面
@@ -338,9 +319,11 @@ const App: React.FC = () => {
 
   // 新建並獲取 chatID
   const getOrCreateChatId = async (): Promise<number | null> => {
+    
     if (!user || !user.id) {
+      setShouldRedirect(true);
       console.error("無法創建聊天室：使用者未登入或 user.id 不存在");
-      router.navigate('/auth/login'); 
+      // router.navigate('/auth/login'); 
       return null;
     }
     try {
@@ -353,11 +336,17 @@ const App: React.FC = () => {
       console.log(user.id, "後端獲取新的 chatID:", newChatId);
       return newChatId; 
     } 
-    catch (error) {
+  catch (error: any) {
+    // axios response 有 httpStatus
+    if (error.response?.status === 403 || error.code === 403) {
+      console.warn("權限錯誤，跳轉至登入頁面");
+      router.navigate('/auth/login');
+    } else {
       console.error('無法獲取或創建 chatID:', error);
-      return null;
     }
-  };
+    return null;
+  }
+};
   
   // 發送消息到後端
   const sendMessageToModel = async (message: string, conversationIdOverride?: number): Promise<{ content: string; cards: ResultItem[]; newConversationId?: number; }> => {
@@ -443,174 +432,9 @@ const App: React.FC = () => {
     await performAiSearch(query); // 呼叫共用的查詢函式
   };
 
-  // 檢查選擇項
-  const checkIndex = (name: string): [number, number, string, number] => {
-    const items: { data: Item[]; index: number }[] = [
-      { data: ewlfareItems, index: 1 },
-      { data: taiwanItems, index: 2 },
-      { data: northItems, index: 3 },
-      { data: midItems, index: 3 },
-      { data: southItems, index: 3 },
-      { data: eastItems, index: 3 },
-    ];
-
-    for (const { data, index } of items) {
-      const foundItem = data.find((item) => item.name === name);
-      if (foundItem) {
-        if (index === 1) {
-          setSelectedService(foundItem.id);
-        }
-        return [foundItem.id, index, foundItem.name, selectedService];
-      }
-    }
-
-    return [0, 0, '', selectedService];
-  };
-
   // 服務卡片點擊
   const handleServiceClick = (name: string) => {
     performAiSearch(name); 
-  };
-
-  // 地區卡片點擊
-  const handlePlaceClick = (name: string) => {
-    const index = checkIndex(name);
-    if (index[1] === 1) {
-      setMessages((prev) => [
-        ...prev,
-        { type: 'user', content: index[2] },
-        { type: 'place', items: taiwanItems },
-      ]);
-    } else if (index[1] === 2) {
-      let items: Item[] = [];
-      if (index[0] === 1) items = northItems;
-      else if (index[0] === 2) items = midItems;
-      else if (index[0] === 3) items = southItems;
-      else if (index[0] === 4) items = eastItems;
-      else if (index[0] === 5) items = offshoreItems;
-      setMessages((prev) => [
-        ...prev,
-        { type: 'user', content: index[2] },
-        { type: 'place', items },
-      ]);
-    } else if (index[1] === 3) {
-      setMessages((prev) => [...prev, { type: 'user', content: index[2] }]);
-      handleResult(index);
-    }
-    scrollViewRef.current?.scrollToEnd({ animated: true });
-  };
-
-   // 新增或修改：根據福利類別和地區查詢福利卡片
-  const fetchWelfareCards = async (serviceId: number, locationName: string): Promise<ResultItem[]> => {
-    if (!user || !user.id) return [];
-    try {
-      // 1. 把福利類別的數字 ID 轉換成名稱
-      const categoryName = serviceIdToCategoryMap[serviceId];
-      if (!categoryName) {
-        console.warn(`未找到 serviceId ${serviceId} 對應的類別名稱`);
-        return []; // 如果找不到對應的名稱，就返回空陣列
-      }
-
-      // 2. 準備好呼叫 API 需要的參數
-      const params: WelfareApiParams = {
-        locations: [locationName], // 地區名稱，放在陣列裡
-        categories: [categoryName], // 福利類別名稱，放在陣列裡
-        userID: user.id, // 您的用戶 ID，請替換成實際的
-        // 如果後端 API 支援分頁，您也可以加上 page: 1, pageSize: 10 等參數
-      };
-
-      // 3. 呼叫您提供的 fetchWelfareApi 函數
-      const response = await fetchWelfareApi(params);
-
-      // 4. 處理後端返回的資料
-      // 假設後端返回的資料裡，福利卡片列表放在 response.welfares 裡面
-      if (response && Array.isArray(response.data.data)) {
-        return response.data.data.map((card: any) => ({
-          id:card.id,
-          title: card.title,
-          url: `home/${card.id}`,   
-          summary: card.summary, 
-          location: card.location, 
-          forward: card.forward, 
-          categories:card.categories,
-          detail: card.detail,
-          publicationDate: card.publicationDate,
-          applicationCriteria: card.applicationCriteria,
-          lightStatus:card.lightStatus
-        }));
-      } else {
-        console.warn("後端返回的福利卡片格式不正確或為空:", response);
-        return [];
-      }
-    } catch (error) {
-      console.error("查詢福利卡片失敗:", error);
-      Alert.alert("錯誤", "無法查詢福利卡片，請稍後再試");
-      return [];
-    }
-  };
-
-  // 新增：處理機器人頭像點擊事件
-  // const handleBotAvatarClick = async () => {
-  //   setMessages((prev) => [...prev, { type: 'loading' }]);
-  //   const currentChatId = chatID ?? await getOrCreateChatId();
-  //   if (currentChatId === null) {
-  //     setMessages([{ type: 'bot', content: '抱歉，無法建立對話，請檢查登入狀態。' }]);
-  //     return;
-  //   }
-  //   try {
-  //     const { content, newConversationId } = await sendMessageToModel('你好', currentChatId);
-
-  //     if (newConversationId !== undefined) {
-  //       setChatID(newConversationId); // 更新 chatID 為後端返回的最新對話 ID
-  //     }
-
-  //     setMessages((prev) => {
-  //       const withoutLoading = prev.filter(m => m.type !== 'loading');
-  //       return [...withoutLoading, { type: 'bot', content: content }];
-  //     });
-  //     setMessages((prev) => [...prev, { type: 'service', items: ewlfareItems }]);
-  //   } catch (error) {
-  //     setMessages((prev) => prev.filter(m => m.type !== 'loading')); // 移除 loading 訊息
-  //     setMessages((prev) => [...prev, { type: 'bot', content: '呼叫服務卡片時發生錯誤，請稍後再試。' }]);
-  //   }
-  // };
-
-  // 處理最終結果
-  // 修改：處理最終結果
-  const handleResult = async (input: [number, number, string, number]) => {
-    const selectedServiceId = input[3]; // 這是福利類別的 ID
-    const selectedLocationName = input[2]; // 這是地區的名稱
-
-    // 1. 顯示「載入中」訊息，讓用戶知道正在查詢
-    setMessages((prev) => [...prev, { type: 'loading' }]);
-
-    try {
-      // 2. 呼叫 fetchWelfareCards 函數來獲取實際的福利卡片資料
-      const welfareCards = await fetchWelfareCards(selectedServiceId, selectedLocationName);
-
-      // 3. 移除「載入中」訊息
-      setMessages((prev) => prev.slice(0, -1));
-
-      // 4. 根據是否有找到福利卡片來顯示結果
-      if (welfareCards.length > 0) {
-        // 如果找到了，就顯示這些福利卡片
-
-        setMessages((prev) => [
-          ...prev,
-          { type: 'result', resultItems: welfareCards }
-        ]);
-      } else {
-        // 如果沒找到，就顯示「未找到相關福利」的訊息
-        const noResult: ResultItem[] = [{ title: '未找到相關福利\n點擊返回主界面', url: 'home' }];
-        setMessages((prev) => [...prev, { type: 'result', resultItems: noResult }]);
-        // 自動滾動到底部
-        scrollViewRef.current?.scrollToEnd({ animated: true });
-      }
-    } catch (error) {
-      // 5. 如果發生錯誤，移除「載入中」並顯示錯誤訊息
-      setMessages((prev) => prev.slice(0, -1));
-      setMessages((prev) => [...prev, { type: 'bot', content: '查詢福利卡片時發生錯誤，請稍後再試。' }]);
-    }
   };
 
   const handleNewChat = () => {
@@ -621,6 +445,7 @@ const App: React.FC = () => {
 };
 
 const performAiSearch = async (query: string, options?: { asNewConversation?: boolean }) => {
+  
     const isNewConversation = options?.asNewConversation ?? false;
 
     const userMessage: Message = { type: "user", content: query };
@@ -640,7 +465,7 @@ const performAiSearch = async (query: string, options?: { asNewConversation?: bo
       }
       
       const conversationId = isNewConversation ? undefined : chatID;
-      
+      console.log("finalQuery:", finalQuery);
       const { content: aiResponseContent, cards: rawWelfareCards, newConversationId } = await sendMessageToModel(finalQuery, conversationId);
       
       if (newConversationId !== undefined) {
@@ -697,10 +522,9 @@ const performAiSearch = async (query: string, options?: { asNewConversation?: bo
           // 如果過濾後沒有卡片，可以考慮顯示一個提示，或者不顯示卡片
           console.log("前端過濾後沒有找到符合條件的卡片。");
           // 如果希望在過濾後沒有結果時，也顯示一個「無結果」的卡片，可以取消註解下面這段
-          // setMessages((prev) => [...prev, { type: "result", resultItems: [{ title: '未找到符合條件的福利', url: '#' }] }]);
+          //  setMessages((prev) => [...prev, { type: "result", resultItems: [{ title: '未找到符合條件的福利', url: '#' }] }]);
         }
       }
-
     } catch (error) {
       setMessages((prev) => {
         const prevMessages = isNewConversation ? [userMessage] : prev.filter(m => m.type !== "loading");
@@ -711,6 +535,34 @@ const performAiSearch = async (query: string, options?: { asNewConversation?: bo
     }
   };
 
+  // 定義自定義的渲染規則
+  const customRenderRules: RenderRules = {
+    link: (node, children, parent, styles) => {
+      const url = node.attributes.href;
+      const isInternalLink = url.startsWith("/home/");
+
+      const handlePress = () => {
+        console.log("攔截到 Markdown 連結點擊，URL:", url);
+        if (isInternalLink) {
+          router.navigate(url as any);
+        } else {
+          console.warn("未知的連結格式，將嘗試使用 Linking.openURL:", url);
+        }
+      };
+
+      // 直接定義連結樣式，不依賴 styles.link
+      const finalLinkStyle = isInternalLink ? linkStyles.internalLink : linkStyles.externalLink;
+      return (
+        <Text
+          key={node.key}
+          style={finalLinkStyle}
+          onPress={handlePress}
+        >
+          {children}
+        </Text>
+      );
+    },
+  };
   // 渲染消息
   const renderMessage = ({ item,index }: { item: Message,index:number }) => {
     
@@ -739,28 +591,14 @@ const performAiSearch = async (query: string, options?: { asNewConversation?: bo
             {shouldShowAvatar ? (
               <Image source={botAvatar} style={styles.avatar} />
             ) : (
-              // 如果不顯示頭像，放一個等寬的空白 View 來佔位，確保訊息能對齊
               <View style={styles.avatarPlaceholder} />
             )}
-            {/* <View style={styles.botTextContainer}>
-              <Markdown style={markdownStyles}>{item.content}</Markdown>
-            </View> */}
               <View style={styles.botTextContainer}>
-                <Markdown 
-                  style={markdownStyles}
-                  onLinkPress={(url) => {
-                    console.log('攔截到 Markdown 連結點擊，URL:', url);
-
-                    if (url.startsWith('/home/')) {
-                      router.navigate(url as any);
-                      return true; 
-                    }
-                    console.warn('未知的連結格式:', url);
-                    // 對於未知的格式，返回 false，讓套件自己處理（如果它有預設行為的話）
-                    return false;
-                  }}
+                <Markdown
+                  //  style={markdownStyles}
+                   rules={customRenderRules}
                 >
-                  {item.content}
+                {item.content}
                 </Markdown>
               </View>
             </View>
@@ -785,26 +623,6 @@ const performAiSearch = async (query: string, options?: { asNewConversation?: bo
               )}
               keyExtractor={(item) => item.id.toString()}
               showsHorizontalScrollIndicator={false}
-            />
-          </View>
-        );
-      case 'place':
-        return (
-          <View style={styles.botMessage}>
-            <TouchableOpacity onPress={handleNewChat}> 
-              <Image source={botAvatar} style={styles.avatar} />
-            </TouchableOpacity>
-            <FlatList
-              data={item.items}
-              renderItem={({ item: place }) => (
-                <TouchableOpacity
-                  style={styles.placeCard}
-                  onPress={() => handlePlaceClick(place.name)}
-                >
-                  <Text style={styles.placeText}>{place.name}</Text>
-                </TouchableOpacity>
-              )}
-              keyExtractor={(item) => item.id.toString()}
             />
           </View>
         );
@@ -846,7 +664,7 @@ const performAiSearch = async (query: string, options?: { asNewConversation?: bo
                       
                       <Text style={styles.resultTitle} numberOfLines={3} ellipsizeMode="tail">{result.title}</Text>
                       {result.lightStatus !== undefined && (
-                        <View style={styles.lightStatusContainer}> {/* 新增一個容器來包裹燈號 */} 
+                        <View style={styles.lightStatusContainer}>
                           <View
                             style={[
                               styles.circleIndicator,
@@ -859,12 +677,10 @@ const performAiSearch = async (query: string, options?: { asNewConversation?: bo
                   
                       {result.location && <Text style={styles.resultLocation}>地點: {result.location}</Text>}
 
-                      {result.categories && <Text style={styles.resultLocation}numberOfLines={2} ellipsizeMode="tail">{`類別: ${result.categories.join('、')}`}</Text>}
+                      {result.categories && <Text style={styles.resultLocation}numberOfLines={2} ellipsizeMode="tail">類別:{`${result.categories.join('、')}`}</Text>}
                       {/* {result.applicationCriteria && <Text style={styles.resultLocation}>申請條件:{result.applicationCriteria}</Text>} */}
                       
-                      {result.forward && <Text style={styles.resultForward} numberOfLines={5} ellipsizeMode="tail">{`福利:${result.forward.join('、')}`}</Text>}
-                      
-                      
+                      {result.forward && <Text style={styles.resultForward} numberOfLines={2} ellipsizeMode="tail">{`福利:${result.forward.join('、')}`}</Text>}
                     </TouchableOpacity>
                   )}
                   keyExtractor={(item, index) => index.toString()}
@@ -1183,7 +999,17 @@ const markdownStyles = {
   ordered_list: {
     marginBottom: 5,
   },
-  // 您可以根據需要添加更多 Markdown 元素的樣式
 }as const;
+
+const linkStyles = StyleSheet.create({
+   internalLink: {
+    color: 'blue',
+    textDecorationLine: 'underline',
+   },
+   externalLink: {
+    color: '#333', // 使用與文字相同的顏色
+    textDecorationLine: 'none',
+   },
+});
 
 export default App;
