@@ -46,7 +46,7 @@ const RightDrawer: React.FC<RightDrawerProps> = ({ isVisible, onClose }) => {
           <TouchableWithoutFeedback>
             <View style={styles.drawer}>
               {/* Header */}
-              <View style={styles.header}>
+              <View style={[styles.header, styles.headerBorder]}>
                 <Text style={styles.title}>設定</Text>
                 <TouchableOpacity onPress={onClose}>
                   <Ionicons name="close" size={24} color="#666" />
@@ -99,7 +99,7 @@ const styles = StyleSheet.create({
     width: '80%',
     height: '100%',
     backgroundColor: '#fff',
-    paddingTop: 50,
+    paddingTop: 30,
     paddingHorizontal: 20,
     shadowColor: '#000',
     shadowOffset: { width: -2, height: 0 },
@@ -111,8 +111,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
+    //  marginBottom: 20,
   },
+  headerBorder: {
+  borderBottomWidth: 1,
+  borderBottomColor: "#ddd",
+  flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 15,
+},
   title: {
     fontSize: 24,
     fontWeight: 'bold',

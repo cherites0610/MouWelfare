@@ -606,7 +606,7 @@ const performAiSearch = async (query: string, options?: { asNewConversation?: bo
       case 'service':
         return (
           <View style={styles.botMessage}>
-          <TouchableOpacity onPress={handleNewChat}> 
+          <TouchableOpacity> 
               <Image source={botAvatar} style={styles.avatar} />
             </TouchableOpacity>
             <FlatList
@@ -630,7 +630,7 @@ const performAiSearch = async (query: string, options?: { asNewConversation?: bo
         return (
             <View style={styles.botMessage}>
               {shouldShowAvatar ? (
-                <TouchableOpacity onPress={handleNewChat}>
+                <TouchableOpacity>
                   <Image source={botAvatar} style={styles.avatar} />
                 </TouchableOpacity>
               ) : (
@@ -705,10 +705,15 @@ const performAiSearch = async (query: string, options?: { asNewConversation?: bo
   return (
     <SafeAreaView style={{ flex: 1 }}>
     <View style={styles.header}>
-      <Text style={styles.headerTitle}>阿哞</Text>
-      <TouchableOpacity onPress={toggleRightDrawer} style={styles.settingsIcon}>
-        <Ionicons name="options-outline" size={24} color="#374151" />
-      </TouchableOpacity>
+      <Text style={styles.headerTitle}>阿哞福利查詢</Text>
+      <View style={styles.headerIcons}>
+          <TouchableOpacity onPress={handleNewChat} style={styles.newChatIcon}>
+            <Ionicons name="add-circle-outline" size={28} color="#374151" />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={toggleRightDrawer} style={styles.settingsIcon}>
+            <Ionicons name="options-outline" size={24} color="#374151" />
+          </TouchableOpacity>
+        </View>
     </View>
       <View style={styles.container}>
         <ScrollView
@@ -755,20 +760,29 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: '#fff',
+    backgroundColor: COLORS.background,
     borderBottomWidth: 1,
     borderBottomColor: '#e5e7eb',
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1f2937',
+    color: COLORS.text,
+    marginLeft:8
   },
   settingsIcon: {
-    padding: 8,
+    padding: 10,
     borderRadius: 20,
     backgroundColor: '#f9fafb',
   },
+  headerIcons: { 
+    flexDirection: 'row', 
+    alignItems: 'center' }, 
+  newChatIcon: { 
+    padding: 8, 
+    borderRadius: 20, 
+    backgroundColor: '#f9fafb', 
+    marginRight: 8 }, // 新增樣式
   container: {
     flex: 1,
     backgroundColor: '#f3f4f6',
