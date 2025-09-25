@@ -85,7 +85,8 @@ const WelfareInfo = () => {
           <View style={styles.container}>
             <Text style={styles.title}>{welfare.title}</Text>
             <Text style={{...styles.releaseDate,marginBottom:3}}>發佈日期: {welfare.publicationDate||"無法取得發佈日期"}</Text>
-            <Text style={styles.releaseDate}>福利種類: {welfare.categories.join(',')||"無法取得福利種類"}</Text>
+            <Text style={{...styles.releaseDate,marginBottom:3}}>福利種類: {welfare.categories.join(',')||"無法取得福利種類"}</Text>
+            <Text style={styles.releaseDate}>地區: {welfare.location}</Text>
 
             <Text style={styles.sectionTitle}>簡要原文(AI生成，請自行鑒別):</Text>
             <Text style={styles.notes}>{welfare.summary}</Text>
