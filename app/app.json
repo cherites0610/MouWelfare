@@ -17,6 +17,9 @@
           },
           "172.20.10.6": {
             "NSExceptionAllowsInsecureHTTPLoads": true
+          },
+          "192.168.0.129": {
+            "NSExceptionAllowsInsecureHTTPLoads": true
           }
         }
       }

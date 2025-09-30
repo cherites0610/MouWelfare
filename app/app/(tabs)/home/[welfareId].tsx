@@ -3,8 +3,9 @@ import { RootState } from '@/src/store';
 import { Welfare } from '@/src/type/welfareType';
 import { COLORS } from '@/src/utils/colors';
 import { Ionicons } from '@expo/vector-icons';
-import { useLocalSearchParams } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import { useLocalSearchParams,useRouter,useNavigation  } from 'expo-router';
+import React, { useEffect, useState, useLayoutEffect } from 'react';
+import { StackNavigationProp, StackActions } from '@react-navigation/stack';
 import {
   View,
   Text,
@@ -23,12 +24,14 @@ import { useSelector } from 'react-redux';
 
 const WelfareInfo = () => {
   const glob = useLocalSearchParams();
+  const { welfareId, sourcePage } = useLocalSearchParams();
+  const navigation = useNavigation<StackNavigationProp<any>>(); 
   const [welfare, setWelfare] = useState<Welfare | null>(null);
   const [error, setError] = useState<string | null>(null);
   const { user } = useSelector((state: RootState) => state.user)
   const { locations, categories, identities, family, searchQuery } = useSelector((state: RootState) => state.filiter)
   const { familys } = useSelector((state: RootState) => state.family); // 獲取家庭類型數據
-
+  const router = useRouter();
 
   const getCircleColor = () => {
     switch (welfare?.lightStatus) {
@@ -69,6 +72,48 @@ const WelfareInfo = () => {
   useEffect(() => {
     getWelfare();
   }, []);
+
+  useLayoutEffect(() => {
+        
+        // 1. 判斷返回目標
+        const isFromChat = sourcePage === 'chat';
+        
+        // 2. 決定點擊返回按鈕時執行的函式
+        const handleCustomBack = () => {
+            if (isFromChat) {
+                console.log("返回對話機器人頁面 (index)");
+                router.navigate('/mou');  
+                // navigation.popToTop();
+            } else {
+                // 如果是從其他頁面來的 (例如 My Favourites)，執行預設的返回上一步操作
+                console.log("返回上一頁");
+                if (navigation.canGoBack()) {
+                    navigation.goBack(); 
+                } else {
+                    router.navigate('/home'); // 作為最終保底
+                }
+            }
+        };
+
+        // 3. 覆寫 Header 的左側按鈕 (返回按鈕)
+        navigation.setOptions({
+        headerLeft: () => (
+            <TouchableOpacity 
+                onPress={handleCustomBack}
+                // 調整觸摸區域
+                style={{ padding: 10, marginLeft: Platform.OS === 'ios' ? -10 : 0 }} 
+            >
+                <Ionicons 
+                    // 根據平台選擇最接近系統預設的圖標
+                    name={Platform.OS === 'ios' ? 'chevron-back' : 'arrow-back'} 
+                    size={Platform.OS === 'ios' ? 32 : 24} // iOS 圖標通常更大/更靠近邊緣
+                    color="black" 
+                /> 
+            </TouchableOpacity>
+        ),
+    });
+        
+    }, [sourcePage, navigation, router]);
 
   const openLink = async (url: string) => {
     if (url && (await Linking.canOpenURL(url))) {

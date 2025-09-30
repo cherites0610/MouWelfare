@@ -544,7 +544,13 @@ const performAiSearch = async (query: string, options?: { asNewConversation?: bo
       const handlePress = () => {
         console.log("攔截到 Markdown 連結點擊，URL:", url);
         if (isInternalLink) {
-          router.navigate(url as any);
+          // router.navigate(url as any);
+          router.navigate({
+        pathname: url, // e.g. /home/12
+        params: {
+          sourcePage: "chat",
+        },
+      });
         } else {
           console.warn("未知的連結格式，將嘗試使用 Linking.openURL:", url);
         }
@@ -648,7 +654,15 @@ const performAiSearch = async (query: string, options?: { asNewConversation?: bo
                         // 檢查 result.id 是否存在，以避免路徑變成 'home/undefined'
                         if (result.id) {
                           // 使用 navigate 和手動拼接字串的方式
-                          router.navigate(('home/' + result.id) as any);
+                          // router.navigate(('home/' + result.id) as any);
+                          router.navigate({ 
+                              pathname: ('home/' + result.id), 
+                              params: { 
+                                  // 假設對話機器人頁面是 'index'
+                                  sourcePage: 'chat', 
+                                  welfareId: result.id 
+                              } 
+                          } as any);
                         } else if (result.url === 'home') {
                           // 處理 "未找到福利" 的情況，這部分邏輯保持不變
                           setMessages((prev) => {

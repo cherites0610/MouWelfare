@@ -43,6 +43,12 @@ export default function RootLayout() {
           title: "首頁",
           tabBarIcon: ({ color, size }) => <Ionicons images-outline name="home-outline" color={color} size={size} />
         }}
+      listeners={{
+          tabPress: () => {
+            // 重置 home 分頁到 index
+            route.navigate('/home/');
+          },
+        }}
       />
       <Tabs.Screen
         name="account"
