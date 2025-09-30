@@ -7,6 +7,7 @@ import { WelfareStatus } from "../common/enum/welfare-status.enum.js";
 import { ConstDataService } from "../common/const-data/const-data.service.js";
 import { AI_PROVIDER } from "../ai/ai-provider.interface.js";
 import { ResilientAIService } from "../ai/resilient-ai.service.js";
+import { GcsService } from "./gcs.service.js";
 
 // 定義爬取結果的資料結構
 interface CrawlData {
@@ -26,7 +27,8 @@ export class DataProcessingService extends WorkerHost {
     private readonly configService: ConfigService,
     private readonly welfareService: WelfareService,
     private readonly constService: ConstDataService,
-    private readonly aiProvider: ResilientAIService
+    private readonly aiProvider: ResilientAIService,
+    private readonly gcsService: GcsService,
   ) {
     super();
   }
@@ -79,6 +81,26 @@ export class DataProcessingService extends WorkerHost {
       isAbnormal: false,
     });
     this.logger.log(`✅ 已處理完成資料:${welfare.title}`);
+
+    const jsonlRecord = {
+      id: welfare.id,
+      title: welfare.title,
+      summary: welfare.summary,
+      detail: welfare.details,
+      link: welfare.link,
+      publicationDate: welfare.publicationDate,
+      status: welfare.status,
+      categories: processedData.category || [],
+      identities: processedData.target_group || [],
+      applicationCriteria: welfare.applicationCriteria || [],
+      forward: welfare.forward || [],
+      location: data.city,
+      isAbnormal: welfare.isAbnormal,
+    };
+
+    await this.gcsService.appendAndUpload([jsonlRecord]);
+    this.logger.log(`☁️ 已同步到 GCS: ${jsonlRecord.title}`);
+
     return;
   }
 }
