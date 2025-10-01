@@ -43,7 +43,7 @@ export default function Setting() {
       {/* 連結帳戶 */}
       <TouchableOpacity style={styles.row} onPress={linkLine}>
         <Ionicons name="link" size={iconSize} color="#444" style={styles.icon} />
-        <Text style={styles.text}>連結Line賬戶</Text>
+        <Text style={styles.text}>連結Line帳戶</Text>
       </TouchableOpacity>
 
       {/* 老人模式 */}

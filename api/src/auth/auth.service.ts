@@ -54,7 +54,7 @@ export class AuthService {
   }
 
   async sendVerificationCode(dto: SendVerificationCodeDto): Promise<void> {
-    const user = await this.userService.findOneByEmail(dto.email);
+    const user = await this.userService.findOneByEmail(dto.email,true);
     if (!user) {
       throw new BadRequestException("用戶不存在");
     }
@@ -92,7 +92,7 @@ export class AuthService {
   }
 
   async verifyCode(dto: VerifyCodeDto): Promise<string> {
-    const user = await this.userService.findOneByEmail(dto.email);
+    const user = await this.userService.findOneByEmail(dto.email,true);
     if (!user) throw new BadRequestException("無效的驗證碼");
 
     const retryKey = `verify:attempts:${dto.email}:${dto.action}`;

@@ -12,9 +12,9 @@ export default function SettingsLayout() {
         headerBackButtonDisplayMode:"minimal"
       }}
     >
-      <Stack.Screen name="index" options={{ headerShown:false,title: "賬戶頁面" }} />
+      <Stack.Screen name="index" options={{ headerShown:false,title: "帳戶頁面" }} />
       <Stack.Screen name="setting" options={{ title: "帳戶設定" }} />
-      <Stack.Screen name="profile" options={{ title: "賬戶資料設定" }} />
+      <Stack.Screen name="profile" options={{ title: "帳戶資料設定" }} />
       <Stack.Screen name="family" options={{ title: "家庭" }} />
       <Stack.Screen name="fqa" options={{ title: "常見問題" }} />
       <Stack.Screen name="edit-profile" options={{title:"編輯資料"}} />

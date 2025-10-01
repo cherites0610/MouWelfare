@@ -84,19 +84,19 @@ export class UserService {
     return foundUser;
   }
 
-  async findOneByEmail(email: string) {
+  async findOneByEmail(email: string, allowUnverified = false) {
     const foundUser = await this.userRepository.findOne({
       where: { email: email },
       relations: ["location", "identities", "welfares"],
     });
 
     if (!foundUser) {
-      throw new UnauthorizedException("找不到賬戶號");
+      throw new UnauthorizedException("找不到帳戶號");
     }
 
-    //if (!foundUser.isVerified) {
-    //  throw new ForbiddenException("尚未驗證賬戶");
-    //}
+    if (!allowUnverified && !foundUser.isVerified) {
+     throw new ForbiddenException("尚未驗證帳戶");
+    }
     return foundUser;
   }
 
@@ -177,7 +177,7 @@ export class UserService {
   async updatePassword(id: string, password: string) {
     const foundUser = await this.findOneByID(id);
     if (!foundUser) {
-      throw new NotFoundException("未找到該賬號");
+      throw new NotFoundException("未找到該帳號");
     }
 
     const hash = await argon2.hash(password);

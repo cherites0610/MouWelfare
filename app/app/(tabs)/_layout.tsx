@@ -54,7 +54,7 @@ export default function RootLayout() {
         name="account"
         options={{
           tabBarActiveTintColor: COLORS.background,
-          title: "賬戶",
+          title: "帳戶",
           tabBarIcon: ({ color, size }) => <Ionicons images-outline name="person-outline" color={color} size={size} />
         }}
         listeners={{
