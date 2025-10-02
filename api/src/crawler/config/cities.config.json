@@ -18,7 +18,8 @@
       "title": "#content_middle > div.title > h2",
       "date": "",
       "content": "#ContentPlaceHolder1_data_midlle_cp > table > tbody > tr:nth-child(2) > td > div"
-    }
+    },
+    "downloadData":".news_box03_data ul li"
   },
   "newtaipei": {
     "city": "新北市",
@@ -131,7 +132,8 @@
       "title": "h3:first-child",
       "date": ".page-footer .detail span",
       "content": "div.p"
-    }
+    },
+    "downloadData":".list-text.file-download-multiple ul li:nth-child(1)"
   },
   "keelung": {
     "city": "基隆市",
@@ -156,7 +158,8 @@
       "title": "h2.title",
       "date": ".publish_info li:first-child",
       "content": ".cp"
-    }
+    },
+	"downloadData":".file_download ul li"
   },
   "taichung": {
     "city": "台中市",
@@ -189,7 +192,8 @@
       "title": "header h2",
       "date": ".pubInfo li:nth-child(3)",
       "content": ".cpArticle"
-    }
+    },
+    "downloadData":".attachment a"
   },
     "kaohsiung": {
     "city": "高雄市",
@@ -210,7 +214,8 @@
       "title": "h3",
       "date": "",
       "content": ".diva1 > :not(#download):not([align='CENTER']):not(#download_b)"
-    }
+    },
+    "downloadData":"#download"
   },
   "hualien": {
     "city": "花蓮市",
@@ -235,7 +240,8 @@
       "title": "h2",
       "date": ".sec span:nth-of-type(2)",
       "content": ".detail_box .edit_box"
-    }
+    },
+    "downloadData":".In_box.one .dw"
   },
   "yilan": {
     "city": "宜蘭市",
@@ -251,14 +257,15 @@
         "getUrlAttr": "href"
       }
     ],
-    "stopSelector": ".div",
+    "stopSelector": ".group.page-footer .list-text.detail .in ul li",
     "extractSelectors": {
       "title": ".in h3",
       "date": ".group.page-footer .list-text.detail .in ul li",
       "content": ".div"
-    }
+    },
+    "downloadData":".group-list.file-download-multiple"
   },
-  "tainan": {
+"tainan": {
     "city": "台南市",
     "baseUrl": "https://sab.tainan.gov.tw/",
     "startUrl": "https://sab.tainan.gov.tw/cl.aspx?n=21367",
@@ -281,7 +288,8 @@
       "title": ".in h3",
       "date": ".list-text.detail .in ul li:nth-child(2)",
       "content": ".essay .p" 
-    }
+    },
+    "downloadData":".group-list.file-download-multiple ul li li"
   },
   "penghu": {
     "city": "澎湖市",
@@ -306,9 +314,10 @@
       "title": ".medium .headlines",
       "date": ".sub ul li:nth-child(1)",
       "content": ".sub ul p"
-    }
+    },
+    "downloadData":".annex ul li"
   },
-  "taitung": {
+ "taitung": {
     "city": "台東市",
     "baseUrl": "https://taisoc.taitung.gov.tw/WebSite/Service/",
     "startUrl": "https://taisoc.taitung.gov.tw/WebSite/Service/serviceMain.aspx?menuid=lW%2bfKiAxClc%3d#cate122",
@@ -327,7 +336,8 @@
       "title": "td[align='left'][background*='bg_news.gif'] strong font",
       "date": "td[align='center'][background*='bg_news.gif'] strong font",
       "content": "table[border='0'][cellpadding='3'] table tr"
-    }
+    },
+    "downloadData":".tbDataFile .tdFile"
   },
   "changhua": {
     "city": "彰化市",
@@ -337,6 +347,14 @@
       {
         "selector": ".cat-one a",
         "getUrlAttr": "href"
+      },
+      {
+        "selector":".pages_content_blcok-table a",
+        "getUrlAttr":"href"
+      },
+      {
+        "selector":".page.next-page",
+        "getUrlAttr":"href"
       }
     ],
     "stopSelector": ".article-title",
@@ -344,7 +362,8 @@
       "title": ".article-title h3",
       "date": "",
       "content": ".article-desc"
-    }
+    },
+    "downloadData":".pages_content_blcok-files"
   },
   "kinmen": {
     "city": "金門市",
@@ -365,7 +384,8 @@
       "title": ".list-text.classify ul li.is-active a",
       "date": ".list-text.detail ul li:nth-child(1)",
       "content": ".area-editor.user-edit"
-    }
+    },
+    "downloadData":".group-list.file-download-multiple ul li li"
   },
   "taipei": {
   "city": "臺北市",
@@ -393,7 +413,8 @@
     "title": "h2",
     "date": ".table tr:nth-child(2) td:nth-child(2)",
     "content": ".table tr:nth-child(4) p"
-  }
+  },
+  "downloadData":"#ListData .table tr td:nth-child(4)"
 },
   "matsu": {
   "city": "連江市",
@@ -412,7 +433,7 @@
     "content": ".table tr:nth-child(4) p"
   }
   },
-  "miaoli": {
+"miaoli": {
   "city": "苗栗市",
   "baseUrl": "https://www.miaoli.gov.tw/social_affairs/",
   "startUrl": "https://www.miaoli.gov.tw/social_affairs/News.aspx?n=8644&sms=14225&page=1&PageSize=20",
@@ -428,6 +449,7 @@
     "date": "",
     "content": ".essay"
   },
-  "pageCount": 20
+  "pageCount": 20,
+  "downloadData":".list-text.file-download-multiple"
   }
 }
