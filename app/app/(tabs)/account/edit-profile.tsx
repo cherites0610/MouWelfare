@@ -9,6 +9,8 @@ import {
     Alert,
     Platform,
     ScrollView,
+    Dimensions, 
+    ViewStyle
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
@@ -26,6 +28,7 @@ export default function EditProfileScreen() {
     const [avatar, setAvatar] = useState<string>();
     const [name, setName] = useState<string>();
     const [birthday, setBirthday] = useState<string>(''); // 改為字符串以接受輸入
+    const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
     // 性別下拉選單狀態
     const [genderOpen, setGenderOpen] = useState(false);
@@ -202,8 +205,47 @@ export default function EditProfileScreen() {
         } catch (error) {
             console.error("更新個人資料失敗:", error);
 
+        } 
+    };
+    const getModalWidth = (screenWidth: number): number => {
+       if (screenWidth > 600) return screenWidth * 0.6;      // 平板：60%
+        if (screenWidth > 400) return screenWidth * 0.75;     // 大手機：75%
+        return screenWidth * 0.85;                                // 小手機：85%
+    };
+    const getModalStyle = (type: 'location' | 'identity'): ViewStyle => {
+        const baseStyle: ViewStyle = {
+            backgroundColor: '#fff',
+            borderRadius: 16,
+            width: getModalWidth(screenWidth),
+            alignSelf: 'center',
+            padding: 24,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 8 },
+            shadowOpacity: 0.25,
+            shadowRadius: 12,
+            elevation: 10,
+            borderWidth: 1,
+            borderColor: '#f0f0f0',
+        };
+
+        if (type === 'location') {
+            return {
+                ...baseStyle,
+                marginTop: screenHeight * 0.2,        // 地區選擇器稍高一點（有搜尋框）
+                maxHeight: screenHeight * 0.6,        // 更大的高度容納搜尋和選項
+                minHeight: 250,
+            };
+        } else {
+            return {
+                ...baseStyle,
+                marginTop: screenHeight * 0.25,       // 身份選擇器標準位置
+                maxHeight: screenHeight * 0.5,        // 標準高度
+                minHeight: 200,
+            };
         }
     };
+    const locationModalStyle = getModalStyle('location');
+    const identityModalStyle = getModalStyle('identity');
 
     return (
         <ScrollView contentContainerStyle={styles.scrollContainer} keyboardShouldPersistTaps="handled">
@@ -273,10 +315,23 @@ export default function EditProfileScreen() {
                             containerStyle={styles.dropdownContainer}
                             style={styles.dropdown}
                             dropDownContainerStyle={styles.dropdownListStyle}
-                            listMode="SCROLLVIEW"
-                            zIndex={2000}
-                            zIndexInverse={2000}
-                            dropDownDirection="BOTTOM"
+                            // listMode="SCROLLVIEW"
+                            // zIndex={2000}
+                            // zIndexInverse={2000}
+                            // dropDownDirection="BOTTOM"
+                            // Modal 模式
+                            listMode="MODAL"
+                            modalProps={{
+                                animationType: "slide",
+                                transparent: true,
+                            }}
+                            modalContentContainerStyle={locationModalStyle}
+                            modalTitle="選擇地區"
+                            modalTitleStyle={styles.modalTitle}
+                            
+                            // 🔥 啟用搜尋功能
+                            searchable={true}
+                            searchPlaceholder="搜索縣市..."
                         />
                     </View>
 
@@ -298,10 +353,19 @@ export default function EditProfileScreen() {
                             containerStyle={styles.dropdownContainer}
                             style={styles.dropdown}
                             dropDownContainerStyle={styles.dropdownListStyle}
-                            listMode="SCROLLVIEW"
-                            zIndex={1000}
-                            zIndexInverse={3000}
-                            dropDownDirection="BOTTOM"
+                            // listMode="SCROLLVIEW"
+                            // zIndex={1000}
+                            // zIndexInverse={3000}
+                            // dropDownDirection="BOTTOM"
+                            listMode="MODAL"
+                            modalProps={{
+                                animationType: "slide",
+                                transparent: true,
+                                statusBarTranslucent: true,
+                            }}
+                            modalContentContainerStyle={identityModalStyle}
+                            modalTitle="選擇身份"
+                            modalTitleStyle={styles.modalTitle}
                         />
                     </View>
                 </View>
@@ -317,7 +381,9 @@ export default function EditProfileScreen() {
     );
 }
 
+
 const styles = StyleSheet.create({
+    
     scrollContainer: {
         flexGrow: 1,
     },
@@ -391,4 +457,11 @@ const styles = StyleSheet.create({
         fontSize: 18,
         fontWeight: 'bold',
     },
+    modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
+    textAlign: 'center',
+    marginBottom: 16,
+},
 });
