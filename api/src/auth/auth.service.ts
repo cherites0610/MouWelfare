@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Inject,
   Injectable,
+  InternalServerErrorException,
   Logger,
   UnauthorizedException,
 } from "@nestjs/common";
@@ -93,8 +94,10 @@ export class AuthService {
 
   async verifyCode(dto: VerifyCodeDto): Promise<string> {
     const user = await this.userService.findOneByEmail(dto.email,true);
-    if (!user) throw new BadRequestException("無效的驗證碼");
-
+    if (!user) 
+      {        
+        throw new BadRequestException("無效的驗證碼");
+      }
     const retryKey = `verify:attempts:${dto.email}:${dto.action}`;
     const retryCount = +((await this.cacheManager.get(retryKey)) || 0);
     if (retryCount >= 5)
@@ -109,7 +112,6 @@ export class AuthService {
       where: { code: hashedCode, action: dto.action, userId: user.id },
       relations: ["user"],
     });
-
     if (!verificationCode || verificationCode.user.email !== dto.email) {
       throw new BadRequestException("無效的驗證碼");
     }
@@ -125,8 +127,34 @@ export class AuthService {
       jti,
     };
     const token = await this.jwtService.signAsync(payload, { expiresIn: "5m" });
-
-    await this.cacheManager.set(`jwt:jti:${jti}`, true, 300); // 有效期 5 分鐘
+  // 增強的 JTI 儲存
+    const jtiKey = `jwt:jti:${jti}`;
+    const maxRetries = 3;
+    
+    for (let i = 0; i < maxRetries; i++) {
+        try {
+            await this.cacheManager.set(jtiKey, true, 300);
+            
+            // 驗證儲存
+            const verification = await this.cacheManager.get(jtiKey);
+            if (verification) {
+                console.log(`✅ JTI 儲存成功 (嘗試 ${i + 1}/${maxRetries})`);
+                break;
+            } else {
+                throw new Error('儲存驗證失敗');
+            }
+        } catch (error) {
+            console.error(`❌ JTI 儲存失敗 (嘗試 ${i + 1}/${maxRetries}):`, error);
+            
+            if (i === maxRetries - 1) {
+                throw new InternalServerErrorException('Token 儲存失敗，請稍後再試');
+            }
+            
+            // 短暫延遲後重試
+            await new Promise(resolve => setTimeout(resolve, 100));
+        }
+    }
+    // await this.cacheManager.set(`jwt:jti:${jti}`, true, 300); // 有效期 5 分鐘
     await this.verificationCodeRepository.delete(verificationCode.id);
     await this.cacheManager.del(retryKey); // 驗證成功重置錯誤次數
 

@@ -59,9 +59,15 @@ export class UserController {
   @UseInterceptors(FileInterceptor("avatar"))
   async uploadAvatar(
     @UploadedFile() file: Express.Multer.File,
-    @UserID() userID,
+    @UserID() userID: string,
   ) {
-    return this.userService.updateAvatar(userID, file);
+
+    try {
+      const result = await this.userService.updateAvatar(userID, file);
+      return result;
+    } catch (error) {
+      throw error;
+    }
   }
 
   @Get("welfare")

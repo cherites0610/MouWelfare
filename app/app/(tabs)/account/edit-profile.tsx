@@ -107,22 +107,41 @@ export default function EditProfileScreen() {
             const type = match ? `image/${match[1]}` : `image`;
 
             const formData = new FormData();
-            formData.append('avatar', {
-                uri: Platform.OS === 'ios' ? uri.replace('file://', '') : uri,
-                name: filename,
-                type,
-            } as any);
-
-            try {
-                const resp = await updateAvatarApi(authToken, formData);
-                Alert.alert("更新成功", resp.message);
-                setAvatar(resp.data);
-                dispatch(fetchUser());
-
-            } catch (error: any) {
-                console.error("上傳頭像失敗:", error.message);
-                Alert.alert("錯誤", "頭像上傳失敗。");
+            if (Platform.OS === 'web') {
+                try {
+                    const response = await fetch(uri);
+                    const blob = await response.blob();
+                    formData.append('avatar', blob, filename);
+                } catch (error) {
+                    console.error('Web 平台檔案處理失敗:', error);
+                    Alert.alert('錯誤', '檔案處理失敗，請重新選擇');
+                    return;
+                }
+            } else {
+                
+                formData.append('avatar', {
+                    uri: Platform.OS === 'ios' ? uri.replace('file://', '') : uri,
+                    name: filename,
+                    type,
+                } as any);
             }
+            try {
+            
+            const resp = await updateAvatarApi(authToken, formData);
+
+            if (resp && resp.data) {
+                Alert.alert("更新成功", resp.message || "頭像已更新");
+                setAvatar(resp.data); // 使用回傳的新頭像 URL
+                dispatch(fetchUser());
+            } else {
+                throw new Error("伺服器回應格式不正確");
+            }
+
+        } catch (error: any) {
+            console.error("上傳頭像失敗:", error);
+            const errorMessage = error.response?.data?.message || error.message || "頭像上傳失敗，請稍後再試。";
+            Alert.alert("錯誤", errorMessage);
+        }
         }
     };
 

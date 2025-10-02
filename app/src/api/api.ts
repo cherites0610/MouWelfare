@@ -11,21 +11,59 @@ export interface ResponseType {
 
 export async function apiFetch<T>(url: string, options: RequestInit = {}): Promise<T> {
     try {
-        const response = await fetch(`${BASE_URL}${url}`, {
-            ...options,
-            headers: {
-                'Content-Type': 'application/json',
-                ...options.headers,
-            },
-        });
-
-        if (!response.ok) {
-            const error: ApiError = await response.json();
-            throw new Error(error.message || 'API request failed');
+        const headers: Record<string, string> = {};
+        if (options.headers) {
+            if (options.headers instanceof Headers) {
+                options.headers.forEach((value, key) => { headers[key] = value; });
+            } else if (Array.isArray(options.headers)) {
+                options.headers.forEach(([key, value]) => { headers[key] = value; });
+            } else {
+                Object.assign(headers, options.headers);
+            }
         }
 
-        return response.json() as Promise<T>;
+        let body = options.body;
+
+        if (body instanceof FormData) {
+            delete headers['Content-Type'];
+        } else if (typeof body === 'string') {
+            headers['Content-Type'] = 'application/json';
+        } else if (body) {
+            headers['Content-Type'] = 'application/json';
+            body = JSON.stringify(body);
+        } else {
+            headers['Content-Type'] = 'application/json';
+        }
+
+        const response = await fetch(`${BASE_URL}${url}`, {
+            ...options,
+            headers,
+            body,
+        });
+
+        const responseText = await response.text();
+
+        if (!response.ok) {
+            let errorMessage = `Request failed with status ${response.status}`;
+            
+            if (responseText) {
+                try {
+                    const error: ApiError = JSON.parse(responseText);
+                    errorMessage = error.message || errorMessage;
+                } catch (jsonError) {
+                    errorMessage = responseText;
+                }
+            }
+            
+            throw new Error(errorMessage);
+        }
+
+        return responseText ? (JSON.parse(responseText) as T) : ({} as T);
+
     } catch (error) {
-        throw error instanceof Error ? error : new Error('Unknown error occurred');
+        if (error instanceof Error) {
+            throw error;
+        }
+        throw new Error('Unknown error occurred');
     }
 }

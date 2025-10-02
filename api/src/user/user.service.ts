@@ -253,20 +253,22 @@ export class UserService {
   }
 
   async updateAvatar(userId: string, file: Express.Multer.File) {
+  try {
     const user = await this.findOneByID(userId);
-
-    // 壓縮圖片，轉為 JPEG（也可保留原格式）
     const compressedBuffer = await sharp(file.buffer)
-      .resize(300) // 可調整尺寸，例如寬度 300px
-      .jpeg({ quality: 80 }) // 轉 JPEG，壓縮品質 0~100
+      .resize(300)
+      .jpeg({ quality: 80 })
       .toBuffer();
 
+    // 3. S3 配置檢查
+    const bucketName = this.configService.get<string>("AWS_S3_BUCKET_NAME");
+    
+    if (!bucketName) {
+      throw new Error('AWS_S3_BUCKET_NAME 未設定');
+    }
+
     const key = `avatars/${uuidv4()}.jpeg`;
-
-    const bucketName =
-      this.configService.get<string>("AWS_S3_BUCKET_NAME") || "";
-
-    // 上傳壓縮後圖片
+    
     await this.s3.send(
       new PutObjectCommand({
         Bucket: bucketName,
@@ -277,7 +279,6 @@ export class UserService {
       }),
     );
 
-    // 刪除舊圖片（如果存在）
     if (user.avatarUrl) {
       const oldKey = user.avatarUrl.split(`.amazonaws.com/`)[1];
       if (oldKey) {
@@ -291,12 +292,16 @@ export class UserService {
     }
 
     const avatarUrl = `https://${bucketName}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
-
+    
     user.avatarUrl = avatarUrl;
     await this.userRepository.save(user);
 
-    return { success: true, avatarUrl };
+    return { success: true, data: avatarUrl };
+
+  } catch (error) {
+    throw error;
   }
+}
 
   async getAvatarUrl(userId: string) {
     const user = await this.userRepository.findOne({ where: { id: userId } });
