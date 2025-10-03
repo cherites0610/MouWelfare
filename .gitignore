@@ -25,3 +25,5 @@ node_modules/
 
 .env
 welfare-462510-eacfaf1645dd.json
+
+crawler-service/output.json
