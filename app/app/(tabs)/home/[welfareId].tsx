@@ -24,7 +24,8 @@ import { useSelector } from 'react-redux';
 
 const WelfareInfo = () => {
   const glob = useLocalSearchParams();
-  const { welfareId, sourcePage } = useLocalSearchParams();
+  const { welfareId, sourcePage, lightStatus: lightStatusParam } = useLocalSearchParams();
+const lightStatus = lightStatusParam ? Number(lightStatusParam) : undefined;
   const navigation = useNavigation<StackNavigationProp<any>>(); 
   const [welfare, setWelfare] = useState<Welfare | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -33,8 +34,8 @@ const WelfareInfo = () => {
   const { familys } = useSelector((state: RootState) => state.family); // 獲取家庭類型數據
   const router = useRouter();
 
-  const getCircleColor = () => {
-    switch (welfare?.lightStatus) {
+  const getCircleColor = (status: number | undefined) => {
+    switch (status) {
       case 1:
         return COLORS.light_green;
       case 2:
@@ -60,18 +61,61 @@ const WelfareInfo = () => {
   };
 
   const getWelfare = async () => {
+  try {
+    const familyId = familys.find((item) => item.name === family)?.id;
+    const response = await fetchWelfareByIDAPI(String(welfareId), user?.id, familyId);
+
+    setWelfare(prev => ({
+      ...response.data, // 先更新 API 回傳的內容
+      lightStatus: lightStatus !== undefined
+        ? Number(lightStatus)   // 若路由有帶入 → 優先使用
+        : (response.data?.lightStatus ?? prev?.lightStatus), // 否則使用 API 或舊值
+    }));
+
+    console.log("✅ Welfare Data:", response.data);
+  } catch (error) {
+    console.error('Error fetching welfare data:', error);
+    setError('無法加載數據，請稍後重試');
+  }
+};
+
+ useEffect(() => {
+  const init = async () => {
+    if (lightStatus !== undefined) {
+      setWelfare(prev => ({
+        ...(prev || {} as Welfare),
+        id: String(welfareId),
+        lightStatus,
+        title: prev?.title || '',
+        detail: prev?.detail || '',
+        link: prev?.link || '',
+        location: prev?.location || '',
+        publicationDate: prev?.publicationDate || '',
+        applicationCriteria: prev?.applicationCriteria || [],
+        categories: prev?.categories || [],
+        forward: prev?.forward || [],
+        status: prev?.status || false,
+        summary: prev?.summary || '',
+        familyMember: prev?.familyMember || [],
+      }));
+    }
+
     try {
-      const response = await fetchWelfareByIDAPI(String(glob.welfareId), user?.id, familys.find((item) => item.name === family)?.id);
-      setWelfare(response.data);
+      const familyId = familys.find((item) => item.name === family)?.id;
+      const response = await fetchWelfareByIDAPI(String(welfareId), user?.id, familyId);
+
+      setWelfare(prev => ({
+        ...response.data,
+        lightStatus: lightStatus ?? response.data?.lightStatus ?? prev?.lightStatus,
+      }));
     } catch (error) {
-      console.error('Error fetching welfare data:', error);
       setError('無法加載數據，請稍後重試');
     }
   };
 
-  useEffect(() => {
-    getWelfare();
-  }, []);
+  init();
+}, [welfareId]);
+
 
   useLayoutEffect(() => {
         
@@ -180,9 +224,9 @@ const WelfareInfo = () => {
                 <Ionicons size={20} name="information-circle-outline" />
               </TouchableOpacity>
               <View
-                style={[styles.circleIndicator, { backgroundColor: getCircleColor() }]}
+                style={[styles.circleIndicator, { backgroundColor: getCircleColor(lightStatus) }]}
               />
-              <Text style={styles.resultText}>{getCircleText(welfare.lightStatus)}</Text>
+              <Text style={styles.resultText}>{getCircleText(lightStatus)}</Text>
             </View>
 
             {welfare.familyMember.length > 0 && (

@@ -134,12 +134,17 @@ export class WelfareService {
   }
 
   async findOne(id: string, dto?: FindOneDTO): Promise<WelfareResponseDTO> {
+    this.logger.log(`\n📱 詳細頁面API調用:`);
+    this.logger.log(`  - 福利ID: ${id}`);
+    this.logger.log(`  - 用戶ID: ${dto?.userID || '未提供'}`);
+    this.logger.log(`  - 家庭ID: ${dto?.familyID || '未提供'}`);
     const welfare = await this.welfareRepository.findOne({
       relations: ["location", "categories", "identities"],
       where: { id },
     });
 
     if (!welfare) {
+      this.logger.error(`❌ 未找到福利 ID: ${id}`);
       throw new NotFoundException("未找到福利");
     }
 
@@ -185,12 +190,20 @@ export class WelfareService {
     welfareIdentities: Identity[],
     userIdentities: Identity[]
   ): number {
+    this.logger.log(`🔍 詳細燈號計算過程:`);
     if (!userIdentities) {
+      this.logger.log(`  ❌ userIdentities 為 null/undefined`);
+      this.logger.log(`  → 返回黃燈 (NoIdentity)`);
       return LightStatus.NoIdentity;
     }
 
     const welfareIdentitiesIDs = welfareIdentities.map((item) => item.id);
     const userIdentitiesIDs = userIdentities.map((item) => item.id);
+    
+    this.logger.log(`  📊 身份ID陣列:`);
+    this.logger.log(`    - 福利要求身份IDs: [${welfareIdentitiesIDs.join(', ')}]`);
+    this.logger.log(`    - 用戶擁有身份IDs: [${userIdentitiesIDs.join(', ')}]`);
+
     const contains = (arr: number[], val: number): boolean => {
       return arr.includes(val);
     };
@@ -205,30 +218,58 @@ export class WelfareService {
     let hasAgeRequirement = false;
     let ageMatches = false;
 
+    this.logger.log(`  🎂 年齡段檢查:`);
+
     for (const age of ageGroups) {
       if (contains(welfareIdentitiesIDs, age)) {
         hasAgeRequirement = true;
+        this.logger.log(`    - 福利要求年齡段 ID=${age}`);
         if (contains(userIdentitiesIDs, age)) {
           ageMatches = true;
+          this.logger.log(`    ✅ 用戶符合年齡段 ID=${age}`);
+        } else {
+          this.logger.log(`    ❌ 用戶不符合年齡段 ID=${age}`);
         }
       }
     }
+    if (!hasAgeRequirement) {
+      this.logger.log(`    - 福利沒有年齡段要求`);
+    }
 
     if (hasAgeRequirement && !ageMatches) {
+      this.logger.log(`  ❌ 年齡段不符合要求`);
+      this.logger.log(`  → 返回紅燈 (NotEligible)`);
       return LightStatus.NotEligible;
     }
 
     // 規則 2 & 3：檢查 4 到 11 的任意值
+    let hasSpecialRequirement = false;
+    let allSpecialRequirementsMet = true;
+    
     for (let i = 4; i <= 11; i++) {
-      if (
-        contains(welfareIdentitiesIDs, i) &&
-        !contains(userIdentitiesIDs, i)
-      ) {
-        return LightStatus.NotEligible;
+      if (contains(welfareIdentitiesIDs, i)) {
+        hasSpecialRequirement = true;
+        this.logger.log(`    - 福利要求特定身份 ID=${i}`);
+        
+        if (!contains(userIdentitiesIDs, i)) {
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          allSpecialRequirementsMet = false;
+          this.logger.log(`    ❌ 用戶缺少特定身份 ID=${i}`);
+          this.logger.log(`  → 返回紅燈 (NotEligible)`);
+          return LightStatus.NotEligible;
+        } else {
+          this.logger.log(`    ✅ 用戶具備特定身份 ID=${i}`);
+        }
       }
+    }
+    
+    if (!hasSpecialRequirement) {
+      this.logger.log(`    - 福利沒有特定身份要求`);
     }
 
     // 所有條件符合
+    this.logger.log(`  ✅ 所有條件都符合`);
+    this.logger.log(`  → 返回綠燈 (Eligible)`);
     return LightStatus.Eligible;
   }
 
@@ -323,23 +364,82 @@ export class WelfareService {
   }
 
   async getWelfareLightStatus(welfareId: string, userId: string): Promise<number> {
+    this.logger.log(`=== 開始計算燈號 ===`);
+    this.logger.log(`福利ID: ${welfareId}, 用戶ID: ${userId}`);
+
   // 1. 找 welfare 的身份陣列
   const welfare = await this.welfareRepository.findOne({
     where: { id: String(welfareId) },
     relations: ['identities'],
   });
   if (!welfare) {
+    this.logger.error(`❌ 找不到 welfare (id=${welfareId})`);
     throw new Error(`找不到 welfare (id=${welfareId})`);
   }
+  this.logger.log(`📋 福利信息:`);
+  this.logger.log(`  - 福利標題: ${welfare.title}`);
+  this.logger.log(`  - 福利身份數量: ${welfare.identities?.length || 0}`);
 
+  if (welfare.identities && welfare.identities.length > 0) {
+      this.logger.log(`  - 福利身份詳細:`);
+      welfare.identities.forEach((identity, index) => {
+        this.logger.log(`    ${index + 1}. ID=${identity.id}, Name="${identity.name}"`);
+      });
+    } else {
+      this.logger.log(`  - 福利沒有身份要求`);
+    }
   // 2. 找 user 的身份陣列
   const user = await this.userRepository.findOne({
     where: { id: String(userId) },
     relations: ['identities'],
   });
   if (!user) {
+    this.logger.error(`❌ 找不到 user (id=${userId})`);
     throw new Error(`找不到 user (id=${userId})`);
   }
+  this.logger.log(`👤 用戶信息:`);
+    this.logger.log(`  - 用戶姓名: ${user.name}`);
+    this.logger.log(`  - 用戶郵箱: ${user.email}`);
+    // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+    this.logger.log(`  - 用戶生日: ${user.birthday}`);
+     // 計算年齡
+    if (user.birthday) {
+      const age = new Date().getFullYear() - new Date(user.birthday).getFullYear();
+      this.logger.log(`  - 計算年齡: ${age} 歲`);
+      
+      if (age < 0 || age > 150) {
+        this.logger.warn(`  ⚠️  異常年齡: ${age} 歲`);
+      }
+    }
+    
+    this.logger.log(`  - 用戶身份數量: ${user.identities?.length || 0}`);
+    
+    if (user.identities && user.identities.length > 0) {
+      this.logger.log(`  - 用戶身份詳細:`);
+      user.identities.forEach((identity, index) => {
+        this.logger.log(`    ${index + 1}. ID=${identity.id}, Name="${identity.name}"`);
+      });
+      
+      // 🔥 分析身份類型
+      const ageIdentities = user.identities.filter(i => [1, 2, 3].includes(i.id));
+      const specialIdentities = user.identities.filter(i => i.id >= 4 && i.id <= 11);
+      
+      this.logger.log(`  - 年齡段身份 (ID 1-3): ${ageIdentities.length} 個`);
+      ageIdentities.forEach(identity => {
+        this.logger.log(`    * ID=${identity.id}, Name="${identity.name}"`);
+      });
+      
+      this.logger.log(`  - 特定身份 (ID 4-11): ${specialIdentities.length} 個`);
+      specialIdentities.forEach(identity => {
+        this.logger.log(`    * ID=${identity.id}, Name="${identity.name}"`);
+      });
+      
+    } else {
+      this.logger.log(`  - 用戶沒有設定身份`);
+    }
+
+    // 3. 呼叫既有邏輯判斷
+    this.logger.log(`🔄 開始執行燈號計算邏輯...`);
 
   // 3. 呼叫既有邏輯判斷
   return this.getWelfareLight(welfare.identities, user.identities);

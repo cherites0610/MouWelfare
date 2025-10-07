@@ -548,7 +548,7 @@ const performAiSearch = async (query: string, options?: { asNewConversation?: bo
           router.navigate({
         pathname: url, // e.g. /home/12
         params: {
-          sourcePage: "chat",
+          sourcePage: "chat"
         },
       });
         } else {
@@ -653,16 +653,8 @@ const performAiSearch = async (query: string, options?: { asNewConversation?: bo
                         console.log("item",item,"result",result);
                         // 檢查 result.id 是否存在，以避免路徑變成 'home/undefined'
                         if (result.id) {
-                          // 使用 navigate 和手動拼接字串的方式
-                          // router.navigate(('home/' + result.id) as any);
-                          router.navigate({ 
-                              pathname: ('home/' + result.id), 
-                              params: { 
-                                  // 假設對話機器人頁面是 'index'
-                                  sourcePage: 'chat', 
-                                  welfareId: result.id 
-                              } 
-                          } as any);
+                          router.navigate(`/home/${result.id}?sourcePage=chat&lightStatus=${result.lightStatus ?? -1}`);
+
                         } else if (result.url === 'home') {
                           // 處理 "未找到福利" 的情況，這部分邏輯保持不變
                           setMessages((prev) => {
