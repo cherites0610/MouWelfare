@@ -47,6 +47,7 @@ interface ResultItem {
   publicationDate?: string;
   applicationCriteria?: string[];
   lightStatus?: number;
+  lightReason?: string[];
 }
 
 interface Message {
@@ -390,7 +391,8 @@ const App: React.FC = () => {
             detail: card.detail,
             publicationDate: card.publicationDate,
             applicationCriteria: card.applicationCriteria,
-            lightStatus:card.lightStatus
+            lightStatus:card.lightStatus,
+            lightReason:card.lightReason
           }));
           console.log("AI回",response.data.welfareCards)
         }
@@ -653,7 +655,10 @@ const performAiSearch = async (query: string, options?: { asNewConversation?: bo
                         console.log("item",item,"result",result);
                         // 檢查 result.id 是否存在，以避免路徑變成 'home/undefined'
                         if (result.id) {
-                          router.navigate(`/home/${result.id}?sourcePage=chat&lightStatus=${result.lightStatus ?? -1}`);
+                           const lightReasonString = result.lightReason 
+                        ? JSON.stringify(result.lightReason)
+                        : ''; // 如果不存在，就傳送空字串
+                          router.navigate(`/home/${result.id}?sourcePage=chat&lightStatus=${result.lightStatus ?? -1}&lightReason=${lightReasonString}`);
 
                         } else if (result.url === 'home') {
                           // 處理 "未找到福利" 的情況，這部分邏輯保持不變
@@ -680,11 +685,12 @@ const performAiSearch = async (query: string, options?: { asNewConversation?: bo
                           <Text style={styles.lightStatusText}>{getLightText(result.lightStatus)}</Text>
                         </View>
                       )}
+                      {/* {result.lightReason && <Text style={styles.resultLocation}>理由:{result.lightReason}</Text>} */}
                   
                       {result.location && <Text style={styles.resultLocation}>地點: {result.location}</Text>}
 
                       {result.categories && <Text style={styles.resultLocation}numberOfLines={2} ellipsizeMode="tail">類別:{`${result.categories.join('、')}`}</Text>}
-                      {/* {result.applicationCriteria && <Text style={styles.resultLocation}>申請條件:{result.applicationCriteria}</Text>} */}
+                      
                       
                       {result.forward && <Text style={styles.resultForward} numberOfLines={2} ellipsizeMode="tail">{`福利:${result.forward.join('、')}`}</Text>}
                     </TouchableOpacity>

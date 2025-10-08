@@ -101,24 +101,32 @@ export class VertexService {
       const enrichedWelfareCards = await Promise.all(welfareCards.map(async (card) => {
         if (card.id && userId) { // 確保有福利 ID 和用戶 ID
           try {
-            // 使用 this.welfareService 呼叫服務
-            const lightStatus = await this.welfareService.getWelfareLightStatus (card.id, userId);
-            this.logger.debug(`card.id=${card.id}, lightStatus=${lightStatus}`);
-            return { ...card, lightStatus };
+            const lightResult = await this.welfareService.getWelfareLightStatus(
+              card.id,
+              userId,
+            );
+        
+        // 將 status 和 reasons 都附加到卡片資料上
+            return { 
+              ...card, 
+              lightStatus: lightResult.status,
+              lightReason: lightResult.reasons 
+            };
           } catch (error) {
-            this.logger.warn(`獲取福利 ${card.id} 的 lightStatus 失敗:`, error.message);
-            return { ...card, lightStatus: undefined }; // 失敗時設置為 undefined
+            this.logger.error('Search API 錯誤:', error.response?.data || error.message);
+            return { ...card, lightStatus: undefined, lightReason: ['查詢資格時發生錯誤'] };
           }
         }
-        return { ...card, lightStatus: undefined }; // 沒有 ID 或用戶 ID 時設置為 undefined
-      }));
-      return { welfareCards: enrichedWelfareCards, sessionName, queryId };
+        return { ...card, lightStatus: undefined };
+      })
+      );
+    return { welfareCards: enrichedWelfareCards, sessionName, queryId };
 
     } catch (error) {
       this.logger.error('Search API 錯誤:', error.response?.data || error.message);
       throw error;
-    }
   }
+}
 
   /** 呼叫 Search API（用於延續對話，使用現有 session） */
   private async callSearchApiWithSession(userQuery: string, sessionName: string, userId: string) {
@@ -165,14 +173,18 @@ export class VertexService {
       welfareCards.map(async (card) => {
         if (card.id && userId) {
           try {
-            const lightStatus = await this.welfareService.getWelfareLightStatus(
+            const lightResult = await this.welfareService.getWelfareLightStatus(
               card.id,
               userId,
             );
-            return { ...card, lightStatus };
+            return { 
+                ...card, 
+                lightStatus: lightResult.status,
+                lightReason: lightResult.reasons
+              };
           } catch (error) {
             this.logger.warn(`獲取福利 ${card.id} 的 lightStatus 失敗:`, error.message);
-            return { ...card, lightStatus: undefined };
+            return { ...card, lightStatus: undefined, lightReason: ['查詢資格時發生錯誤'] };
           }
         }
         return { ...card, lightStatus: undefined };

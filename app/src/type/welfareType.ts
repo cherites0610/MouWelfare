@@ -12,6 +12,7 @@ export interface Welfare {
     forward: string[];
     status: boolean;
     lightStatus: number;
+    lightReason:string[];
     summary: string;
     familyMember: WelfareFamilyMember[]
 }

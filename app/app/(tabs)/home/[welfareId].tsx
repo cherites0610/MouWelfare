@@ -24,7 +24,7 @@ import { useSelector } from 'react-redux';
 
 const WelfareInfo = () => {
   const glob = useLocalSearchParams();
-  const { welfareId, sourcePage, lightStatus: lightStatusParam } = useLocalSearchParams();
+  const { welfareId, sourcePage, lightStatus: lightStatusParam,lightReason:lightReasonParam } = useLocalSearchParams();
 const lightStatus = lightStatusParam ? Number(lightStatusParam) : undefined;
   const navigation = useNavigation<StackNavigationProp<any>>(); 
   const [welfare, setWelfare] = useState<Welfare | null>(null);
@@ -60,61 +60,48 @@ const lightStatus = lightStatusParam ? Number(lightStatusParam) : undefined;
     }
   };
 
-  const getWelfare = async () => {
-  try {
-    const familyId = familys.find((item) => item.name === family)?.id;
-    const response = await fetchWelfareByIDAPI(String(welfareId), user?.id, familyId);
+  
+useEffect(() => {
+    const init = async () => {
+      if (!welfareId) {
+        setError('福利 ID 不存在，無法載入資料。');
+        return;
+      }
+      
+      try {
+        const familyId = familys.find((item) => item.name === family)?.id;
+        const response = await fetchWelfareByIDAPI(String(welfareId), user?.id, familyId);
+        
+        let finalWelfareData = response.data;
 
-    setWelfare(prev => ({
-      ...response.data, // 先更新 API 回傳的內容
-      lightStatus: lightStatus !== undefined
-        ? Number(lightStatus)   // 若路由有帶入 → 優先使用
-        : (response.data?.lightStatus ?? prev?.lightStatus), // 否則使用 API 或舊值
-    }));
+        // 將路由傳來的 lightReason JSON 字串解析回陣列
+        let lightReasonFromRoute: string[] | undefined = undefined;
+        if (typeof lightReasonParam === 'string' && lightReasonParam) {
+          try {
+            lightReasonFromRoute = JSON.parse(lightReasonParam);
+          } catch (e) {
+            console.error("從路由參數解析 lightReason 失敗:", e);
+          }
+        }
+        
+        // 組合最終資料，優先使用從路由傳來的值
+        finalWelfareData = {
+          ...finalWelfareData,
+          lightStatus: lightStatus !== undefined ? lightStatus : finalWelfareData.lightStatus,
+          lightReason: lightReasonFromRoute !== undefined ? lightReasonFromRoute : finalWelfareData.lightReason,
+        };
+        
+        setWelfare(finalWelfareData);
+        console.log("✅ 成功組合路由與API資料:", finalWelfareData);
 
-    console.log("✅ Welfare Data:", response.data);
-  } catch (error) {
-    console.error('Error fetching welfare data:', error);
-    setError('無法加載數據，請稍後重試');
-  }
-};
+      } catch (error) {
+        console.error('載入福利資料時發生錯誤:', error);
+        setError('無法加載數據，請稍後重試');
+      }
+    };
 
- useEffect(() => {
-  const init = async () => {
-    if (lightStatus !== undefined) {
-      setWelfare(prev => ({
-        ...(prev || {} as Welfare),
-        id: String(welfareId),
-        lightStatus,
-        title: prev?.title || '',
-        detail: prev?.detail || '',
-        link: prev?.link || '',
-        location: prev?.location || '',
-        publicationDate: prev?.publicationDate || '',
-        applicationCriteria: prev?.applicationCriteria || [],
-        categories: prev?.categories || [],
-        forward: prev?.forward || [],
-        status: prev?.status || false,
-        summary: prev?.summary || '',
-        familyMember: prev?.familyMember || [],
-      }));
-    }
-
-    try {
-      const familyId = familys.find((item) => item.name === family)?.id;
-      const response = await fetchWelfareByIDAPI(String(welfareId), user?.id, familyId);
-
-      setWelfare(prev => ({
-        ...response.data,
-        lightStatus: lightStatus ?? response.data?.lightStatus ?? prev?.lightStatus,
-      }));
-    } catch (error) {
-      setError('無法加載數據，請稍後重試');
-    }
-  };
-
-  init();
-}, [welfareId]);
+    init();
+  }, [welfareId, user?.id]);
 
 
   useLayoutEffect(() => {
@@ -228,6 +215,17 @@ const lightStatus = lightStatusParam ? Number(lightStatusParam) : undefined;
               />
               <Text style={styles.resultText}>{getCircleText(lightStatus)}</Text>
             </View>
+            {welfare.lightReason && welfare.lightReason.length > 0 && (
+              <View style={styles.reasonContainer}>
+                <Text style={styles.reasonTitle}>
+                  評估說明：
+                </Text>
+                <Text style={styles.reasonText}>
+                  {/* 將理由陣列轉換為換行的字串 */}
+                  {welfare.lightReason.join('\n')}
+                </Text>
+              </View>
+            )}
 
             {welfare.familyMember.length > 0 && (
               <Text style={styles.sectionTitle}>可獲得福利之家人</Text>
@@ -370,6 +368,15 @@ const styles = StyleSheet.create({
     height: 30,
     borderRadius: 50,
   },
+  reasonContainer:{
+     marginTop: 8, padding: 16, backgroundColor: '#f5f5f5', borderRadius: 8,marginBottom:8
+  },
+  reasonTitle:{
+    fontSize: 16, fontWeight: 'bold', marginBottom: 6 
+  },
+  reasonText:{
+    fontSize: 14, color: '#333', lineHeight: 22 
+  }
 });
 
 export default WelfareInfo;

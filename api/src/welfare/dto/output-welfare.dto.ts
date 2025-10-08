@@ -21,7 +21,8 @@ export class WelfareResponseDTO {
   categories: string[];
   identities: string[];
   lightStatus?: number;
-  familyMember?: welfareFamilyMember[];
+  lightReason?: string[];
+  familyMember?: FamilyMemberDTO[];
   isAbnormal: boolean;
 }
 
@@ -29,4 +30,11 @@ export class welfareFamilyMember {
   avatarUrl: string;
   lightStatus: number;
   name: string;
+  lightReason: string[];
+}
+export class FamilyMemberDTO {
+  avatarUrl: string;
+  lightStatus: number;
+  name: string;
+  lightReason: string[];
 }
