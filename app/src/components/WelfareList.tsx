@@ -131,8 +131,11 @@ export default function WelfareList({ listData, refreshing, onRefresh, isLoading
                 >
                     <TouchableOpacity
                         onPress={() => { 
-                            route.navigate(`/home/${item.id}?lightStatus=${item.lightStatus ?? -1}`);
-
+                        const lightReasonString = item.lightReason 
+                            ? JSON.stringify(item.lightReason) 
+                            : '';
+                        route.navigate(`/home/${item.id}?lightStatus=${item.lightStatus ?? -1}&lightReason=${lightReasonString}`);
+                
                         }}
                     >
                         <WelfareItem

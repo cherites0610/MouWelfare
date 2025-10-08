@@ -251,18 +251,16 @@ useEffect(() => {
               )}
               keyExtractor={(item, index) => index.toString()}
             />
-
+            <View style={styles.bottomActionContainer}>
             <View style={styles.statusRow}>
-              <Text style={styles.sectionTitle}>點此前往原文:</Text>
+              <Text style={styles.sectionTitle}>需要詳細原始資料:</Text>
               <TouchableOpacity onPress={() => openLink(welfare.link)}>
-                <Text style={styles.linkText}>點此前往原文</Text>
+                <Text style={styles.linkText}>點此前往原文網站</Text>
               </TouchableOpacity>
             </View>
-
-
-
-            <Text style={styles.sectionTitle}>原始文章:</Text>
-            <Text style={styles.notes}>{welfare.detail}</Text>
+          </View>
+            {/* <Text style={styles.sectionTitle}>原始文章:</Text>  */}
+            {/* <Text style={styles.notes}>{welfare.detail}</Text> */}
           </View>
         </ScrollView>
       ) : error ? (
@@ -376,7 +374,15 @@ const styles = StyleSheet.create({
   },
   reasonText:{
     fontSize: 14, color: '#333', lineHeight: 22 
-  }
+  },
+  bottomActionContainer: {
+    padding: 16,
+    paddingTop: 8,
+    marginBottom: 40,
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
+    backgroundColor: '#fff'
+  },
 });
 
 export default WelfareInfo;
