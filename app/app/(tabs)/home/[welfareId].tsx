@@ -155,9 +155,10 @@ useEffect(() => {
   };
 
   return (
-    <>
+    <SafeAreaView style={styles.pageContainer}>
       {welfare ? (
-        <ScrollView>
+        <View style={{ flex: 1 }}>
+        <ScrollView style={styles.scrollContainer}>
           <View style={styles.container}>
             <Text style={styles.title}>{welfare.title}</Text>
             <Text style={{...styles.releaseDate,marginBottom:3}}>發佈日期: {welfare.publicationDate||"無法取得發佈日期"}</Text>
@@ -251,18 +252,26 @@ useEffect(() => {
               )}
               keyExtractor={(item, index) => index.toString()}
             />
-            <View style={styles.bottomActionContainer}>
+            
+            <Text style={styles.sectionTitle}>原始文章:</Text>  
+           <Text style={styles.notes}>{welfare.detail}</Text>
+</View>
+</ScrollView>
+           {/* <View style={styles.bottomActionContainer}>
             <View style={styles.statusRow}>
               <Text style={styles.sectionTitle}>需要詳細原始資料:</Text>
               <TouchableOpacity onPress={() => openLink(welfare.link)}>
                 <Text style={styles.linkText}>點此前往原文網站</Text>
               </TouchableOpacity>
-            </View>
+            </View> */}
+            <View style={styles.bottomActionContainer}>
+            <TouchableOpacity onPress={() => openLink(welfare.link)} style={styles.linkButton}>
+              <Text style={styles.linkText}>點此前往原文網站</Text>
+              <Ionicons name="open-outline" size={20} color="#007aff" />
+            </TouchableOpacity>
           </View>
-            {/* <Text style={styles.sectionTitle}>原始文章:</Text>  */}
-            {/* <Text style={styles.notes}>{welfare.detail}</Text> */}
           </View>
-        </ScrollView>
+      
       ) : error ? (
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>{error}</Text>
@@ -273,7 +282,8 @@ useEffect(() => {
           <Text>Loading...</Text>
         </View>
       )}
-    </>
+      </SafeAreaView>
+
   );
 };
 const styles = StyleSheet.create({
@@ -346,12 +356,12 @@ const styles = StyleSheet.create({
   resultText: {
     fontSize: 14,
   },
-  linkText: {
-    color: 'blue',
-    fontStyle: 'italic',
-    fontSize: 16,
-    textDecorationLine: "underline",
-  },
+  // linkText: {
+  //   color: 'blue',
+  //   fontStyle: 'italic',
+  //   fontSize: 16,
+  //   textDecorationLine: "underline",
+  // },
   notes: {
     fontSize: 15,
     color: '#333',
@@ -382,6 +392,25 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#f0f0f0',
     backgroundColor: '#fff'
+  },
+  pageContainer: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+  scrollContainer: {
+    flex: 1,
+  },
+  linkButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingBottom:10
+  },
+  linkText: {
+    color: '#007aff',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
 
