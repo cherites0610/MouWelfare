@@ -9,11 +9,11 @@ import { Message } from './entities/message.entity.js';
 export class ConversationService {
   constructor(
     @InjectRepository(Conversation)
-    private readonly conversationRepo: Repository<Conversation>,
+    private readonly conversationRepository: Repository<Conversation>,
     @InjectRepository(Message)
-    private readonly messageRepo: Repository<Message>,
+    private readonly messageRepository: Repository<Message>,
     @InjectRepository(User)
-    private readonly userRepo: Repository<User>,
+    private readonly userRepository: Repository<User>,
   ) {}
 
   /**
@@ -23,7 +23,7 @@ export class ConversationService {
    */
   async getLastMessage(conversationId: number) {
     // 使用 findOne 搭配 order by 來取得最新的一筆訊息
-    const latestMessage = await this.messageRepo.findOne({
+    const latestMessage = await this.messageRepository.findOne({
       where: { conversation: { id: conversationId } },
       order: { created_at: 'DESC' },
     });
@@ -36,7 +36,7 @@ export class ConversationService {
  * @returns 最新的 AI 訊息物件，如果沒有則回傳 null
  */
 async getLastAiMessage(conversationId: number) {
-  const latestAiMessage = await this.messageRepo.findOne({
+  const latestAiMessage = await this.messageRepository.findOne({
     where: { 
       conversation: { id: conversationId },
       role: 'ai'  // 只查找 AI 訊息
@@ -48,14 +48,14 @@ async getLastAiMessage(conversationId: number) {
 
   // 建立新的對話
   async createConversation(userId: string, title?: string) {
-    const user = await this.userRepo.findOne({ where: { id: userId } });
+    const user = await this.userRepository.findOne({ where: { id: userId } });
     if (!user) throw new Error('User not found');
 
-    const conversation = this.conversationRepo.create({
+    const conversation = this.conversationRepository.create({
       title,
       user,
     });
-    return await this.conversationRepo.save(conversation);
+    return await this.conversationRepository.save(conversation);
   }
 
   /**
@@ -71,23 +71,23 @@ async getLastAiMessage(conversationId: number) {
     content: string,
     metadata?: Record<string, any>,
   ) {
-    const conversation = await this.conversationRepo.findOne({ where: { id: conversationId } });
+    const conversation = await this.conversationRepository.findOne({ where: { id: conversationId } });
     if (!conversation) throw new Error('Conversation not found');
 
     // 修正點：直接將 metadata 物件儲存
-    const message = this.messageRepo.create({
+    const message = this.messageRepository.create({
       conversation, // 確保對話物件被正確關聯
       role,
       content,
       metadata: metadata || {},
     });
 
-    return await this.messageRepo.save(message);
+    return await this.messageRepository.save(message);
   }
 
   // 取得用戶對話ID
   async getConversationById(conversationId: number, includeMessages = true) {
-    return this.conversationRepo.findOne({
+    return this.conversationRepository.findOne({
       where: { id: conversationId },
       relations: ['messages', 'user'],
       order: includeMessages ? { messages: { created_at: 'ASC' } } : undefined,
@@ -97,7 +97,7 @@ async getLastAiMessage(conversationId: number) {
 
   // 取得最近訊息
   async getRecentMessages(conversationId: number, limit = 5) {
-    return await this.messageRepo.find({
+    return await this.messageRepository.find({
       where: { conversation: { id: conversationId } },
       order: { created_at: 'DESC' },
       take: limit,
@@ -106,7 +106,7 @@ async getLastAiMessage(conversationId: number) {
 
   // 查詢某個使用者的對話清單
   async getUserConversations(userId: string) {
-    return await this.conversationRepo.find({
+    return await this.conversationRepository.find({
       where: { user: { id: userId } },
       order: { updated_at: 'DESC' },
     });
@@ -114,17 +114,17 @@ async getLastAiMessage(conversationId: number) {
 
   // 修改對話標題
   async renameConversation(conversationId: number, newTitle: string) {
-    await this.conversationRepo.update(conversationId, { title: newTitle });
-    return this.conversationRepo.findOne({ where: { id: conversationId } });
+    await this.conversationRepository.update(conversationId, { title: newTitle });
+    return this.conversationRepository.findOne({ where: { id: conversationId } });
   }
 
   // 刪除對話
   async deleteConversation(conversationId: number) {
-    return await this.conversationRepo.delete(conversationId);
+    return await this.conversationRepository.delete(conversationId);
   }
 
   async checkLastMessage(conversationId: number) {
-    const lastMessage = await this.messageRepo.findOne({
+    const lastMessage = await this.messageRepository.findOne({
       where: { conversation: { id: conversationId } },
       order: { created_at: 'DESC' },
       relations: ['conversation'] // 載入 conversation 關聯
@@ -144,5 +144,14 @@ async getLastAiMessage(conversationId: number) {
       console.log('❌ 失敗：未找到 Session ID。');
     }
     return lastMessage;
+  }
+  async getHistoryAsText(conversationId: number): Promise<string> {
+    const messages = await this.messageRepository.find({
+      where: { conversation: { id: conversationId }, role: 'user' },
+      order: { created_at: 'ASC' }, // 確保訊息按時間順序排列
+    });
+
+    // 只串連使用者說過的話，作為判斷依據
+    return messages.map(msg => msg.content).join('\n');
   }
 }

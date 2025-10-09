@@ -50,7 +50,7 @@ export class VertexService {
   }
 
   /** 呼叫 Search API（僅用於新對話的第一次查詢） */
-  private async callSearchApi(userQuery: string, userId: string) {
+  private async callSearchApi(userQuery: string, userId: string,fullContextText:string) {
     const accessToken = await this.getAccessToken();
     const apiEndpoint = `https://discoveryengine.googleapis.com/v1alpha/projects/${this.projectId}/locations/global/collections/${this.collectionId}/engines/${this.engineId}/servingConfigs/default_search:search`;
 
@@ -99,12 +99,12 @@ export class VertexService {
       }));
 
       const enrichedWelfareCards = await Promise.all(welfareCards.map(async (card) => {
-        if (card.id && userId) { // 確保有福利 ID 和用戶 ID
+        if (card.id) { 
           try {
-            const lightResult = await this.welfareService.getWelfareLightStatus(
-              card.id,
-              userId,
-            );
+            const lightResult = await this.welfareService.getWelfareLightStatusFromText(
+            card.id,
+            fullContextText, // <-- 使用當前的聊天文字
+          );
         
         // 將 status 和 reasons 都附加到卡片資料上
             return { 
@@ -129,7 +129,7 @@ export class VertexService {
 }
 
   /** 呼叫 Search API（用於延續對話，使用現有 session） */
-  private async callSearchApiWithSession(userQuery: string, sessionName: string, userId: string) {
+  private async callSearchApiWithSession(userQuery: string, sessionName: string, userId: string, fullContextText:string) {
     const accessToken = await this.getAccessToken();
     const apiEndpoint = `https://discoveryengine.googleapis.com/v1alpha/projects/${this.projectId}/locations/global/collections/${this.collectionId}/engines/${this.engineId}/servingConfigs/default_search:search`;
 
@@ -171,11 +171,11 @@ export class VertexService {
 
       const enrichedWelfareCards = await Promise.all(
       welfareCards.map(async (card) => {
-        if (card.id && userId) {
+        if (card.id) {
           try {
-            const lightResult = await this.welfareService.getWelfareLightStatus(
+            const lightResult = await this.welfareService.getWelfareLightStatusFromText(
               card.id,
-              userId,
+              fullContextText,
             );
             return { 
                 ...card, 
@@ -262,6 +262,7 @@ export class VertexService {
     let sessionName: string | undefined = undefined;
     let queryId: string | undefined = undefined;
     let welfareCards: any[] = [];
+    let fullContextText: string = userQuery; 
 
     this.logger.log('--- getAiAnswer 啟動 ---');
     this.logger.log('當前 conversationId:', conversationId);
@@ -275,8 +276,10 @@ export class VertexService {
       const newConversation = await this.conversationService.createConversation(userId, '未命名對話');
       newConversationId = newConversation.id;
 
+      fullContextText = userQuery;
+
       // 先呼叫 Search API 生成 sessionName
-      const searchResult = await this.callSearchApi(userQuery,userId);
+      const searchResult = await this.callSearchApi(userQuery,userId,fullContextText);
       sessionName = searchResult.sessionName;
       queryId = searchResult.queryId;
       welfareCards = searchResult.welfareCards;
@@ -290,6 +293,10 @@ export class VertexService {
       const lastAiMessage = await this.conversationService.getLastAiMessage(newConversationId);
       sessionName = lastAiMessage?.metadata?.sessionName || lastAiMessage?.metadata?.session;
 
+      const historyText = await this.conversationService.getHistoryAsText(newConversationId);
+      fullContextText = `${historyText}\n${userQuery}`; // 將歷史紀錄和當前問題組合
+      this.logger.log(`   ‣ 組合後的完整上下文: "${fullContextText.replace(/\n/g, ' ')}"`);
+
       if (!sessionName) {
         // ⚠️ 找不到 sessionName → 自動回退到新對話
         this.logger.warn(`延續對話找不到有效 sessionName，將自動建立新 session`);
@@ -297,7 +304,7 @@ export class VertexService {
         const newConversation = await this.conversationService.createConversation(userId, '未命名對話');
         newConversationId = newConversation.id;
 
-        const searchResult = await this.callSearchApi(userQuery, userId);
+        const searchResult = await this.callSearchApi(userQuery, userId,fullContextText);
         sessionName = searchResult.sessionName;
         queryId = searchResult.queryId;
         welfareCards = searchResult.welfareCards;
@@ -306,7 +313,7 @@ export class VertexService {
       } else {
         // 找到 sessionName → 延續對話查詢福利
         try {
-          const searchResult = await this.callSearchApiWithSession(userQuery, sessionName,userId);
+          const searchResult = await this.callSearchApiWithSession(userQuery, sessionName,userId,fullContextText);
           welfareCards = searchResult.welfareCards;
           this.logger.log(`延續對話搜尋到 ${welfareCards.length} 筆福利資料`);
         } catch (error) {

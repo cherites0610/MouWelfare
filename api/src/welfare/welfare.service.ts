@@ -150,10 +150,6 @@ export class WelfareService {
   }
 
   async findOne(id: string, dto?: FindOneDTO): Promise<WelfareResponseDTO> {
-    this.logger.log(`\n📱 詳細頁面API調用:`);
-    this.logger.log(`  - 福利ID: ${id}`);
-    this.logger.log(`  - 用戶ID: ${dto?.userID || '未提供'}`);
-    this.logger.log(`  - 家庭ID: ${dto?.familyID || '未提供'}`);
     const welfare = await this.welfareRepository.findOne({
       relations: ["location", "categories", "identities"],
       where: { id },
@@ -252,7 +248,6 @@ export class WelfareService {
 
     const specialIdentities = welfareIdentities.filter(i => i.id >= 4 && i.id <= 11);
   if (specialIdentities.length > 0) {
-    reasons.push('正在檢查特殊身份要求...');
     for (const specialIdentity of specialIdentities) {
       if (!userIdentities.some(ui => ui.id === specialIdentity.id)) {
         reasons.push(`❌ 您缺少必要的特殊身份: "${specialIdentity.name}"。`);
@@ -364,6 +359,55 @@ export class WelfareService {
     });
 
     return welfares.map((welfare) => this.mapWelfareToDTO(welfare));
+  }
+  async getWelfareLightStatusFromText(welfareId: string, queryText: string): Promise<LightStatusResult> {
+    this.logger.log(`🔍 從文字中計算燈號: "${queryText}"`);
+
+    // 1. 獲取福利要求的身份 (與之前相同)
+    const welfare = await this.welfareRepository.findOne({
+      where: { id: String(welfareId) },
+      relations: ['identities'],
+    });
+    if (!welfare) {
+      throw new Error(`找不到福利 (id=${welfareId})`);
+    }
+
+    // 2. 從文字中提取使用者提到的身份
+    const allIdentities = this.constDataService.getIdentities();
+    const userIdentitiesFromText = allIdentities.filter(
+      (identity) => queryText.includes(identity.name)
+    );
+    
+    this.logger.log(`   ‣ 提取到的身份: [${userIdentitiesFromText.map(i => i.name).join(', ')}]`);
+    // --- ✨ 新增年齡解析邏輯 ---
+    const ageMatch = queryText.match(/(\d+)\s*歲/); // 用正規表示式尋找 "數字+歲"
+    if (ageMatch && ageMatch[1]) {
+      const age = parseInt(ageMatch[1], 10);
+      this.logger.log(`   ‣ 提取到的年齡: ${age} 歲`);
+      
+      let ageIdentityId: number | null = null;
+      if (age < 20) {
+        ageIdentityId = 1; // <20歲
+      } else if (age >= 20 && age <= 65) {
+        ageIdentityId = 2; // 20-65歲
+      } else if (age > 65) {
+        ageIdentityId = 3; // >65歲
+      }
+
+      if (ageIdentityId) {
+        const ageIdentity = allIdentities.find(i => i.id === ageIdentityId);
+        if (ageIdentity && !userIdentitiesFromText.some(i => i.id === ageIdentityId)) {
+          // 如果這個年齡身份還沒被加進去，就加進去
+          userIdentitiesFromText.push(ageIdentity);
+        }
+      }
+    }
+    // --- 年齡解析邏輯結束 ---
+
+    this.logger.log(`   ‣ 最終組合身份: [${userIdentitiesFromText.map(i => i.name).join(', ')}]`);
+
+    // 3. 呼叫既有的核心邏輯進行判斷
+    return this.getWelfareLight(welfare.identities, userIdentitiesFromText);
   }
 
   async getWelfareLightStatus(welfareId: string, userId: string): Promise<LightStatusResult> {
