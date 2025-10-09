@@ -275,7 +275,7 @@ export class CrawlerService {
       const response = await axios.post(
         "http://localhost:8001/crawl",
         requestData,
-        { timeout: 600000 } // 給 10 分鐘
+        { timeout: 900000 } // 給 15 分鐘
       );
 
       this.logger.log(`[${cityName}] Python API 回應: ${JSON.stringify(response.data)}`);

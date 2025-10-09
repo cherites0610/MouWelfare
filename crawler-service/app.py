@@ -15,6 +15,7 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 import json
 from pathlib import Path
+from concurrent.futures import ProcessPoolExecutor, TimeoutError
 
 # 附件處理需要的套件
 import pdfplumber
@@ -65,165 +66,213 @@ def append_json(path: Path, data: dict):
     current.append(data)
     path.write_text(json.dumps(current, ensure_ascii=False, indent=2), encoding="utf-8")
 
-# ========== 附件解析工具 ==========
-def extract_text_from_bytes(content_bytes: bytes, ext: str, paragraphs: int = 3) -> str:
-    """直接解析 bytes，不存檔，取前 N 段文字"""
+
+MAX_CONTENT_LENGTH = 4000  # 最大字數限制
+
+# ========== 附件解析 ==========
+def extract_text_from_bytes(content_bytes: bytes, ext: str, paragraphs: int = 2) -> str:
+    """解析 PDF/DOCX/TXT 附件，過濾表格與短行"""
     text = ""
     try:
         if ext.lower() == ".pdf":
             with pdfplumber.open(io.BytesIO(content_bytes)) as pdf:
                 all_text = []
-                for page in pdf.pages[:3]:
-                    page_text = page.extract_text()
-                    if page_text:
-                        all_text.append(page_text)
+                for page in pdf.pages[:10]:  # 最多讀前10頁
+                    page_text = page.extract_text(x_tolerance=2, y_tolerance=3)
+                    if not page_text:
+                        continue
+                    page_text = re.sub(r"[│┤├┬┴┼─━‐-–—]", " ", page_text)
+                    page_text = re.sub(r"\n(?=[^\n]{1,10}\n)", " ", page_text)
+                    all_text.append(page_text.strip())
                 full_text = "\n\n".join(all_text)
-                paragraphs_list = [p.strip() for p in full_text.split("\n\n") if p.strip()]
-                text = "\n\n".join(paragraphs_list[:paragraphs])
         elif ext.lower() == ".docx":
             full_text = docx2txt.process(io.BytesIO(content_bytes))
-            paragraphs_list = [p.strip() for p in full_text.split("\n\n") if p.strip()]
-            text = "\n\n".join(paragraphs_list[:paragraphs])
         elif ext.lower() in [".txt", ".csv"]:
             full_text = content_bytes.decode("utf-8", errors="ignore")
-            paragraphs_list = [p.strip() for p in full_text.split("\n\n") if p.strip()]
-            text = "\n\n".join(paragraphs_list[:paragraphs])
         else:
-            text = "[⚠️ 不支援的附件格式]"
+            return ""
+
+        lines = [l.strip() for l in full_text.splitlines() if len(l.strip()) > 8]
+        lines = [l for l in lines if not re.search(r"\t|,{3,}|；{2,}|：{2,}", l)]
+        full_text = "\n".join(lines)
+
+        paragraphs_list = [p.strip() for p in re.split(r"\n{2,}", full_text) if len(p.strip()) > 50]
+        text = "\n\n".join(paragraphs_list[:paragraphs])
+
+        if len(text) < 100 or len(re.findall(r"\d", text)) > len(text)*0.4:
+            return ""
     except Exception as e:
-        text = f"[⚠️ 解析失敗: {e}]"
+        print(f"[ERROR] 附件解析失敗: {e}")
+        return ""
     return text.strip()
 
 
-def download_and_process_attachments(soup: BeautifulSoup, base_url: str, title: str, download_selector: str = None) -> list:
-    """下載附件但不存檔，只回傳文字"""
-    attachments = []
-
-    if download_selector:
-        if download_selector.strip().endswith("a"):
-            elements = soup.select(download_selector)
-        else:
-            elements = soup.select(f"{download_selector} a")
-    else:
-        elements = soup.select(".list-text.file-download-multiple ul li a")
-
-    for idx, a in enumerate(elements[:3]):  # 只取前三個附件
+def safe_extract_text(content_bytes: bytes, ext: str, timeout_sec: int = 10) -> str:
+    """在子進程解析附件，超時就略過"""
+    with ProcessPoolExecutor(max_workers=1) as executor:
+        future = executor.submit(extract_text_from_bytes, content_bytes, ext)
         try:
-            name = a.get_text(strip=True) or f"附件{idx+1}"
-            link = urljoin(base_url, a.get("href"))
+            return future.result(timeout=timeout_sec)
+        except TimeoutError:
+            print(f"[WARN] 附件解析超時，略過")
+            return ""
+        except Exception as e:
+            print(f"[ERROR] 附件解析失敗: {e}")
+            return ""
+
+
+def download_and_process_attachments(soup: BeautifulSoup, base_url: str, title: str, download_selector: str = None) -> list:
+    """下載附件，只回傳文字，超時或格式不支援會略過"""
+    attachments = []
+    elements = soup.select(download_selector or ".list-text.file-download-multiple ul li a")
+    for idx, a in enumerate(elements[:2]):
+        name = a.get_text(strip=True) or f"附件{idx+1}"
+        link = urljoin(base_url, a.get("href"))
+        ext = Path(link).suffix.lower()
+        print(f"[DEBUG] 下載附件: {name} ({link})")
+
+        if ext not in [".pdf", ".docx", ".txt", ".csv"]:
+            print(f"[WARN] 不支援附件格式: {name} ({ext})")
+            continue
+
+        try:
             r = requests.get(link, timeout=15)
             r.raise_for_status()
-
-            ext = Path(link).suffix or mimetypes.guess_extension(r.headers.get("content-type", "")) or ".bin"
-            file_text = extract_text_from_bytes(r.content, ext, 3)
-            attachments.append(f"{file_text}")
-
+            if len(r.content) > 2*1024*1024:  # 超過2MB略過
+                print(f"[WARN] 附件太大，略過: {name}")
+                continue
+            file_text = safe_extract_text(r.content, ext, timeout_sec=10)
+            if file_text:
+                print(f"[INFO] ✅ 附件解析成功: {name} ({len(file_text)}字)")
+                attachments.append(file_text)
+            else:
+                print(f"[INFO] ⚠️ 附件無有效文字: {name}")
         except Exception as e:
-            attachments.append(f"[下載失敗: {e}]")
-
+            print(f"[WARN] 附件下載/解析失敗: {name}, {e}")
     return attachments
 
-# ================== 台北爬蟲 (支援配置參數) ==================
+
+# ========== 截斷文字 ==========
+def truncate_text(text: str, max_len: int) -> str:
+    if len(text) <= max_len:
+        return text
+    cut_point = text.rfind("。", 0, max_len)
+    if cut_point == -1:
+        return text[:max_len]
+    return text[:cut_point+1]
+
+
+# ========== 台北爬蟲 ==========
 def crawl_taipei(url, city, results: list, config: dict = None):
     global visited
     if url in visited:
-        print(f"[DEBUG] URL 已訪問: {url}")
+        print(f"[DEBUG] 已訪問過: {url}")
         return
     visited.add(url)
+    print(f"[DEBUG] 開始抓取 URL: {url}")
 
     BASE_URL = "https://dosw.gov.taipei/"
-    
-    # 從配置中取得選擇器，如果沒有則使用預設
     STOP_SELECTOR = config.get("stopSelector", ".list-text.detail.bottom-detail") if config else ".list-text.detail.bottom-detail"
     LINK_SELECTOR = ".list-text.content-list .h4 a"
-    
-    if config and "extractSelectors" in config:
-        EXTRACT_SELECTORS = config["extractSelectors"]
-    else:
-        EXTRACT_SELECTORS = {
-            "title": "h2.h3",
-            "date": ".list-text.detail.bottom-detail ul li:nth-child(2)",
-            "content": ".area-editor.user-edit, .area-editor.user-edit td[colspan='3'], .div .essay"
-        }
-
-    print(f"[DEBUG] 開始爬取(台北): {url}")
-    print(f"[DEBUG] 使用配置: stopSelector={STOP_SELECTOR}")
-    print(f"[DEBUG] 使用配置: extractSelectors={EXTRACT_SELECTORS}")
+    EXTRACT_SELECTORS = config.get("extractSelectors", {
+        "title": "h2.h3",
+        "date": ".list-text.detail.bottom-detail ul li:nth-child(2)",
+        "content": ".area-editor.user-edit, .area-editor.user-edit td[colspan='3'], .div .essay",
+    })
 
     try:
         resp = requests.get(url, timeout=10)
         resp.raise_for_status()
-        print(f"[DEBUG] 網頁取得成功: {url}")
-    except requests.RequestException as e:
-        print(f"[ERROR] 爬取 {url} 發生錯誤: {e}")
+        resp.encoding = "utf-8"
+        soup = BeautifulSoup(resp.text, "html.parser")
+    except Exception as e:
+        print(f"[ERROR] 無法取得 {url}: {e}")
         return
 
-    resp.encoding = "utf-8"
-    soup = BeautifulSoup(resp.text, "html.parser")
-
-    # 檢查是否有子連結需要遞迴
+    # ===== 列表頁遞迴 =====
     links = soup.select(LINK_SELECTOR)
     if links:
-        print(f"[DEBUG] 發現 {len(links)} 個子連結，遞迴爬取...")
-        for link in links:
+        print(f"[DEBUG] 發現 {len(links)} 筆列表資料，準備遞迴...")
+        for link in links[:40]:
             next_url = urljoin(BASE_URL, link.get("href"))
             crawl_taipei(next_url, city, results, config)
-    else:
-        # 檢查是否為內容頁面
-        stop_element = soup.select_one(STOP_SELECTOR)
-        if stop_element:
-            print(f"[DEBUG] 停止選擇器找到，準備抓取內容: {url}")
-            
-            title_el = soup.select_one(EXTRACT_SELECTORS["title"])
-            date_el = soup.select_one(EXTRACT_SELECTORS["date"])
-            content_elements = soup.select(EXTRACT_SELECTORS["content"])
-            
-            title = title_el.get_text(strip=True) if title_el else ""
-            content = "\n".join([el.get_text(strip=True) for el in content_elements])
+        return
 
-            print(f"[DEBUG] 提取到標題: {title}")
-            print(f"[DEBUG] 提取到內容長度: {len(content)}")
+    # ===== 判斷內文頁 =====
+    if not soup.select_one(STOP_SELECTOR) and not soup.select_one(".area-editor.user-edit"):
+        print(f"[DEBUG] 非內文頁，略過: {url}")
+        return
 
-            # 🆕 使用配置的附件下載選擇器
-            download_selector = config.get("downloadData") if config else None
-            attachments = download_and_process_attachments(soup, BASE_URL, title, download_selector)
-            
-            if attachments:
-                content += "".join(attachments)
-                print(f"[DEBUG] 成功整合 {len(attachments)} 個附件內容（前三段文字）")
+    # ===== 抓內文 =====
+    title_el = soup.select_one(EXTRACT_SELECTORS["title"])
+    date_el = soup.select_one(EXTRACT_SELECTORS["date"])
+    content_els = soup.select(EXTRACT_SELECTORS["content"])
+    title = title_el.get_text(strip=True) if title_el else ""
+    content = "\n".join([el.get_text(" ", strip=True) for el in content_els])
+    print(f"[DEBUG] 抓取標題: {title}")
 
-            # 日期轉換
-            date_text = date_el.get_text(strip=True) if date_el else ""
-            print(f"[DEBUG] 原始日期文字: {date_text}")
-            date_match = re.search(r"\d{3}-\d{2}-\d{2}", date_text)
-            date_converted = ""
-            if date_match:
-                try:
-                    parts = date_match.group(0).split("-")
-                    roc_year = int(parts[0])
-                    year = roc_year + 1911
-                    date_converted = f"{year}-{parts[1]}-{parts[2]}"
-                    print(f"[DEBUG] 轉換後日期: {date_converted}")
-                except Exception as e:
-                    print(f"[WARN] 日期轉換失敗: {date_text}, error: {e}")
+    # ===== 子頁整合 (從第二個 li 開始) =====
+    inner_links = soup.select(".list-text.classify ul li a")[1:]
+    for i, a in enumerate(inner_links[:5], start=2):
+        if len(content) >= MAX_CONTENT_LENGTH:
+            break
+        inner_url = urljoin(BASE_URL, a.get("href"))
+        try:
+            r = requests.get(inner_url, timeout=10)
+            r.encoding = "utf-8"
+            inner_soup = BeautifulSoup(r.text, "html.parser")
+            inner_content = "\n".join([el.get_text(" ", strip=True) for el in inner_soup.select(EXTRACT_SELECTORS["content"])])
+            if inner_content:
+                remaining = MAX_CONTENT_LENGTH - len(content)
+                inner_trunc = truncate_text(inner_content, remaining)
+                if inner_trunc:
+                    content += f"\n\n" + inner_trunc
+                    print(f"[DEBUG] 整合子頁{i} 完成")
+        except Exception as e:
+            print(f"[WARN] 子頁{i} 讀取失敗: {e}")
 
-            data = {
-                "city": city,
-                "url": url,
-                "title": title,
-                "date": date_converted,
-                "content": content,
-            }
+    # ===== 附件 =====
+    if len(content) < MAX_CONTENT_LENGTH:
+        attachments = download_and_process_attachments(soup, BASE_URL, title)
+        for idx, att in enumerate(attachments, start=1):
+            remaining = MAX_CONTENT_LENGTH - len(content)
+            if remaining <= 0:
+                break
+            att_trunc = truncate_text(att, remaining)
+            if att_trunc:
+                content += f"\n\n--- 附件{idx} ---\n" + att_trunc
+                print(f"[DEBUG] 加入附件{idx}完成")
 
-            if data["title"] and data["date"] and data["content"]:
-                results.append(data)
-                append_json(OUTPUT_PATH, data)
-                print(f"[INFO] 已抓取: {data['title']} ({data['date']}), 內容長度: {len(content)}")
-            else:
-                print(f"[WARN] 資料不完整，略過: {url}")
-                print(f"[WARN] 標題: {bool(data['title'])}, 日期: {bool(data['date'])}, 內容: {bool(data['content'])}")
-        else:
-            print(f"[DEBUG] 未找到停止選擇器 '{STOP_SELECTOR}'，略過: {url}")
+    # ===== 字數截斷 =====
+    content = truncate_text(content, MAX_CONTENT_LENGTH)
+
+    # ===== 日期轉換 =====
+    date_converted = ""
+    if date_el:
+        date_text = date_el.get_text(strip=True)
+        match = re.search(r"(\d{3,4})[-/.](\d{2})[-/.](\d{2})", date_text)
+        if match:
+            year = int(match.group(1))
+            if year < 1911:
+                year += 1911
+            date_converted = f"{year}-{match.group(2)}-{match.group(3)}"
+
+    # ===== 篩選無效資料 =====
+    if len(content.strip()) < 50 and (not inner_links) and (len(content.strip()) == 0):
+        print(f"[WARN] 正文過短且無子頁/附件，略過: {title}")
+        return
+
+    # ===== 儲存資料 =====
+    data = {
+        "city": city,
+        "url": url,
+        "title": title,
+        "date": date_converted,
+        "content": re.sub(r"\s{3,}", " ", content.strip()),
+    }
+    results.append(data)
+    append_json(OUTPUT_PATH, data)
+    print(f"[✅ DONE] {title} ({date_converted}) - 內容長度: {len(content)}")
 
 # ================== 南投爬蟲 ==================
 def extract_text_from_file(file_url, max_pages=3):
