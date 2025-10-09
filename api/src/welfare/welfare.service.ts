@@ -108,18 +108,34 @@ export class WelfareService {
 
     const responseList = welfares.map((item) => this.mapWelfareToDTO(item));
     if (dto.userID) {
-      const user = await this.userService.findOneByID(dto.userID);
-      if (user) {
-        const familyID = dto.families?.[0];
-        // 2. 將使用者真實的 identities 傳遞下去
-        await this.appendLightAndFamilyInfo(
-          welfares,
-          responseList,
-          dto.userID,
-          user.identities, // <-- 使用 user.identities
-          familyID
-        );
-      }
+      // const user = await this.userService.findOneByID(dto.userID);
+      // if (user) {
+      //   const familyID = dto.families?.[0];
+      //   // 2. 將使用者真實的 identities 傳遞下去
+      //   await this.appendLightAndFamilyInfo(
+      //     welfares,
+      //     responseList,
+      //     dto.userID,
+      //     user.identities, // <-- 使用 user.identities
+      //     familyID
+      //   );
+      // }
+      const identityNamesFromFilter = dto.identities || [];
+      const identitiesForLightCalculation = this.constDataService.getIdentities().filter(
+        (identity) => identityNamesFromFilter.includes(identity.name)
+      );
+      
+      const familyID = dto.families?.[0];
+
+      // 3. 將轉換後的身份物件陣列傳遞給燈號計算函式。
+      //    注意：第二個 identities 參數現在是來自篩選條件，而不是 user.identities。
+      await this.appendLightAndFamilyInfo(
+        welfares,
+        responseList,
+        dto.userID,
+        identitiesForLightCalculation, // <-- 使用來自篩選條件的身份
+        familyID
+      );
     }
 
     return {
