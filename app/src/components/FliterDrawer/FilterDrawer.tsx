@@ -6,88 +6,78 @@ import { ageOptions, genderOptions, incomeOptions, identityOptions } from './con
 import styles from './styles';
 import { useDispatch, useSelector } from 'react-redux'
 import { AppDispatch, RootState } from '@/src/store';
-import { setIdentities } from '@/src/store/slices/filiterSlice';
+import { setIdentities, setAge, setGender, setIncome, resetFilters } from '@/src/store/slices/filiterSlice';
 
 export default function FilterDrawer({ closeDrawer }: { closeDrawer: Function }) {
+  const dispatch = useDispatch<AppDispatch>();
+  const globalFilters = useSelector((state: RootState) => state.filiter);
   // State Management
-  const [selectedAge, setSelectedAge] = useState<string | null>(null);
-  const [selectedGender, setSelectedGender] = useState<string | null>(null);
-  const [selectedIncome, setSelectedIncome] = useState<Set<string>>(new Set());
-  const [selectedIdentity, setSelectedIdentity] = useState<Set<string>>(new Set());
-  const { autoFilterUserData } = useSelector((state: RootState) => state.config)
-  const { user } = useSelector((state: RootState) => state.user)
-  const dispatcher = useDispatch<AppDispatch>()
+  const [selectedAge, setSelectedAge] = useState<string | null>(globalFilters.age);
+    const [selectedGender, setSelectedGender] = useState<string | null>(globalFilters.gender);
+    const [selectedIncome, setSelectedIncome] = useState<string[]>(globalFilters.income);
+    const [selectedIdentity, setSelectedIdentity] = useState<string[]>(globalFilters.identities);
+  // const { autoFilterUserData } = useSelector((state: RootState) => state.config)
+  // const { user } = useSelector((state: RootState) => state.user)
+  // const dispatcher = useDispatch<AppDispatch>()
 
-  // Handlers
-  const handleSingleSelect = (
-    option: string,
-    currentSelection: string | null,
-    setter: React.Dispatch<React.SetStateAction<string | null>>
-  ) => {
-    setter(currentSelection === option ? null : option);
-  };
+useEffect(() => {
+        // 當 globalFilters 物件發生任何變化時，這個 effect 就會重新執行
+        // 我們在這裡強制將全局狀態同步到本地狀態
+        console.log("全局篩選條件已變更，正在同步到 FilterDrawer...");
+        setSelectedAge(globalFilters.age);
+        setSelectedGender(globalFilters.gender);
+        setSelectedIncome(globalFilters.income);
+        setSelectedIdentity(globalFilters.identities);
 
-  const handleMultiSelect = (
-    option: string,
-    currentSelection: Set<string>,
-    setter: React.Dispatch<React.SetStateAction<Set<string>>>
-  ) => {
-    const newSelection = new Set(currentSelection);
-    if (newSelection.has(option)) {
-      newSelection.delete(option);
-    } else {
-      newSelection.add(option);
-    }
-    setter(newSelection);
-  };
+    }, [globalFilters]);
+    const handleSingleSelect = (option: string, currentSelection: string | null,setter: React.Dispatch<React.SetStateAction<string | null>>) => {
+        setter(currentSelection === option ? null : option);
+    };
 
-  const handleClear = () => {
-    setSelectedAge(null);
-    setSelectedGender(null);
-    setSelectedIncome(new Set());
-    setSelectedIdentity(new Set());
-  };
+    // 處理手動多選
+    const handleMultiSelect = (option: string,currentSelection: string[], setter: React.Dispatch<React.SetStateAction<string[]>>) => {
+        const newSelection = [...currentSelection];
+        const index = newSelection.indexOf(option);
+        if (index > -1) {
+            newSelection.splice(index, 1); // 移除
+        } else {
+            newSelection.push(option); // 新增
+        }
+        setter(newSelection);
+    };
 
-  const handleConfirm = () => {
-    const income = Array.from(selectedIncome)
-    const identity = Array.from(selectedIdentity)
-    const temp = [];
-    if (selectedAge) temp.push(selectedAge);
-    if (selectedGender) temp.push(selectedGender);
-    temp.push(...income, ...identity);
-    dispatcher(setIdentities(temp))
-    closeDrawer();
-  };
+    const handleClear = () => {
+        setSelectedAge(null);
+        setSelectedGender(null);
+        setSelectedIncome([]);
+        setSelectedIdentity([]);
+        // (可選) 如果希望清除後立即影響列表，而不是等確認
+        // dispatch(resetFilters()); 
+    };
 
-  useEffect(() => {
-    if (autoFilterUserData && user?.identities?.length) {
-      const identities = user.identities;
-      const foundAge = identities.find(id => ageOptions.includes(id.id));
-      setSelectedAge(foundAge ? foundAge.id : null);
-      const foundGender = identities.find(id => genderOptions.includes(id.id));
-      setSelectedGender(foundGender ? foundGender.id : null);
-      setSelectedIncome(new Set(identities.filter(id => incomeOptions.includes(id.id)).map(i => i.id)));
-      setSelectedIdentity(new Set(identities.filter(id => identityOptions.includes(id.id)).map(i => i.id)));
-
-      // Dispatch to Redux store
-      dispatcher(setIdentities(identities.map(i => i.id)));
-    }
-  }, [user, autoFilterUserData, dispatcher, ageOptions, genderOptions, incomeOptions, identityOptions]);
-
+    // 步驟 3: handleConfirm 負責將所有本地狀態 dispatch 到 Redux
+    const handleConfirm = () => {
+        // 為每個篩選類別分發對應的 action
+        dispatch(setAge(selectedAge));
+        dispatch(setGender(selectedGender));
+        dispatch(setIncome(selectedIncome));
+        dispatch(setIdentities(selectedIdentity));
+        closeDrawer();
+    };
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         <FilterSection
           title="年齡"
           options={ageOptions}
-          selected={selectedAge}
+          selected={selectedAge ? [selectedAge] : []}
           onSelect={(option) => handleSingleSelect(option, selectedAge, setSelectedAge)}
           isSingleSelect
         />
         <FilterSection
           title="性別"
           options={genderOptions}
-          selected={selectedGender}
+          selected={selectedGender ? [selectedGender] : []}
           onSelect={(option) => handleSingleSelect(option, selectedGender, setSelectedGender)}
           isSingleSelect
           isRow

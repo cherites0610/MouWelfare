@@ -32,6 +32,9 @@ export interface WelfareApiParams {
     searchQuery: string;
     page: number;
     pageSize: number;
+    age?: string | null;
+  gender?: string | null;
+  income?: string[];
 }
 
 export interface Pagination {

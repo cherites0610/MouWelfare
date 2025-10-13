@@ -47,7 +47,7 @@ export default function Setting() {
       </TouchableOpacity>
 
       {/* 老人模式 */}
-      <View style={styles.row}>
+      {/* <View style={styles.row}>
         <Ionicons name="glasses" size={iconSize} color="#444" style={styles.icon} />
         <Text style={styles.text}>老人模式</Text>
         <View style={{ flex: 1 }} />
@@ -57,7 +57,7 @@ export default function Setting() {
           trackColor={{ false: '#ccc', true: COLORS.background }}
           thumbColor={elderlyMode ? '#fff' : '#888'} // <--- 使用 Redux state
         />
-      </View>
+      </View> */}
 
 
       {/* 自動篩選用戶資料 */}

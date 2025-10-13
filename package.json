@@ -1,6 +1,7 @@
 {
   "dependencies": {
     "@react-native-async-storage/async-storage": "^2.2.0",
+    "dayjs": "^1.11.18",
     "expo-constants": "^17.1.7",
     "react-native-markdown-display": "^7.0.2"
   },

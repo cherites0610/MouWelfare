@@ -7,7 +7,7 @@ import OptionButton from './OptionButton';
 interface FilterSectionProps {
   title: string;
   options: string[];
-  selected: string | null | Set<string>;
+  selected: string[];
   onSelect: (option: string) => void;
   isSingleSelect?: boolean;
   isRow?: boolean;
@@ -16,7 +16,7 @@ interface FilterSectionProps {
 export default function FilterSection({
   title,
   options,
-  selected,
+  selected=[],
   onSelect,
   isSingleSelect = false,
   isRow = false,
@@ -29,11 +29,7 @@ export default function FilterSection({
           <OptionButton
             key={option}
             option={option}
-            isSelected={
-              isSingleSelect
-                ? selected === option
-                : (selected as Set<string>).has(option)
-            }
+            isSelected={(selected || []).includes(option)}
             onPress={() => onSelect(option)}
             isRow={isRow}
           />

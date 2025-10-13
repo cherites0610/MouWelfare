@@ -23,7 +23,13 @@ const FilterBar: React.FC<FilterBarProps> = React.memo(
 
     const dispatch = useDispatch<AppDispatch>();
     const { familys: FAMILY } = useSelector((state: RootState) => state.family);
-    const { locations, categories, family } = useSelector((state: RootState) => state.filiter)
+    const { locations, 
+    categories, 
+    family, 
+    identities, 
+    age, 
+    gender, 
+    income  } = useSelector((state: RootState) => state.filiter)
     const setLocation = (locations: string[]) => {
       dispatch(setLocations(locations))
     }
@@ -34,13 +40,13 @@ const FilterBar: React.FC<FilterBarProps> = React.memo(
       dispatch(setFamilies(familyies))
     }
 
-    useEffect(() => {
-      if (user?.location && autoFilterUserData) {
-        setLocation([user.location.name])
-      }
-    },[user,autoFilterUserData])
+    // useEffect(() => {
+    //   if (user?.location && autoFilterUserData) {
+    //     setLocation([user.location.name])
+    //   }
+    // },[user,autoFilterUserData])
 
-    const { identities } = useSelector((state: RootState) => state.filiter)
+    
 
     const LOCATION: string[] = Array.from({ length: LocationNum - 1 }, (_, i) => getTextByLocation(i + 1));
     const CATEGORY: string[] = Array.from({ length: ServiceNum - 1 }, (_, i) => getTextByService(i + 1));
@@ -59,6 +65,11 @@ const FilterBar: React.FC<FilterBarProps> = React.memo(
           break;
       }
     }, []);
+    const detailedFilterCount = 
+       identities.length + 
+       income.length +
+      (age ? 1 : 0) +
+       (gender ? 1 : 0);
 
     return (
       <View style={styles.filterBar}>
@@ -78,7 +89,8 @@ const FilterBar: React.FC<FilterBarProps> = React.memo(
           selectedCount={family === "" ? 0 : 1}
           onPress={() => toggleModal('family', true)}
         />
-        <FilterButton selectedCount={identities.length} label="篩選" onPress={openFilterDrawer} isIconButton />
+        
+<FilterButton selectedCount={detailedFilterCount} label="篩選" onPress={openFilterDrawer} isIconButton />
 
         <FilterModal
           visible={regionModalVisible}
