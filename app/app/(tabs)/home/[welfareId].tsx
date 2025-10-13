@@ -1,4 +1,4 @@
-import { fetchWelfareByIDAPI } from '@/src/api/welfareApi';
+import { fetchWelfareByIDAPI,addFavoriteAPI,fetchFavoriteAPI,deleteFavoriteAPI } from '@/src/api/welfareApi';
 import { RootState } from '@/src/store';
 import { Welfare } from '@/src/type/welfareType';
 import { COLORS } from '@/src/utils/colors';
@@ -19,19 +19,23 @@ import {
   SafeAreaView,
   Linking,
   ActivityIndicator,
+  Share,
+  Alert,
 } from 'react-native';
 import { useSelector } from 'react-redux';
 
 const WelfareInfo = () => {
   const glob = useLocalSearchParams();
   const { welfareId, sourcePage, lightStatus: lightStatusParam,lightReason:lightReasonParam } = useLocalSearchParams();
-const lightStatus = lightStatusParam ? Number(lightStatusParam) : undefined;
+  const [isFavorited, setIsFavorited] = useState(false);
+  const lightStatus = lightStatusParam ? Number(lightStatusParam) : undefined;
   const navigation = useNavigation<StackNavigationProp<any>>(); 
   const [welfare, setWelfare] = useState<Welfare | null>(null);
   const [error, setError] = useState<string | null>(null);
   const { user } = useSelector((state: RootState) => state.user)
   const { locations, categories, identities, family, searchQuery } = useSelector((state: RootState) => state.filiter)
   const { familys } = useSelector((state: RootState) => state.family); // 獲取家庭類型數據
+  const { authToken } = useSelector((state: RootState) => state.config);
   const router = useRouter();
 
   const getCircleColor = (status: number | undefined) => {
@@ -67,24 +71,28 @@ useEffect(() => {
         setError('福利 ID 不存在，無法載入資料。');
         return;
       }
-      
       try {
         const familyId = familys.find((item) => item.name === family)?.id;
-        const response = await fetchWelfareByIDAPI(String(welfareId), user?.id, familyId);
-        
-        let finalWelfareData = response.data;
 
-        // 將路由傳來的 lightReason JSON 字串解析回陣列
+        // 使用 Promise.all 並行處理兩個 API 請求，提升速度
+        const [welfareResponse, favoritesResponse] = await Promise.all([
+          fetchWelfareByIDAPI(String(welfareId), user?.id, familyId),
+          fetchFavoriteAPI(authToken) // 獲取所有收藏項目
+        ]);
+
+        let finalWelfareData = welfareResponse.data;
+
+        // 檢查當前福利是否在收藏列表中
+        const isCurrentlyFavorited = favoritesResponse.data.some(fav => fav.id === finalWelfareData.id);
+        setIsFavorited(isCurrentlyFavorited); // 設定初始收藏狀態
+
         let lightReasonFromRoute: string[] | undefined = undefined;
         if (typeof lightReasonParam === 'string' && lightReasonParam) {
           try {
             lightReasonFromRoute = JSON.parse(lightReasonParam);
-          } catch (e) {
-            console.error("從路由參數解析 lightReason 失敗:", e);
-          }
+          } catch (e) { console.error("從路由參數解析 lightReason 失敗:", e); }
         }
         
-        // 組合最終資料，優先使用從路由傳來的值
         finalWelfareData = {
           ...finalWelfareData,
           lightStatus: lightStatus !== undefined ? lightStatus : finalWelfareData.lightStatus,
@@ -92,59 +100,78 @@ useEffect(() => {
         };
         
         setWelfare(finalWelfareData);
-        console.log("✅ 成功組合路由與API資料:", finalWelfareData);
-
       } catch (error) {
         console.error('載入福利資料時發生錯誤:', error);
         setError('無法加載數據，請稍後重試');
       }
     };
-
     init();
-  }, [welfareId, user?.id]);
-
+  }, [welfareId, user?.id, authToken]); // <-- 將 authToken 加入依賴
 
   useLayoutEffect(() => {
-        
-        // 1. 判斷返回目標
-        const isFromChat = sourcePage === 'chat';
-        
-        // 2. 決定點擊返回按鈕時執行的函式
-        const handleCustomBack = () => {
-            if (isFromChat) {
-                console.log("返回對話機器人頁面 (index)");
-                router.navigate('/mou');  
-                // navigation.popToTop();
-            } else {
-                // 如果是從其他頁面來的 (例如 My Favourites)，執行預設的返回上一步操作
-                console.log("返回上一頁");
-                if (navigation.canGoBack()) {
-                    navigation.goBack(); 
-                } else {
-                    router.navigate('/home'); // 作為最終保底
-                }
-            }
-        };
+    const handleCustomBack = () => {
+      if (sourcePage === 'chat') {
+        router.navigate('/mou');
+      } else {
+        if (navigation.canGoBack()) { navigation.goBack(); } 
+        else { router.navigate('/home'); }
+      }
+    };
 
-        // 3. 覆寫 Header 的左側按鈕 (返回按鈕)
-        navigation.setOptions({
-        headerLeft: () => (
-            <TouchableOpacity 
-                onPress={handleCustomBack}
-                // 調整觸摸區域
-                style={{ padding: 10, marginLeft: Platform.OS === 'ios' ? -10 : 0 }} 
-            >
-                <Ionicons 
-                    // 根據平台選擇最接近系統預設的圖標
-                    name={Platform.OS === 'ios' ? 'chevron-back' : 'arrow-back'} 
-                    size={Platform.OS === 'ios' ? 32 : 24} // iOS 圖標通常更大/更靠近邊緣
-                    color="black" 
-                /> 
+    // 分享邏輯
+    const handleShare = async () => {
+      if (!welfare) return;
+      try {
+        await Share.share({ message: `哞福利向您送來了福利!\n${welfare.title}\n原文鏈接: ${welfare.link}` });
+      } catch (error: any) { Alert.alert(error.message); }
+    };
+
+    // 收藏/取消收藏的切換邏輯
+    const handleToggleFavorite = async () => {
+      if (!welfare) return;
+      try {
+        let result;
+        if (isFavorited) {
+          // 如果已收藏，則呼叫刪除 API
+          result = await deleteFavoriteAPI(authToken, welfare.id);
+          setIsFavorited(false); // 更新本地狀態為「未收藏」
+        } else {
+          // 如果未收藏，則呼叫新增 API
+          result = await addFavoriteAPI(authToken, welfare.id);
+          setIsFavorited(true); // 更新本地狀態為「已收藏」
+        }
+        Alert.alert('操作結果', result.message);
+      } catch (err: any) {
+        Alert.alert('操作失敗', err.message);
+      }
+    };
+
+    navigation.setOptions({
+      headerLeft: () => (
+        <TouchableOpacity onPress={handleCustomBack} style={{ paddingHorizontal: 10 }} >
+          <Ionicons name={Platform.OS === 'ios' ? 'chevron-back' : 'arrow-back'} size={28} color="#333" />
+        </TouchableOpacity>
+      ),
+      // ✨ 在這裡新增 headerRight
+      headerRight: () => (
+        welfare && (
+          <View style={styles.headerRightContainer}>
+            <TouchableOpacity onPress={handleToggleFavorite} style={styles.headerButton}>
+              <Ionicons 
+                name={isFavorited ? 'heart' : 'heart-outline'} 
+                size={24} 
+                color={isFavorited ? COLORS.light_red : '#333'} 
+              />
             </TouchableOpacity>
-        ),
+            <TouchableOpacity onPress={handleShare} style={styles.headerButton}>
+              <Ionicons name="share-social-outline" size={24} color="#333" />
+            </TouchableOpacity>
+          </View>
+        )
+      ),
     });
-        
-    }, [sourcePage, navigation, router]);
+    
+  }, [sourcePage, navigation, router, welfare, authToken, isFavorited]); // <-- 加入 isFavorited 依賴
 
   const openLink = async (url: string) => {
     if (url && (await Linking.canOpenURL(url))) {
@@ -153,6 +180,20 @@ useEffect(() => {
       console.warn('Invalid or unsupported URL:', url);
     }
   };
+  if (error) {
+    return (
+      <View style={styles.errorContainer}>
+        <Text style={styles.errorText}>{error}</Text>
+      </View>
+    );}
+  if (!welfare) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+        <Text>Loading...</Text>
+      </View>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.pageContainer}>
@@ -287,6 +328,15 @@ useEffect(() => {
   );
 };
 const styles = StyleSheet.create({
+  headerRightContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 10,
+  },
+  headerButton: {
+    padding: 8,
+    marginLeft: 8,
+  },
   container: {
     padding: 16,
     backgroundColor: '#fff',
