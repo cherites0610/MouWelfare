@@ -140,22 +140,84 @@ const App: React.FC = () => {
   const router = useRouter();
 
   // 數據
-  const categorySynonyms: { [key: string]: string }= {
-    '兒童': '兒童及青少年福利',
-    '小孩': '兒童及青少年福利',
-    '兒少': '兒童及青少年福利',
-    '青少年': '兒童及青少年福利',
-    '婦女': '婦女與幼兒福利',
-    '幼兒': '婦女與幼兒福利',
-    '老人': '老人福利',
-    '長者': '老人福利',
-    '長輩': '老人福利',
-    '救助': '社會救助福利',
-    '低收入': '社會救助福利',
-    '身心障礙': '身心障礙福利',
-    '身障': '身心障礙福利',
-    '殘障': '身心障礙福利',
-  };
+  const categorySynonyms: { [key: string]: string[] } = {
+    '兒童': ['兒童及青少年福利'],
+    '小孩': ['兒童及青少年福利'],
+    '兒少': ['兒童及青少年福利'],
+    '青少年': ['兒童及青少年福利'],
+    '孩童': ['兒童及青少年福利'],
+    '少年': ['兒童及青少年福利'],
+    '學生': ['兒童及青少年福利'],      // 身份
+    '學費': ['兒童及青少年福利'],      // 需求
+    '就學': ['兒童及青少年福利'],      // 情境
+    '獎學金': ['兒童及青少年福利'],    // 具體項目
+    '扶養': ['兒童及青少年福利'],      // 動作/情境
+
+    // --- 婦女與幼兒福利 ---
+    // 目的：捕捉所有與母親、懷孕、新生兒相關的詞彙
+    '婦女': ['婦女與幼兒福利'],
+    '媽媽': ['婦女與幼兒福利'],
+    '母親': ['婦女與幼兒福利'],
+    '孕婦': ['婦女與幼兒福利'],      // 身份
+    '懷孕': ['婦女與幼兒福利'],      // 情境
+    '生育': ['婦女與幼兒福利'],      // 情境
+    '生產': ['婦女與幼兒福利'],      // 情境
+    '產後': ['婦女與幼兒福利'],      // 情境
+    '坐月子': ['婦女與幼兒福利'],    // 情境
+    '單親': ['婦女與幼兒福利', '社會救助福利'], // 單親家庭常同時需要這兩類協助
+
+    // --- 育兒與幼兒（交叉類別） ---
+    // 目的：這些詞彙同時與母親和孩子相關，對應到兩個分類最精準
+    '育兒': ['婦女與幼兒福利', '兒童及青少年福利'],
+    '托育': ['兒童及青少年福利', '婦女與幼兒福利'],
+    '幼兒': ['婦女與幼兒福利', '兒童及青少年福利'],
+    '托嬰': ['婦女與幼兒福利', '兒童及青少年福利'],
+    '嬰兒': ['婦女與幼兒福利', '兒童及青少年福利'],
+
+    // --- 老人福利 ---
+    // 目的：捕捉所有與年長者、退休、照護相關的詞彙
+    '老人': ['老人福利'],
+    '長者': ['老人福利'],
+    '長輩': ['老人福利'],
+    '銀髮族': ['老人福利'],
+    '阿公': ['老人福利'],
+    '阿嬤': ['老人福利'],
+    '獨居': ['老人福利', '社會救助福利'], // 獨居老人常需要社會救助
+    '退休': ['老人福利'],      // 情境
+    '長照': ['老人福利'],      // 需求 (長期照顧)
+    '敬老': ['老人福利'],      // 相關詞彙 (敬老卡)
+    '安養': ['老人福利'],      // 需求
+    '養老': ['老人福利'],      // 情境
+    '假牙': ['老人福利'],      // 具體項目
+
+    // --- 社會救助福利 ---
+    // 目的：這是最廣泛的，捕捉所有與經濟困難、生活突發狀況相關的詞彙
+    '救助': ['社會救助福利'],
+    '補助': ['社會救助福利'],
+    '津貼': ['社會救助福利'],
+    '急難': ['社會救助福利'],      // 情境 (急難救助)
+    '困難': ['社會救助福利'],      // 情境 (生活困難)
+    '失業': ['社會救助福利'],      // 情境
+    '沒工作': ['社會救助福利'],    // 口語化
+    '租屋': ['社會救助福利'],      // 需求 (租屋補助)
+    '房租': ['社會救助福利'],      // 需求
+    '醫療': ['社會救助福利', '身心障礙福利'], // 醫療補助可能屬於兩者
+    '醫藥費': ['社會救助福利'],    // 需求
+    '清寒': ['社會救助福利'],      // 身份
+    '弱勢': ['社會救助福利'],      // 身份
+    '低收入': ['社會救助福利'],    // 身份
+
+    // --- 身心障礙福利 ---
+    // 目的：捕捉所有與身心障礙者相關的正式、口語及需求詞彙
+    '身心障礙': ['身心障礙福利'],
+    '身障': ['身心障礙福利'],
+    '殘障': ['身心障礙福利'],
+    '障友': ['身心障礙福利'],      // 社群稱呼
+    '行動不便': ['身心障礙福利'],  // 情境描述
+    '輔具': ['身心障礙福利'],      // 需求 (輔具補助)
+    '復健': ['身心障礙福利'],      // 需求
+    '照護': ['身心障礙福利', '老人福利'], // 照護需求同時與長者和身障者相關
+};
 
   const ewlfareItems: Item[] = [
     { id: 1, name: '兒童及青少年福利', image: require("@/assets/images/Mou/baby.jpeg") },
@@ -167,7 +229,7 @@ const App: React.FC = () => {
   ];
 
   const northItems: Item[] = [
-    { id: 1, name: '台北市', image: require("@/assets/images/Mou/school.jpeg") },
+    { id: 1, name: '臺北市', image: require("@/assets/images/Mou/school.jpeg") },
     { id: 2, name: '新北市', image: require("@/assets/images/Mou/school.jpeg") },
     { id: 3, name: '基隆市', image: require("@/assets/images/Mou/school.jpeg") },
     { id: 4, name: '桃園市', image: require("@/assets/images/Mou/school.jpeg") },
@@ -177,7 +239,7 @@ const App: React.FC = () => {
   ];
 
   const midItems: Item[] = [
-    { id: 8, name: '台中市', image: require("@/assets/images/Mou/school.jpeg") },
+    { id: 8, name: '臺中市', image: require("@/assets/images/Mou/school.jpeg") },
     { id: 9, name: '苗栗縣', image: require("@/assets/images/Mou/school.jpeg") },
     { id: 10, name: '彰化縣', image: require("@/assets/images/Mou/school.jpeg") },
     { id: 11, name: '南投縣', image: require("@/assets/images/Mou/school.jpeg") },
@@ -186,7 +248,7 @@ const App: React.FC = () => {
 
   const southItems: Item[] = [
     { id: 13, name: '高雄市', image: require("@/assets/images/Mou/school.jpeg") },
-    { id: 14, name: '台南市', image: require("@/assets/images/Mou/school.jpeg") },
+    { id: 14, name: '臺南市', image: require("@/assets/images/Mou/school.jpeg") },
     { id: 15, name: '嘉義市', image: require("@/assets/images/Mou/school.jpeg") },
     { id: 16, name: '嘉義縣', image: require("@/assets/images/Mou/school.jpeg") },
     { id: 17, name: '屏東縣', image: require("@/assets/images/Mou/school.jpeg") },
@@ -194,7 +256,7 @@ const App: React.FC = () => {
 
   const eastItems: Item[] = [
     { id: 18, name: '花蓮縣', image: require("@/assets/images/Mou/school.jpeg") },
-    { id: 19, name: '台東縣', image: require("@/assets/images/Mou/school.jpeg") },
+    { id: 19, name: '臺東縣', image: require("@/assets/images/Mou/school.jpeg") },
   ];
 
   const offshoreItems: Item[] = [
@@ -487,7 +549,7 @@ const performAiSearch = async (query: string, options?: { asNewConversation?: bo
         const conversationContext = [...baseMessages, userMessage].filter(m => m.type === 'user').map(m => m.content).join(' ');
         
         let targetLocation: string | undefined;
-        let targetCategory: string | undefined;
+        let targetCategories: string[] = [];
 
         // 提取地點
         for (const loc of sortedLocations) {
@@ -500,11 +562,16 @@ const performAiSearch = async (query: string, options?: { asNewConversation?: bo
         // 提取類別
         for (const keyword of sortedCategories) {
           if (conversationContext.includes(keyword)) {
-            targetCategory = categorySynonyms[keyword] || keyword;
+            // 檢查字典中是否有這個關鍵字
+            if (categorySynonyms[keyword]) {
+                targetCategories = categorySynonyms[keyword];
+            } else {
+                // 如果字典沒有，代表關鍵字本身就是官方分類名稱
+                targetCategories = [keyword];
+            }
             break; 
           }
         }
-
         // 應用過濾
         const filteredCards = rawWelfareCards.filter(card => {
           let isMatch = true;
@@ -513,8 +580,12 @@ const performAiSearch = async (query: string, options?: { asNewConversation?: bo
             isMatch = false;
           }
           // 如果有目標類別，且卡片類別不包含目標類別，則不匹配
-          if (targetCategory && Array.isArray(card.categories) && !card.categories.includes(targetCategory)) {
-            isMatch = false;
+          if (targetCategories.length > 0 && Array.isArray(card.categories)) {
+            // 檢查「卡片的分類」和「我們的目標分類」之間是否有任何交集
+            const hasIntersection = targetCategories.some(tc => card.categories.includes(tc));
+            if (!hasIntersection) {
+                isMatch = false;
+            }
           }
           return isMatch;
         });

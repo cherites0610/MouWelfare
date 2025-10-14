@@ -19,7 +19,57 @@ import{LightStatusResult }from "../../../api/src/welfare/interface/light-status-
 @Injectable()
 export class WelfareService {
   private readonly logger = new Logger(WelfareService.name);
+  private readonly identitySynonymMapping: { [key: string]: string } = {
+  // --- 性別 (Gender) ---
+    '女生': '女性',
+    '女孩': '女性',
+    '女人': '女性',
+    '男生': '男性',
+    '男孩': '男性',
+    '男人': '男性',
 
+    // --- 收入 (Income) ---
+    '低收': '低收入戶',
+    '中低收': '中低收入戶',
+    '清寒': '低收入戶', // "清寒" 通常指低收入戶
+    '弱勢': '低收入戶', // "弱勢" 較廣泛，但此處對應到最相關的福利身份
+
+    // --- 核心身分 (Core Identities) ---
+    '身障': '身心障礙者',
+    '殘障': '身心障礙者',
+    '殘疾': '身心障礙者',
+    '障友': '身心障礙者',
+    '行動不便': '身心障礙者', // 描述性詞彙
+
+    '原民': '原住民',
+    '原住民族': '原住民', // 正式稱呼
+
+    '榮譽國民': '榮民', // 完整名稱
+    '老兵': '榮民', // 口語化稱呼
+
+    '外配': '外籍配偶家庭', // 常見簡稱
+    '新住民': '外籍配偶家庭', // 目前最常用且正式的稱呼
+
+    // // --- 年齡 (Age) ---
+    // // 雖然年齡主要由正規表示式處理，但加入這些關鍵字
+    // // 可以讓AI在沒有明確歲數時，也能捕捉到使用者的意圖
+    // '老人': '65歲以上',
+    // '長者': '65歲以上',
+    // '長輩': '65歲以上',
+    // '銀髮族': '65歲以上',
+    // '阿公': '65歲以上',
+    // '阿嬤': '65歲以上',
+    
+    // '成年人': '20歲-65歲',
+    // '青壯年': '20歲-65歲',
+    // '上班族': '20歲-65歲',
+
+    // '小孩': '20歲以下',
+    // '兒童': '20歲以下',
+    // '少年': '20歲以下',
+    // '青少年': '20歲以下',
+    // '學生': '20歲以下',
+  };
   constructor(
     @InjectRepository(Welfare)
     private readonly welfareRepository: Repository<Welfare>,
@@ -237,8 +287,8 @@ export class WelfareService {
     };
   }
   const userIdentityNames = userIdentities.map(i => i.name);
-  // reasons.push(`福利要求身份: ${welfareIdentityNames.join('、') || '無特殊要求'}`);
-  // reasons.push(`您的身份: ${userIdentityNames.join('、')}`);
+  reasons.push(`福利要求身份: ${welfareIdentityNames.join('、') || '無特殊要求'}`);
+  reasons.push(`您的身份: ${userIdentityNames.join('、')}\n`);
 
   // 🟡 步驟 2: 檢查福利本身是否沒有任何身份要求 (第二個黃燈條件)
   if (welfareIdentities.length === 0) {
@@ -265,9 +315,9 @@ export class WelfareService {
     const userAgeIdentity = userIdentities.find(ui => AGE_GROUP_IDS.includes(ui.id));
     const userAgeName = userAgeIdentity ? userAgeIdentity.name : '未選擇';
     if (isAgeEligible) {
-      reasons.push(`✅ 年齡：符合要求\n     (福利要求: ${requiredAgeName}，您為[${userAgeName}])。`);
+      reasons.push(`✅ 年齡：符合要求\n     (福利要求:[${requiredAgeName}]，您為[${userAgeName}])。`);
     } else {
-      reasons.push(`❌ 年齡：不符合\n     (福利要求: ${requiredAgeName}，您為[${userAgeName}])。`);
+      reasons.push(`❌ 年齡：不符合\n     (福利要求:[${requiredAgeName}]，您為[${userAgeName}])。`);
       return { status: LightStatus.NotEligible, reasons, welfareIdentityNames, userIdentityNames };
     }
   } else {
@@ -282,9 +332,9 @@ export class WelfareService {
     const userGenderIdentity = userIdentities.find(ui => GENDER_GROUP_IDS.includes(ui.id));
     const userGenderName = userGenderIdentity ? userGenderIdentity.name : '未選擇';
     if (isGenderEligible) {
-      reasons.push(`✅ 性別：符合要求\n     (福利要求: ${requiredGenderName}，您為[${userGenderName}])。`);
+      reasons.push(`✅ 性別：符合要求\n     (福利要求:[${requiredGenderName}]，您為[${userGenderName}])。`);
     } else {
-      reasons.push(`❌ 性別：不符合\n     (福利要求: ${requiredGenderName}，您為[${userGenderName}])。`);
+      reasons.push(`❌ 性別：不符合\n     (福利要求:[${requiredGenderName}]，您為[${userGenderName}])。`);
       return { status: LightStatus.NotEligible, reasons, welfareIdentityNames, userIdentityNames };
     }
   } else {
@@ -300,10 +350,10 @@ export class WelfareService {
     const requiredIncomeName = welfareIncomeIdentities.map(i => i.name).join('或');
     const userIncomeText = userIncomeNames.length > 0 ? userIncomeNames.join('、') : '未選擇';
     if (userHasMatchingIncome) {
-      reasons.push(`✅ 收入：符合要求\n     (福利要求: ${requiredIncomeName}，您為[${userIncomeText}])。`);
+      reasons.push(`✅ 收入：符合要求\n     (福利要求:[${requiredIncomeName}]，您為[${userIncomeText}])。`);
     } else {
 
-      reasons.push(`❌ 收入：不符合\n     (福利要求: ${requiredIncomeName}，您為[${userIncomeText}])。`);
+      reasons.push(`❌ 收入：不符合\n     (福利要求:[${requiredIncomeName}，您為[${userIncomeText}])。`);
       return { status: LightStatus.NotEligible, reasons, welfareIdentityNames, userIdentityNames };
     }
   } else {
@@ -314,22 +364,23 @@ export class WelfareService {
   const welfareCoreIdentities = welfareIdentities.filter(i => CORE_IDENTITY_GROUP_IDS.includes(i.id));
   if (welfareCoreIdentities.length > 0) {
 
-    // --- 新增的邏輯 ---
-    // 1. 先找出使用者擁有哪些核心身份，方便後續顯示
+    // 步驟 1: 在迴圈外，先準備好所有需要的資訊
     const userCoreIdentities = userIdentities.filter(ui => CORE_IDENTITY_GROUP_IDS.includes(ui.id));
     const userCoreIdentityNames = userCoreIdentities.map(ui => ui.name);
     const userCoreIdentitiesText = userCoreIdentityNames.length > 0 ? userCoreIdentityNames.join('、') : '無';
-    // --- 邏輯結束 ---
+    
+    // ✅ 關鍵修改：在這裡就把福利要求的完整列表準備好
+    const requiredCoreNames = welfareCoreIdentities.map(i => i.name).join('、');
 
     for (const coreIdentity of welfareCoreIdentities) {
-      // 檢查使用者是否擁有「這一個」必要身份
       if (!userIdentities.some(ui => ui.id === coreIdentity.id)) {
-        reasons.push(`❌ 核心身份：不符合\n     (福利要求: "${coreIdentity.name}"，您為[${userCoreIdentitiesText}])。`);
+        // 步驟 2: 在錯誤訊息中使用完整的列表
+         reasons.push(`❌ 核心身份：不符合\n     (福利要求: [${requiredCoreNames}]，您為[${userCoreIdentitiesText}])。`);
         return { status: LightStatus.NotEligible, reasons, welfareIdentityNames, userIdentityNames };
       }
     }
-    const requiredCoreNames = welfareCoreIdentities.map(i => i.name).join('、');
-    reasons.push(`✅ 核心身份：所有要求均符合\n     (福利要求: "${requiredCoreNames}"，您為[${userCoreIdentitiesText}])。`);
+    // 如果 for 迴圈跑完都沒有返回，代表所有核心身份都符合
+    reasons.push(`✅ 核心身份：所有要求均符合\n     (福利要求: [${requiredCoreNames}]，您為[${userCoreIdentitiesText}])。`);
   } else {
     reasons.push('⚪ 核心身份：無特定要求。');
   }
@@ -443,13 +494,34 @@ export class WelfareService {
       throw new Error(`找不到福利 (id=${welfareId})`);
     }
 
-    // 2. 從文字中提取使用者提到的身份
     const allIdentities = this.constDataService.getIdentities();
-    const userIdentitiesFromText = allIdentities.filter(
-      (identity) => queryText.includes(identity.name)
-    );
-    
+    // 使用 Map 來儲存結果，可以自動處理重複（例如文字中同時有「低收」和「低收入戶」）
+    const foundIdentities = new Map<number, Identity>();
+
+    // 1. 第一輪：比對「官方名稱」
+    for (const identity of allIdentities) {
+        if (queryText.includes(identity.name)) {
+            foundIdentities.set(identity.id, identity);
+        }
+    }
+
+    // 2. 第二輪：比對「同義詞」
+    for (const synonym in this.identitySynonymMapping) {
+        if (queryText.includes(synonym)) {
+            // 如果找到了同義詞，就找出它對應的「官方身份」物件
+            const officialName = this.identitySynonymMapping[synonym];
+            const correspondingIdentity = allIdentities.find(i => i.name === officialName);
+            if (correspondingIdentity) {
+                foundIdentities.set(correspondingIdentity.id, correspondingIdentity);
+            }
+        }
+    }
+
+    // 3. 將 Map 轉換回陣列
+    const userIdentitiesFromText = Array.from(foundIdentities.values());
+
     this.logger.log(`   ‣ 提取到的身份: [${userIdentitiesFromText.map(i => i.name).join(', ')}]`);
+
     // --- ✨ 新增年齡解析邏輯 ---
     const ageMatch = queryText.match(/(\d+)\s*歲/); // 用正規表示式尋找 "數字+歲"
     if (ageMatch && ageMatch[1]) {
@@ -473,7 +545,6 @@ export class WelfareService {
         }
       }
     }
-    // --- 年齡解析邏輯結束 ---
 
     this.logger.log(`   ‣ 最終組合身份: [${userIdentitiesFromText.map(i => i.name).join(', ')}]`);
 

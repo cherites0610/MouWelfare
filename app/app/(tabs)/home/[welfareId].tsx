@@ -294,8 +294,8 @@ useEffect(() => {
               keyExtractor={(item, index) => index.toString()}
             />
             
-            <Text style={styles.sectionTitle}>原始文章:</Text>  
-           <Text style={styles.notes}>{welfare.detail}</Text>
+            {/* <Text style={styles.sectionTitle}>原始文章:</Text>  
+           <Text style={styles.notes}>{welfare.detail}</Text> */}
 </View>
 </ScrollView>
            {/* <View style={styles.bottomActionContainer}>
