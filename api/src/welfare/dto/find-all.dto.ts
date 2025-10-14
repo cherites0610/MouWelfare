@@ -26,6 +26,18 @@ export const FindAllSchema = z.object({
     .optional(),
   search: z.string().optional(), // 可選搜尋字串
   userID: z.string().optional(),
+  // age 是單一字串，可選
+  age: z.string().optional(),
+
+  // gender 是單一字串，可選
+  gender: z.string().optional(),
+
+  // income 和 identities 一樣，是逗號分隔的字串，需要轉換為陣列
+  income: z
+    .string()
+    .transform((val) => val.split(","))
+    .pipe(z.array(z.string()))
+    .optional(),
 });
 
 export class FindAllDTO extends createZodDto(FindAllSchema) {}

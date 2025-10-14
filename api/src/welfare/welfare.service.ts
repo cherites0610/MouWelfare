@@ -120,20 +120,42 @@ export class WelfareService {
       //     familyID
       //   );
       // }
-      const identityNamesFromFilter = dto.identities || [];
-      const identitiesForLightCalculation = this.constDataService.getIdentities().filter(
-        (identity) => identityNamesFromFilter.includes(identity.name)
-      );
-      
-      const familyID = dto.families?.[0];
+      this.logger.log(`- 正在為 userID: ${dto.userID} 組合篩選條件以計算燈號...`);
 
-      // 3. 將轉換後的身份物件陣列傳遞給燈號計算函式。
-      //    注意：第二個 identities 參數現在是來自篩選條件，而不是 user.identities。
+      // 步驟 1: 收集所有來自前端篩選器的「身份名稱」
+      const combinedIdentityNames: string[] = [];
+
+      if (dto.age) {
+        combinedIdentityNames.push(dto.age);
+      }
+      if (dto.gender) {
+        combinedIdentityNames.push(dto.gender);
+      }
+      if (dto.income && dto.income.length > 0) {
+        combinedIdentityNames.push(...dto.income);
+      }
+      if (dto.identities && dto.identities.length > 0) {
+        combinedIdentityNames.push(...dto.identities);
+      }
+      
+      // 使用 Set 來去除可能存在的重複項
+      const uniqueIdentityNames = [...new Set(combinedIdentityNames)];
+      this.logger.log(`  - 組合後的身份名稱: [${uniqueIdentityNames.join(', ')}]`);
+
+      // 步驟 2: 將這些名稱轉換為完整的 Identity 物件陣列
+      const identitiesForLightCalculation = this.constDataService.getIdentities().filter(
+        (identity) => uniqueIdentityNames.includes(identity.name)
+      );
+
+      this.logger.log(`  - 轉換後的 Identity 物件數量: ${identitiesForLightCalculation.length}`);
+
+      // 步驟 3: 將這個「完整」的模擬身份列表傳遞給燈號計算函式
+      const familyID = dto.families?.[0]; // 假設 DTO 中有 familyID
       await this.appendLightAndFamilyInfo(
         welfares,
         responseList,
         dto.userID,
-        identitiesForLightCalculation, // <-- 使用來自篩選條件的身份
+        identitiesForLightCalculation, // <-- 傳遞包含了所有篩選條件的完整列表
         familyID
       );
     }
@@ -203,75 +225,124 @@ export class WelfareService {
     userIdentities: Identity[] | undefined 
   ): LightStatusResult  {
   const reasons: string[] = [];
-  // const welfareIdentityIds = welfareIdentities.map((i) => i.id);
-  // const userIdentityIds = userIdentities.map((i) => i.id);
   const welfareIdentityNames = welfareIdentities.map(i => i.name);
-  // const userIdentityNames = userIdentities?.map(i => i.name) || ['未設定'];
   
-  if (!userIdentities|| userIdentities.length === 0|| userIdentities[0]?.id === 0) {
-      reasons.push('🟡 因為您尚未設定個人身份，無法進行精確判斷。');
-      return {
-        status: LightStatus.NoIdentity,
-        reasons,
-        welfareIdentityNames,
-        userIdentityNames: ['未設定'],
-      };
-
-  // 為了方便使用者閱讀，將 ID 轉換為名稱
-  }
-  const userIdentityIds = userIdentities.map((i) => i.id);
-  const userIdentityNames = userIdentities.map(i => i.name);
-  reasons.push(`福利要求身份: ${welfareIdentityNames.join('、') || '無特殊要求'}`);
-  reasons.push(`您的身份: ${userIdentityNames.join('、')}`);
-
-    // 規則 1：年齡段檢查（1: <20歲, 2: 20-65歲, 3: >65歲）
-    const ageGroups = [1, 2, 3];
-    let hasAgeRequirement = welfareIdentities.some(i => ageGroups.includes(i.id));
-    if (hasAgeRequirement) {
-    let ageMatches = welfareIdentities.some(wi => 
-      ageGroups.includes(wi.id) && userIdentities.some(ui => ui.id === wi.id)
-    );
-
-    if (ageMatches) {
-      reasons.push('✅ 年齡段符合。');
-    } else {
-      const requiredAgeName = welfareIdentities.find(i => ageGroups.includes(i.id))?.name;
-      reasons.push(`❌ 年齡段不符合 (要求: ${requiredAgeName})。`);
-      return {
-        status: LightStatus.NotEligible, // 3
-        reasons,
-        welfareIdentityNames,
-        userIdentityNames,
-      };
-    }
-  }
-
-    const specialIdentities = welfareIdentities.filter(i => i.id >= 4 && i.id <= 11);
-  if (specialIdentities.length > 0) {
-    for (const specialIdentity of specialIdentities) {
-      if (!userIdentities.some(ui => ui.id === specialIdentity.id)) {
-        reasons.push(`❌ 您缺少必要的特殊身份: "${specialIdentity.name}"。`);
-        return {
-          status: LightStatus.NotEligible, // 3
-          reasons,
-          welfareIdentityNames,
-          userIdentityNames,
-        };
-      }
-    }
-    reasons.push('✅ 所有特殊身份均符合。');
-  }
-
-    // 所有條件符合
-    reasons.push('🟢 綜合判斷，您符合所有必要條件！');
-    return {
-      status: LightStatus.Eligible, // 1
-      reasons,
-      welfareIdentityNames,
-      userIdentityNames,
+   if (!userIdentities || userIdentities.length === 0 || userIdentities[0]?.id === 0) {
+     reasons.push('🟡 因為您尚未選擇篩選條件，無法進行精確判斷。');
+     return {
+       status: LightStatus.NoIdentity, // 2
+       reasons,
+       welfareIdentityNames,
+       userIdentityNames: ['未選擇'],
     };
   }
+  const userIdentityNames = userIdentities.map(i => i.name);
+  // reasons.push(`福利要求身份: ${welfareIdentityNames.join('、') || '無特殊要求'}`);
+  // reasons.push(`您的身份: ${userIdentityNames.join('、')}`);
 
+  // 🟡 步驟 2: 檢查福利本身是否沒有任何身份要求 (第二個黃燈條件)
+  if (welfareIdentities.length === 0) {
+     reasons.push('🟡 此福利無特殊身份要求，任何人皆可能符合資格，建議您點擊「前往原文網站」詳閱申請細節。');
+   return {
+     status: LightStatus.NoIdentity, // 2
+     reasons,
+     welfareIdentityNames,
+     userIdentityNames,
+   };
+  }
+
+ // --- 🔴 紅燈判斷：只要一項不符，就直接出局 ---
+  const AGE_GROUP_IDS = [1, 2, 3];
+  const GENDER_GROUP_IDS = [4, 5];
+  const INCOME_GROUP_IDS = [6, 7];
+  const CORE_IDENTITY_GROUP_IDS = [8, 9, 10, 11];
+
+  // 🔴 判斷組 1: 年齡
+  const welfareAgeIdentities = welfareIdentities.filter(i => AGE_GROUP_IDS.includes(i.id));
+  if (welfareAgeIdentities.length > 0) {
+    const isAgeEligible = welfareAgeIdentities.some(wi => userIdentities.some(ui => ui.id === wi.id));
+    const requiredAgeName = welfareAgeIdentities.map(i => i.name).join('或');
+    const userAgeIdentity = userIdentities.find(ui => AGE_GROUP_IDS.includes(ui.id));
+    const userAgeName = userAgeIdentity ? userAgeIdentity.name : '未選擇';
+    if (isAgeEligible) {
+      reasons.push(`✅ 年齡：符合要求\n     (福利要求: ${requiredAgeName}，您為[${userAgeName}])。`);
+    } else {
+      reasons.push(`❌ 年齡：不符合\n     (福利要求: ${requiredAgeName}，您為[${userAgeName}])。`);
+      return { status: LightStatus.NotEligible, reasons, welfareIdentityNames, userIdentityNames };
+    }
+  } else {
+    reasons.push('⚪ 年齡：無特定要求。');
+  }
+
+  // 🔴 判斷組 2: 性別
+   const welfareGenderIdentities = welfareIdentities.filter(i => GENDER_GROUP_IDS.includes(i.id));
+  if (welfareGenderIdentities.length > 0) {
+    const isGenderEligible = welfareGenderIdentities.some(wi => userIdentities.some(ui => ui.id === wi.id));
+    const requiredGenderName = welfareGenderIdentities.map(i => i.name).join('或');
+    const userGenderIdentity = userIdentities.find(ui => GENDER_GROUP_IDS.includes(ui.id));
+    const userGenderName = userGenderIdentity ? userGenderIdentity.name : '未選擇';
+    if (isGenderEligible) {
+      reasons.push(`✅ 性別：符合要求\n     (福利要求: ${requiredGenderName}，您為[${userGenderName}])。`);
+    } else {
+      reasons.push(`❌ 性別：不符合\n     (福利要求: ${requiredGenderName}，您為[${userGenderName}])。`);
+      return { status: LightStatus.NotEligible, reasons, welfareIdentityNames, userIdentityNames };
+    }
+  } else {
+    reasons.push('⚪ 性別：無特定要求。');
+  }
+
+  // 🔴 判斷組 3: 收入 (OR 邏輯)
+  const welfareIncomeIdentities = welfareIdentities.filter(i => INCOME_GROUP_IDS.includes(i.id));
+  if (welfareIncomeIdentities.length > 0) {
+    const userHasMatchingIncome = welfareIncomeIdentities.some(wi => userIdentities.some(ui => ui.id === wi.id));
+    const userIncomeIdentities = userIdentities.filter(ui => INCOME_GROUP_IDS.includes(ui.id));
+    const userIncomeNames = userIncomeIdentities.map(ui => ui.name);
+    const requiredIncomeName = welfareIncomeIdentities.map(i => i.name).join('或');
+    const userIncomeText = userIncomeNames.length > 0 ? userIncomeNames.join('、') : '未選擇';
+    if (userHasMatchingIncome) {
+      reasons.push(`✅ 收入：符合要求\n     (福利要求: ${requiredIncomeName}，您為[${userIncomeText}])。`);
+    } else {
+
+      reasons.push(`❌ 收入：不符合\n     (福利要求: ${requiredIncomeName}，您為[${userIncomeText}])。`);
+      return { status: LightStatus.NotEligible, reasons, welfareIdentityNames, userIdentityNames };
+    }
+  } else {
+    reasons.push('⚪ 收入：無特定要求。');
+  }
+
+  // 🔴 判斷組 4: 核心身分 (AND 邏輯)
+  const welfareCoreIdentities = welfareIdentities.filter(i => CORE_IDENTITY_GROUP_IDS.includes(i.id));
+  if (welfareCoreIdentities.length > 0) {
+
+    // --- 新增的邏輯 ---
+    // 1. 先找出使用者擁有哪些核心身份，方便後續顯示
+    const userCoreIdentities = userIdentities.filter(ui => CORE_IDENTITY_GROUP_IDS.includes(ui.id));
+    const userCoreIdentityNames = userCoreIdentities.map(ui => ui.name);
+    const userCoreIdentitiesText = userCoreIdentityNames.length > 0 ? userCoreIdentityNames.join('、') : '無';
+    // --- 邏輯結束 ---
+
+    for (const coreIdentity of welfareCoreIdentities) {
+      // 檢查使用者是否擁有「這一個」必要身份
+      if (!userIdentities.some(ui => ui.id === coreIdentity.id)) {
+        reasons.push(`❌ 核心身份：不符合\n     (福利要求: "${coreIdentity.name}"，您為[${userCoreIdentitiesText}])。`);
+        return { status: LightStatus.NotEligible, reasons, welfareIdentityNames, userIdentityNames };
+      }
+    }
+    const requiredCoreNames = welfareCoreIdentities.map(i => i.name).join('、');
+    reasons.push(`✅ 核心身份：所有要求均符合\n     (福利要求: "${requiredCoreNames}"，您為[${userCoreIdentitiesText}])。`);
+  } else {
+    reasons.push('⚪ 核心身份：無特定要求。');
+  }
+// --- 🟢 綠燈判斷 ---
+  reasons.push('\n🟢 綜合判斷，您符合所有必要條件！');
+  return {
+    status: LightStatus.Eligible, // 1
+    reasons,
+    welfareIdentityNames,
+    userIdentityNames,
+  };
+
+}
   private filterByNames(
     dtoValues: string[] | undefined,
     allData: { id: number; name: string }[]
@@ -482,7 +553,7 @@ export class WelfareService {
       });
       
     } else {
-      this.logger.log(`  - 用戶沒有設定身份`);
+      this.logger.log(`  - 用戶沒有選擇身份`);
     }
 
     // 3. 呼叫既有邏輯判斷

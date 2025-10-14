@@ -30,7 +30,6 @@ const handleToggleAutoFilter = useCallback(() => {
 useEffect(() => {
         // 當 globalFilters 物件發生任何變化時，這個 effect 就會重新執行
         // 我們在這裡強制將全局狀態同步到本地狀態
-        console.log("全局篩選條件已變更，正在同步到 FilterDrawer...");
         setSelectedAge(globalFilters.age);
         setSelectedGender(globalFilters.gender);
         setSelectedIncome(globalFilters.income);

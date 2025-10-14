@@ -119,7 +119,7 @@ export default function Index() {
   const handleRefresh = useCallback(() => {
     setPage(1);
     fetchWelfareData({ locations, categories, identities, searchQuery, age, gender, income }, false);
-  },[fetchWelfareData, locations, categories, identities, searchQuery, age, gender, income])
+  },[fetchWelfareData, locations, categories, identities, searchQuery, age, gender, income,fetchWelfareData])
 
   const debouncedHandleRefresh = useCallback(debounce(handleRefresh, 300), [handleRefresh]);
 
@@ -133,8 +133,6 @@ export default function Index() {
     if (!user) return; 
 
     if (autoFilterUserData) {
-      console.log("🚀 自動篩選已啟用，正在根據用戶資料更新所有篩選條件...");
-      
       // 1. 更新地區 (這部分您可能已經有了)
       if (user.location?.name) {
         dispatch(setLocations([user.location.name]));
@@ -147,7 +145,6 @@ export default function Index() {
       if (user.birthday) {
         // 使用 dayjs 計算當前日期與生日之間的年份差距
         const age = dayjs().diff(user.birthday, 'year');
-        console.log("age",age)
         let ageGroup = null;
 
         if (age < 20) {
@@ -176,7 +173,7 @@ export default function Index() {
       }
 
     } else {
-      console.log("🏃‍♂️ 自動篩選已關閉，重置所有篩選條件。");
+      console.log("自動篩選已關閉，重置所有篩選條件。");
       dispatch(resetFilters());
     }
   }, [user, autoFilterUserData, dispatch]);

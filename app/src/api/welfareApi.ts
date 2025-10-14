@@ -29,6 +29,15 @@ export async function fetchWelfareApi(params: WelfareApiParams): Promise<Welfare
     if (params.pageSize) {
         query.append('pageSize', params.pageSize.toString());
     }
+    if (params.age) {
+        query.append('age', params.age);
+    }
+    if (params.gender) {
+        query.append('gender', params.gender);
+    }
+    if (params.income && params.income.length > 0) {
+        query.append('income', params.income.join(','));
+    }
 
     const url = `/welfare${query.toString() ? `?${query.toString()}` : ''}`;
 
