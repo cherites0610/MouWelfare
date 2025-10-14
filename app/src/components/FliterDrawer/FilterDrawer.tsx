@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState,useCallback } from 'react';
 import { SafeAreaView, ScrollView } from 'react-native';
 import FilterSection from './FilterSection';
 import FilterFooter from './FilterFooter';
@@ -7,10 +7,12 @@ import styles from './styles';
 import { useDispatch, useSelector } from 'react-redux'
 import { AppDispatch, RootState } from '@/src/store';
 import { setIdentities, setAge, setGender, setIncome, resetFilters } from '@/src/store/slices/filiterSlice';
+import { updateConfig, writeConfig } from '@/src/store/slices/configSlice';
 
 export default function FilterDrawer({ closeDrawer }: { closeDrawer: Function }) {
   const dispatch = useDispatch<AppDispatch>();
   const globalFilters = useSelector((state: RootState) => state.filiter);
+  const { autoFilterUserData } = useSelector((state: RootState) => state.config);
   // State Management
   const [selectedAge, setSelectedAge] = useState<string | null>(globalFilters.age);
     const [selectedGender, setSelectedGender] = useState<string | null>(globalFilters.gender);
@@ -19,7 +21,12 @@ export default function FilterDrawer({ closeDrawer }: { closeDrawer: Function })
   // const { autoFilterUserData } = useSelector((state: RootState) => state.config)
   // const { user } = useSelector((state: RootState) => state.user)
   // const dispatcher = useDispatch<AppDispatch>()
-
+const handleToggleAutoFilter = useCallback(() => {
+    // dispatch 一個 action 來更新 Redux state (新值是當前值的相反)
+    dispatch(updateConfig({ autoFilterUserData: !autoFilterUserData }));
+    // dispatch 另一個 action 來將設定持久化 (寫入本地儲存)
+    dispatch(writeConfig());
+  }, [autoFilterUserData, dispatch]);
 useEffect(() => {
         // 當 globalFilters 物件發生任何變化時，這個 effect 就會重新執行
         // 我們在這裡強制將全局狀態同步到本地狀態
@@ -95,7 +102,7 @@ useEffect(() => {
           onSelect={(option) => handleMultiSelect(option, selectedIdentity, setSelectedIdentity)}
         />
       </ScrollView>
-      <FilterFooter onClear={handleClear} onConfirm={handleConfirm} />
+      <FilterFooter onClear={handleClear} onConfirm={handleConfirm} isAutoFilterSelected={autoFilterUserData} onToggleAutoFilter={handleToggleAutoFilter}/>
     </SafeAreaView>
   );
 }
