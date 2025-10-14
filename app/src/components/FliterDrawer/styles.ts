@@ -68,7 +68,7 @@ export default StyleSheet.create({
     alignItems: 'center',
   },
   actionButton: {
-    flex: 1,
+    // flex: 1,
     paddingVertical: 12,
     paddingHorizontal: 20,
     borderRadius: 8,

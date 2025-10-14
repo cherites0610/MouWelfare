@@ -135,6 +135,7 @@ const App: React.FC = () => {
   const { width } = Dimensions.get('window');
   const { user } = useSelector((state: RootState) => state.user);
   const { autoFilterUserData,needsNewChat  } = useSelector((state: RootState) => state.config);
+  const autoInjectChatContext = useSelector((state: RootState) => state.config.autoInjectChatContext);
   const dispatch = useDispatch<AppDispatch>(); 
   const router = useRouter();
 
@@ -287,7 +288,7 @@ const App: React.FC = () => {
     // 4. 準備問候語
     let initialQuery = '你好';
     // 只有在明確要求個人化，且條件滿足時，才拼接個人資料
-    if (isPersonalized && autoFilterUserData && user) {
+    if (isPersonalized && autoInjectChatContext  && user) {
         const userProfilePrompt = generateUserProfilePrompt(user);
         if (userProfilePrompt) {
             initialQuery = `你好 (${userProfilePrompt})`;
@@ -458,7 +459,7 @@ const performAiSearch = async (query: string, options?: { asNewConversation?: bo
 
     try {
       let finalQuery = query; 
-      if (autoFilterUserData && user) {
+      if (autoInjectChatContext && user) {
         const userProfilePrompt = generateUserProfilePrompt(user);
         if (userProfilePrompt) {
           finalQuery = `${query} (${userProfilePrompt})`;

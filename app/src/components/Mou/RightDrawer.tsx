@@ -17,17 +17,17 @@ const RightDrawer: React.FC<RightDrawerProps> = ({ isVisible, onClose }) => {
   const dispatch = useDispatch<AppDispatch>();
   const router = useRouter(); 
   // 從 Redux 取得設定狀態
-  const autoFilterUserData = useSelector(
-    (state: RootState) => state.config.autoFilterUserData
+  const autoInjectChatContext = useSelector(
+    (state: RootState) => state.config.autoInjectChatContext
   );
 
   const handleAutoSelectChange = (newValue: boolean) => {
      if (newValue) {
       // ✅ 開啟開關：發出 'personalized' 信號
-      dispatch(updateConfig({ autoFilterUserData: true, needsNewChat: 'personalized' }));
+      dispatch(updateConfig({ autoInjectChatContext: true, needsNewChat: 'personalized' }));
     } else {
       // ✅ 關閉開關：發出 'general' 信號
-      dispatch(updateConfig({ autoFilterUserData: false, needsNewChat: 'general' }));
+      dispatch(updateConfig({ autoInjectChatContext: false, needsNewChat: 'general' }));
     }
     // 無論開關，都寫入設定並返回
     dispatch(writeConfig());
@@ -65,10 +65,10 @@ const RightDrawer: React.FC<RightDrawerProps> = ({ isVisible, onClose }) => {
                   </View>
                   <Switch
                     trackColor={{ false: "#ccc", true: COLORS.background }}
-                    thumbColor={autoFilterUserData ? "#fff" : "#888"}
+                    thumbColor={autoInjectChatContext ? "#fff" : "#888"}
                     ios_backgroundColor="#3e3e3e"
                     onValueChange={handleAutoSelectChange}
-                    value={autoFilterUserData}
+                    value={autoInjectChatContext}
                   />
                 </View>
               </View>

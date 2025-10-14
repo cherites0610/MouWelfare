@@ -9,6 +9,7 @@ const ASYNC_STORAGE_CONFIG_KEY = "appConfig";
 const initialState: Config = {
     elderlyMode: false,
     autoFilterUserData: false,
+    autoInjectChatContext: false,
     authToken: "",
     appLaunchCount: 0,
     needsNewChat: null
