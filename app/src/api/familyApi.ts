@@ -14,7 +14,7 @@ export const fetchUserFamilyApi = async (token: string): Promise<FamilysResponse
 }
 
 export const fetchFmailyApi = async (token: string, familyID: number): Promise<FamilysResponse> => {
-    const result = await apiFetch<FamilysResponse>(`/api/family/${familyID}`, {
+    const result = await apiFetch<FamilysResponse>(`/family/${familyID}`, {
         method: 'GET',
         headers: {
             "Authorization": `Bearer ${token}`
@@ -58,7 +58,7 @@ export const getFmailyCodeApi = async (token: string, familyID: string): Promise
 }
 
 export const exitFamilyApi = async (token: string, familyID: string): Promise<ResponseType> => {
-    const result = await apiFetch<ResponseType>(`/api/family/leave/${familyID}`, {
+    const result = await apiFetch<ResponseType>(`/family/${familyID}/leave`, {
         method: "DELETE",
         headers: {
             "Authorization": `Bearer ${token}`

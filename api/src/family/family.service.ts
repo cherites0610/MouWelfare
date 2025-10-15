@@ -209,4 +209,31 @@ export class FamilyService {
     this.logger.log(`用戶${userID}已加入家庭${familyID}使用邀請碼${code}`);
     return family;
   }
+  async leaveFamily(userID: string, familyID: string) {
+    this.logger.log(`[Service] 使用者 ${userID} 請求退出家庭 ${familyID}`);
+
+    const family = await this.findOneByFamilyID(familyID);
+    if (!family) {
+      throw new NotFoundException("未找到該家庭");
+    }
+
+    const userFamily = family.userFamilies.find(
+      (item) => item.user.id === userID,
+    );
+    if (!userFamily) {
+      throw new NotFoundException("您已不在該家庭中");
+    }
+    
+    // 關鍵業務規則：創建者不能退出，只能刪除家庭
+    if (userFamily.role === FamilyRole.Creator) {
+      throw new ForbiddenException("創建者不能退出家庭，只能選擇刪除家庭。");
+    }
+
+    // 呼叫 UserFamilyService 來刪除使用者與家庭之間的關聯記錄
+    // 注意：這裡假設您的 UserFamilyService 有一個 remove(id) 方法
+    await this.userFamilyService.remove(userFamily.id); 
+
+    this.logger.log(`使用者 ${userID} 已成功退出家庭 ${familyID}`);
+    return { success: true, message: "您已成功退出家庭" };
+  }
 }

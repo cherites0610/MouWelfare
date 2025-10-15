@@ -46,7 +46,19 @@ export class UserFamilyService {
     return userFamily;
   }
 
-  remove(id: string) {
-    return `This action removes a #${id} userFamily`;
+  async remove(id: string): Promise<boolean> {
+    this.logger.log(`正在從 user_family 資料表中刪除 ID 為 ${id} 的記錄...`);
+    
+    // 使用 TypeORM 的 delete 方法來刪除
+    const result = await this.userFamilyRepository.delete({ id });
+
+    // 檢查是否真的有一行記錄被刪除
+    if (result.affected === 0) {
+        this.logger.warn(`嘗試刪除 UserFamily 記錄 ${id} 失敗，可能該記錄不存在。`);
+        return false;
+    }
+
+    this.logger.log(`成功刪除 UserFamily 記錄 ${id}。`);
+    return true;
   }
 }

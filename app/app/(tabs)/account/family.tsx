@@ -28,6 +28,11 @@ export default function Family() {
 
   const handleConfirm = async () => {
     const trimmedValue = inputValue.trim();
+    console.log("---------- [前端] 準備發送請求 ----------");
+    console.log(`目標 URL: [POST] /api/family/join`); // 手動寫下預期的 URL 和方法
+    console.log("傳送的資料 (Payload):", { invitationCode: trimmedValue });
+    console.log("使用的認證 Token (authToken):", authToken);
+    console.log("------------------------------------------");
     if (!trimmedValue || loading) {
       return;
     }
@@ -52,6 +57,14 @@ export default function Family() {
         setScannerActive(false);
       }
     } catch (e: any) {
+      console.error("---------- [前端] 請求失敗！ ----------");
+      if (e.response) {
+            console.error("後端回應的狀態碼:", e.response.status);
+            console.error("後端回應的錯誤訊息:", JSON.stringify(e.response.data, null, 2));
+        } else {
+            console.error("完整的錯誤物件:", e);
+        }
+        console.error("--------------------------------------");
       Alert.alert(e.message)
       success = false;
     } finally {

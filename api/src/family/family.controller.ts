@@ -93,6 +93,17 @@ export class FamilyController {
     );
   }
 
+  @Delete(":familyID/leave")
+  async leaveFamily(
+    @UserID() userID: string,
+    @Param("familyID") familyID: string,
+  ) {
+    return new ResponseDTO(
+      "退出家庭成功",
+      await this.familyService.leaveFamily(userID, familyID),
+    );
+  }
+
   @Post("join/:code")
   async joinFamilyByInviteCode(
     @UserID() userID: string,
@@ -103,4 +114,5 @@ export class FamilyController {
       await this.familyService.joinFamilyByInviteCode(userID, code),
     );
   }
+
 }

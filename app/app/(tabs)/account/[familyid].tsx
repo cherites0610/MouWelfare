@@ -38,11 +38,17 @@ const FamilySettingsScreen = () => {
 
     const handleExitFamilyPress = async () => {
         try {
+            console.log("---------- [前端] 準備發送「退出家庭」請求 ----------");
+        console.log(`目標 URL: [DELETE] /api/family/${family?.id}/leave`); // 假設的 URL，請根據您的 API 調整
+        console.log("使用的家庭 ID (family.id):", family?.id);
+        console.log("使用的認證 Token (authToken):", authToken);
+        console.log("--------------------------------------------------");
             const result = await exitFamilyApi(authToken, family?.id!)
             Alert.alert("退出家庭成功")
             await disDispatch(fetchFamily())
             router.replace("/account/family")
         } catch (err: any) {
+            console.error("完整的錯誤物件:", err);
             Alert.alert("退出家庭失敗")
         }
     }
@@ -62,7 +68,23 @@ const FamilySettingsScreen = () => {
                         await disDispatch(fetchFamily())
                         router.replace("/account/family")
                     } catch (err: any) {
-                        Alert.alert("刪除家庭失敗")
+                         let errorMessage = "發生未知錯誤";
+
+            // 檢查是否是 Axios 錯誤，並有後端的回應
+            if (err && typeof err === 'object' && 'response' in err && err.response?.data?.message) {
+                errorMessage = err.response.data.message;
+            } 
+            // 檢查是否是標準的 Error 物件
+            else if (err instanceof Error) {
+                errorMessage = err.message;
+            } 
+            // 如果都不是，就將它轉成字串
+            else if (typeof err === 'string') {
+                errorMessage = err;
+            }
+            
+            console.error("退出家庭失敗，詳細錯誤:", err); // 保留詳細的 console.error
+            Alert.alert("退出家庭失敗", errorMessage); // 顯示更精準的錯誤訊息
                     }
                 }
             },
