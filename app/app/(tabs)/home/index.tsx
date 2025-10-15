@@ -13,7 +13,7 @@ import Filiter from '@/src/components/Filiter/FiliterBar';
 import FilterDrawer from '@/src/components/FliterDrawer/FilterDrawer';
 import WelfareList from '@/src/components/WelfareList';
 import { Welfare, WelfareApiParams } from '@/src/type/welfareType';
-import { fetchWelfareApi } from '@/src/api/welfareApi';
+import { fetchWelfareApi,fetchFavoriteAPI  } from '@/src/api/welfareApi';
 import { AppDispatch,RootState } from '@/src/store';
 import { useSelector,useDispatch  } from 'react-redux';
 import { debounce } from 'lodash';
@@ -37,8 +37,9 @@ export default function Index() {
   const { familys: FAMILYS } = useSelector((state: RootState) => state.family); // 獲取家庭類型數據
   const { locations, categories, identities, family, searchQuery, age, gender, income } = useSelector((state: RootState) => state.filiter)
   const { user } = useSelector((state: RootState) => state.user)
-  const { autoFilterUserData } = useSelector((state: RootState) => state.config);
+  const { autoFilterUserData, authToken } = useSelector((state: RootState) => state.config);
   const dispatch = useDispatch<AppDispatch>();
+
   
   const fetchWelfareData = useCallback((queryParams: Partial<WelfareApiParams>, isNextPage = false) => {
     if (isFetching) return; // 防止重複請求
@@ -83,10 +84,16 @@ export default function Index() {
 
     // 執行 API 請求
     fetchWelfareApi(query)
-      .then((res) => {
+      .then(async (res) => {
+        const favoritesResponse = await fetchFavoriteAPI(authToken);
+        const favoriteIds = new Set(favoritesResponse.data.map((fav: Welfare) => fav.id));
+        const enrichedData = res.data.data.map(welfare => ({
+          ...welfare,
+          isFavorited: favoriteIds.has(welfare.id),
+          }));
         setData((prevData: Welfare[]) => {
           // 如果是下一頁，追加數據；否則替換數據
-          const newData = isNextPage ? [...prevData, ...res.data.data] : [...res.data.data];
+          const newData = isNextPage ? [...prevData, ...enrichedData] : enrichedData;
           // 去重，根據 id 確保數據唯一
           return Array.from(new Map(newData.map((item) => [item.id, item])).values());
         });
@@ -114,12 +121,12 @@ export default function Index() {
         }
         setIsFetching(false);
       });
-  },[isFetching, hasMore, page, user, FAMILYS, family]);
+  },[isFetching, hasMore, page, user, FAMILYS, family, authToken]);
 
   const handleRefresh = useCallback(() => {
     setPage(1);
     fetchWelfareData({ locations, categories, identities, searchQuery, age, gender, income }, false);
-  },[fetchWelfareData, locations, categories, identities, searchQuery, age, gender, income,fetchWelfareData])
+  },[fetchWelfareData, locations, categories, identities, searchQuery, age, gender, income])
 
   const debouncedHandleRefresh = useCallback(debounce(handleRefresh, 300), [handleRefresh]);
 
@@ -192,6 +199,14 @@ export default function Index() {
     drawerRef.current?.closeDrawer();
   }, []);
 
+  const handleToggleFavoriteInList = (welfareId: number, currentStatus: boolean) => {
+    setData(currentData => 
+      currentData.map(item => 
+        item.id === welfareId ? { ...item, isFavorited: !currentStatus } : item
+      )
+    );
+  };
+
   return (
     <GestureHandlerRootView>
       <SafeAreaProvider>
@@ -215,6 +230,8 @@ export default function Index() {
                 onRefresh={handleRefresh}
                 onLoadMore={onLoadMore}
                 isLoadingMore={isLoadingMore}
+                onToggleFavorite={handleToggleFavoriteInList}
+                authToken={authToken}
               />
             </View>
           </ReanimatedDrawerLayout>

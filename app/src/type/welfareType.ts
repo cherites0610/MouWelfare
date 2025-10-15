@@ -14,7 +14,8 @@ export interface Welfare {
     lightStatus: number;
     lightReason:string[];
     summary: string;
-    familyMember: WelfareFamilyMember[]
+    familyMember: WelfareFamilyMember[];
+    isFavorited?: boolean;
 }
 
 export interface WelfareFamilyMember {

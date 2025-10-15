@@ -12,7 +12,8 @@ import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeabl
 import { COLORS } from '../utils/colors';
 import { useRouter } from 'expo-router';
 import { Welfare } from '../type/welfareType';
-import { addFavoriteAPI } from '../api/welfareApi';
+import { Ionicons } from '@expo/vector-icons'; 
+import { addFavoriteAPI, deleteFavoriteAPI } from '../api/welfareApi';
 import { RootState } from '../store';
 import { useSelector } from 'react-redux'
 
@@ -22,18 +23,20 @@ type WelfareListProps = {
     onRefresh: () => void; // 父組件提供的刷新方法
     isLoadingMore: boolean; // 父組件提供的加載更多狀態
     onLoadMore: () => void; // 父組件提供的加載更多方法
+    onToggleFavorite: (welfareId: number, currentStatus: boolean) => void;
+    authToken: string;
 };
 
 type RightActionProps = {
     item: Welfare;
     prog: SharedValue<number>;
     drag: SharedValue<number>;
+    authToken: string;
+    onToggleFavorite: (welfareId: number, currentStatus: boolean) => void;
 };
 
-export default function WelfareList({ listData, refreshing, onRefresh, isLoadingMore, onLoadMore }: WelfareListProps) {
+export default function WelfareList({ listData, refreshing, onRefresh, isLoadingMore, onLoadMore, onToggleFavorite, authToken }: WelfareListProps) {
     const route = useRouter();
-
-    const { authToken } = useSelector((state: RootState) => state.config)
 
     const handleEndReached = () => {
         if (!isLoadingMore && !refreshing) {
@@ -43,7 +46,7 @@ export default function WelfareList({ listData, refreshing, onRefresh, isLoading
         }
     };
 
-    const RightAction = ({ item, prog, drag }: RightActionProps) => {
+    const RightAction = ({ item, prog, drag, authToken, onToggleFavorite }: RightActionProps) => {
         const styleAnimation = useAnimatedStyle(() => {
             // 每個按鈕寬度 80px，兩個就是 160
             const translateX = interpolate(
@@ -80,12 +83,19 @@ export default function WelfareList({ listData, refreshing, onRefresh, isLoading
 
         const handleFavorite = async () => {
             try {
-                const result = await addFavoriteAPI(authToken, item.id)
-                Alert.alert(result.message)
-            } catch (err: any) {
-                Alert.alert('添加失敗', err.message)
-            }
-        };
+                if (item.isFavorited) {
+          // 如果已收藏，則呼叫刪除 API
+             await deleteFavoriteAPI(authToken, item.id);
+             } else {
+          // 如果未收藏，則呼叫新增 API
+            await addFavoriteAPI(authToken, item.id);
+        }
+        // 呼叫父層傳來的函式，來更新 UI 狀態
+        onToggleFavorite(item.id, item.isFavorited || false);
+         } catch (err: any) {
+     Alert.alert('操作失敗', err.message);
+     }
+     };
 
         return (
             <Reanimated.View style={[styleAnimation, { flexDirection: 'row' }]}>
@@ -101,7 +111,12 @@ export default function WelfareList({ listData, refreshing, onRefresh, isLoading
                     }}
                     onPress={handleFavorite}
                 >
-                    <Text>收藏</Text>
+                    {/* <Text>收藏</Text> */}
+                    <Ionicons 
+                        name={item.isFavorited ? 'heart' : 'heart-outline'} 
+                        size={28} 
+                        color={'white'} 
+                    />
                 </TouchableOpacity>
                 <TouchableOpacity
                     style={{
@@ -113,7 +128,8 @@ export default function WelfareList({ listData, refreshing, onRefresh, isLoading
                     }}
                     onPress={handleShare}
                 >
-                    <Text>分享</Text>
+                    {/* <Text>分享</Text> */}
+                    <Ionicons name="share-social-outline" size={28} color={'#333'} />
                 </TouchableOpacity>
             </Reanimated.View>
         );
@@ -126,7 +142,12 @@ export default function WelfareList({ listData, refreshing, onRefresh, isLoading
                     friction={2}
                     rightThreshold={40}
                     renderRightActions={(progress, dragX) => (
-                        <RightAction item={item} prog={progress} drag={dragX} />
+                        <RightAction 
+                        item={item} 
+                        prog={progress} 
+                        drag={dragX} 
+                        authToken={authToken}
+                        onToggleFavorite={onToggleFavorite}/>
                     )}
                 >
                     <TouchableOpacity
