@@ -1,4 +1,5 @@
 import { fetchWelfareByIDAPI,addFavoriteAPI,fetchFavoriteAPI,deleteFavoriteAPI } from '@/src/api/welfareApi';
+import ReasonModal from '@/src/components/Mou/ReasonModal'
 import { RootState } from '@/src/store';
 import { Welfare } from '@/src/type/welfareType';
 import { COLORS } from '@/src/utils/colors';
@@ -36,6 +37,8 @@ const WelfareInfo = () => {
   const { locations, categories, identities, family, searchQuery } = useSelector((state: RootState) => state.filiter)
   const { familys } = useSelector((state: RootState) => state.family); // 獲取家庭類型數據
   const { authToken } = useSelector((state: RootState) => state.config);
+  const [isReasonModalVisible, setIsReasonModalVisible] = useState(false);
+  const [modalContent, setModalContent] = useState({ title: '', reasons: [''] });
   const router = useRouter();
 
   const getCircleColor = (status: number | undefined) => {
@@ -194,6 +197,14 @@ useEffect(() => {
       </View>
     );
   }
+  const showFamilyMemberReason = (member: Welfare['familyMember'][0]) => {
+    // 將理由陣列用換行符號組合成長字串
+    setModalContent({
+      title: `${member.name} 的資格評估說明`,
+      reasons: member.lightReason,
+    });
+    setIsReasonModalVisible(true);
+  };
 
   return (
     <SafeAreaView style={styles.pageContainer}>
@@ -270,9 +281,9 @@ useEffect(() => {
             )}
 
             {welfare.familyMember.length > 0 && (
-              <Text style={styles.sectionTitle}>可獲得福利之家人</Text>
+              <Text style={styles.sectionTitle}>可能獲得福利之家人</Text>
             )}
-            <FlatList
+            {/* <FlatList
               style={styles.list}
               scrollEnabled={false}
               data={welfare.familyMember} // 假設 API 返回或使用臨時數據
@@ -292,7 +303,37 @@ useEffect(() => {
                 </View>
               )}
               keyExtractor={(item, index) => index.toString()}
-            />
+            /> */}
+            <FlatList
+                      style={styles.list}
+                      scrollEnabled={false}
+                        data={welfare.familyMember}
+                      // ✅ 步驟 2: 使用下面這段新的 renderItem 邏輯
+                      renderItem={({ item, index }) => (
+                        <TouchableOpacity 
+                          style={styles.familyRow}
+                          onPress={() => showFamilyMemberReason(item)} // 綁定點擊事件
+                          activeOpacity={0.7}
+                        >
+                          <View style={styles.familyInfo}>
+                           {/* <Text style={styles.listIndex}>{index + 1}</Text> */}
+                    <Image
+                          source={item.avatarUrl ? { uri: item.avatarUrl } : require('../../../assets/images/logo.jpeg')} // 增加一個預設頭像
+                          style={styles.avatar}
+                          />
+                           <Text style={styles.listItemText}>{item.name}</Text>
+                          </View>
+                          <View style={styles.familyLightStatus}>
+                              {/* 顯示家人的燈號 */}
+                              <View
+                                style={[styles.circleIndicatorSmall, { backgroundColor: getCircleColor(item.lightStatus) }]}
+                              />
+                              {/* <Text style={styles.resultTextSmall}>{getCircleText(item.lightStatus)}</Text> */}
+                          </View>
+                        </TouchableOpacity>
+                       )}
+                       keyExtractor={(item, index) => index.toString()}
+                   />
             
             {/* <Text style={styles.sectionTitle}>原始文章:</Text>  
            <Text style={styles.notes}>{welfare.detail}</Text> */}
@@ -323,6 +364,12 @@ useEffect(() => {
           <Text>Loading...</Text>
         </View>
       )}
+      <ReasonModal 
+        isVisible={isReasonModalVisible}
+        onClose={() => setIsReasonModalVisible(false)}
+        title={modalContent.title}
+        reasons={modalContent.reasons}
+      />
       </SafeAreaView>
 
   );
@@ -425,6 +472,7 @@ const styles = StyleSheet.create({
     width: 30,
     height: 30,
     borderRadius: 50,
+    marginRight: 6,
   },
   reasonContainer:{
      marginTop: 8, padding: 16, backgroundColor: '#f5f5f5', borderRadius: 8,marginBottom:8
@@ -461,6 +509,36 @@ const styles = StyleSheet.create({
     color: '#007aff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  familyRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 0.5,
+    borderBottomColor: '#e0e0e0',
+  },
+  // 包裹頭像和姓名的左側容器
+  familyInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  // 包裹燈號和文字的右側容器
+  familyLightStatus: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  // 一個較小的燈號圓點
+  circleIndicatorSmall: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    marginRight: 6,
+  },
+  // 較小的結果文字
+  resultTextSmall: {
+    fontSize: 12,
+    color: '#555',
   },
 });
 

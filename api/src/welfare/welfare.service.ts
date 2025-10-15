@@ -16,6 +16,8 @@ import { UserFamily } from "../user-family/entities/user-family.entity.js";
 import { LightStatus } from "../common/enum/light-status.enum.js";
 import { User } from "../user/entities/user.entity.js";
 import{LightStatusResult }from "../../../api/src/welfare/interface/light-status-result.interface.js"
+import dayjs from 'dayjs';
+
 @Injectable()
 export class WelfareService {
   private readonly logger = new Logger(WelfareService.name);
@@ -394,6 +396,48 @@ export class WelfareService {
   };
 
 }
+
+private getWelfareLightForProfile(
+    welfareIdentities: Identity[],
+    user: User, // <-- 關鍵不同：接收完整的 User 物件
+  ): LightStatusResult {
+    this.logger.log(`  -> 正在為使用者 [${user.name}] 的真實個人檔案計算燈號...`);
+
+    // 1. 準備一個「動態」的身份列表，從使用者已儲存的身份開始
+    const dynamicUserIdentities: Identity[] = user.identities ? [...user.identities] : [];
+    const allIdentities = this.constDataService.getIdentities();
+
+    // 2. 根據 user.gender，動態加入「性別身份」
+    if (user.gender) {
+      const genderIdentity = allIdentities.find(i => i.name === user.gender);
+      // 如果找到了對應的性別身份，且尚未存在於列表中，則加入
+      if (genderIdentity && !dynamicUserIdentities.some(i => i.id === genderIdentity.id)) {
+        dynamicUserIdentities.push(genderIdentity);
+      }
+    }
+
+    // 3. 根據 user.birthday，動態計算並加入「年齡身份」
+    if (user.birthday) {
+      const age = dayjs().diff(user.birthday, 'year');
+      let ageIdentityId: number | null = null;
+      if (age < 20) ageIdentityId = 1;
+      else if (age >= 20 && age <= 65) ageIdentityId = 2;
+      else ageIdentityId = 3;
+
+      if (ageIdentityId) {
+        const ageIdentity = allIdentities.find(i => i.id === ageIdentityId);
+        // 如果找到了對應的年齡身份，且尚未存在於列表中，則加入
+        if (ageIdentity && !dynamicUserIdentities.some(i => i.id === ageIdentity.id)) {
+          dynamicUserIdentities.push(ageIdentity);
+        }
+      }
+    }
+    
+    this.logger.log(`     - 為 [${user.name}] 組合後的身份: [${dynamicUserIdentities.map(i => i.name).join(', ')}]`);
+
+    // 4. 最後，呼叫既有的核心判斷引擎，傳入我們剛剛組合好的完整身份列表
+    return this.getWelfareLight(welfareIdentities, dynamicUserIdentities);
+  }
   private filterByNames(
     dtoValues: string[] | undefined,
     allData: { id: number; name: string }[]
@@ -455,9 +499,9 @@ export class WelfareService {
             const eligibleFamilyMembers: FamilyMemberDTO[] = [];
 
             for (const familyMember of otherFamilyMembers) {
-                const result = this.getWelfareLight(
+                const result = this.getWelfareLightForProfile(
                     welfare.identities,
-                    familyMember.user.identities
+                    familyMember.user
                 );
                 
                 // 我們可以顯示所有綠燈或黃燈的家人

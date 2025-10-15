@@ -20,7 +20,8 @@ export interface Welfare {
 export interface WelfareFamilyMember {
     name: string,
     avatarUrl: string,
-    lightStatus: number
+    lightStatus: number,
+    lightReason: string[]
 }
 
 export interface WelfareApiParams {
