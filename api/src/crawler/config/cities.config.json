@@ -1,25 +1,25 @@
 {
-  "pingtung": {
+ "pingtung": {
     "city": "屏東縣",
-    "baseUrl": "https://www.pthg.gov.tw/",
-    "startUrl": "https://www.pthg.gov.tw/planjdp/Content_List.aspx?n=46F6EFDFE943D834",
+    "baseUrl": "https://socmap.pthg.gov.tw",
+    "startUrl": "https://socmap.pthg.gov.tw/pt1w/sa100/list",
     "levels": [
       {
-        "selector": "#ContentPlaceHolder1_dlindex .data_midlle_sitemap a",
+        "selector": ".col-md-4 a",
         "getUrlAttr": "href"
       },
       {
-        "selector": "table a",
-        "getUrlAttr": "href"
+        "selector": ".table-responsive a",
+        "getUrlAttr": "href",
+        "paginationSelector": ".nextLink"
       }
     ],
-    "stopSelector": "#data_bottom > div > ul > li.ButtonStyle_home > a",
+    "stopSelector": ".mainContent",
     "extractSelectors": {
-      "title": "#content_middle > div.title > h2",
+      "title": "h2",
       "date": "",
-      "content": "#ContentPlaceHolder1_data_midlle_cp > table > tbody > tr:nth-child(2) > td > div"
-    },
-    "downloadData":".news_box03_data ul li"
+      "content": ".table.table-striped.table-bordered"
+  }
   },
   "newtaipei": {
     "city": "新北市",
@@ -162,7 +162,7 @@
 	"downloadData":".file_download ul li"
   },
   "taichung": {
-    "city": "台中市",
+    "city": "臺中市",
     "baseUrl": "https://www.society.taichung.gov.tw/",
     "startUrl": "https://www.society.taichung.gov.tw/13735/Normalnodelist",
     "levels": [
@@ -218,7 +218,7 @@
     "downloadData":"#download"
   },
   "hualien": {
-    "city": "花蓮市",
+    "city": "花蓮縣",
     "baseUrl": "https://sa.hl.gov.tw",
     "startUrl": "https://sa.hl.gov.tw/List_sp/0c9cde4096e14a83bc3535d68da539b1?listPage=50",
     "levels": [
@@ -244,7 +244,7 @@
     "downloadData":".In_box.one .dw"
   },
   "yilan": {
-    "city": "宜蘭市",
+    "city": "宜蘭縣",
     "baseUrl": "https://sntroot.e-land.gov.tw/",
     "startUrl": "https://sntroot.e-land.gov.tw/cl.aspx?n=10099",
     "levels": [
@@ -266,7 +266,7 @@
     "downloadData":".group-list.file-download-multiple"
   },
 "tainan": {
-    "city": "台南市",
+    "city": "臺南市",
     "baseUrl": "https://sab.tainan.gov.tw/",
     "startUrl": "https://sab.tainan.gov.tw/cl.aspx?n=21367",
     "levels": [
@@ -292,7 +292,7 @@
     "downloadData":".group-list.file-download-multiple ul li li"
   },
   "penghu": {
-    "city": "澎湖市",
+    "city": "澎湖縣",
     "baseUrl": "https://www.penghu.gov.tw/society/",
     "startUrl": "https://www.penghu.gov.tw/society/home.jsp?id=1",
     "levels": [
@@ -318,7 +318,7 @@
     "downloadData":".annex ul li"
   },
  "taitung": {
-    "city": "台東市",
+    "city": "臺東縣",
     "baseUrl": "https://taisoc.taitung.gov.tw/WebSite/Service/",
     "startUrl": "https://taisoc.taitung.gov.tw/WebSite/Service/serviceMain.aspx?menuid=lW%2bfKiAxClc%3d#cate122",
     "levels": [
@@ -340,7 +340,7 @@
     "downloadData":".tbDataFile .tdFile"
   },
   "changhua": {
-    "city": "彰化市",
+    "city": "彰化縣",
     "baseUrl": "https://social.chcg.gov.tw/07other/",
     "startUrl": "https://social.chcg.gov.tw/07other/other01_list.aspx?topsn=6210",
     "levels": [
@@ -366,7 +366,7 @@
     "downloadData":".pages_content_blcok-files"
   },
   "kinmen": {
-    "city": "金門市",
+    "city": "金門縣",
     "baseUrl": "https://social.kinmen.gov.tw/",
     "startUrl": "https://social.kinmen.gov.tw/Content_List.aspx?n=B709941748334ACA",
     "levels": [
@@ -399,7 +399,7 @@
   }
   },
 "nantou": {
-  "city": "南投市",
+  "city": "南投縣",
   "baseUrl": "https://welfare.nantou.gov.tw/",
   "startUrl": "https://welfare.nantou.gov.tw/1486/WebMap/ListView/3654/zh-Hant-TW",
   "levels": [
@@ -417,7 +417,7 @@
   "downloadData":"#ListData .table tr td:nth-child(4)"
 },
   "matsu": {
-  "city": "連江市",
+  "city": "連江縣",
   "baseUrl": "https://www.matsu.gov.tw/",
   "startUrl": "https://www.matsu.gov.tw/chhtml/download/371030000A0001/5972",
   "levels": [
@@ -434,7 +434,7 @@
   }
   },
 "miaoli": {
-  "city": "苗栗市",
+  "city": "苗栗縣",
   "baseUrl": "https://www.miaoli.gov.tw/social_affairs/",
   "startUrl": "https://www.miaoli.gov.tw/social_affairs/News.aspx?n=8644&sms=14225&page=1&PageSize=20",
   "levels": [

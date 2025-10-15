@@ -20,6 +20,7 @@ import { YilanCrawlerStrategy } from "./strategy/yilan.strategy.js";
 import { TainanCrawlerStrategy } from "./strategy/tainan.strategy.js";
 import { LienchiangCrawlerStrategy } from "./strategy/lienchiang.strategy.js";
 import { appendJson } from "./utils/append-json.js";
+import { PingtungCrawlerStrategy } from "./strategy/pingtung.strategy.js";
 import * as fs from "fs";
 import * as path from "path";
 
@@ -61,7 +62,7 @@ export class CrawlerService {
     const results: any[] = [];
 
     const dynamicCities = ["taipei", "nantou"];
-    const staticCities = ["yilan", "tainan", "matsu"];
+    const staticCities = ["yilan", "tainan", "matsu","pingtung"];
 
     if (dynamicCities.includes(cityName)) {
       return await this.crawlDynamicCity(cityName, config, existingLinks);
@@ -84,7 +85,7 @@ export class CrawlerService {
     const result: any[] = [];
 
     const dynamicCities = ["taipei", "nantou"];
-    const staticCities = ["yilan", "tainan", "matsu"];
+    const staticCities = ["yilan", "tainan", "matsu","pingtung"];
 
     if (dynamicCities.includes(cityName)) {
       return await this.crawlDynamicCity(cityName, config, existingLinks);
@@ -109,6 +110,9 @@ export class CrawlerService {
     await fsExtra.ensureDir(outputDir);
     await fsExtra.ensureDir(htmlDir);
 
+    // ⚠️ 使用 Set 來追蹤待處理的 URL，避免重複加入 queue
+    const visitedOrQueued = new Set<string>([config.startUrl]);
+
     while (queue.length) {
       const currentBatch = queue.splice(0, this.concurrency);
       const tasks = currentBatch.map(({ url, level }, index) => async () => {
@@ -124,13 +128,36 @@ export class CrawlerService {
 
           const levelConfig = config.levels[level];
           if (levelConfig) {
+            // 1. 正常處理鑽取下一層的連結
             $(levelConfig.selector).each((_, el) => {
               const nextUrlRaw = $(el).attr(levelConfig.getUrlAttr);
               if (nextUrlRaw) {
                 const nextUrl = resolveUrl(config.baseUrl, nextUrlRaw);
-                queue.push({ url: nextUrl, level: level + 1 });
+                // 檢查是否已處理過，避免重複
+                if (!visitedOrQueued.has(nextUrl)) {
+                  visitedOrQueued.add(nextUrl);
+                  queue.push({ url: nextUrl, level: level + 1 });
+                }
               }
             });
+
+            // 🆕 2. 新增分頁處理邏輯
+            if (levelConfig.paginationSelector) {
+              const nextLinkEl = $(levelConfig.paginationSelector);
+              if (nextLinkEl.length > 0) {
+                const nextUrlRaw = nextLinkEl.attr("href"); // 分頁連結通常是 'href'
+                if (nextUrlRaw) {
+                  const nextUrl = resolveUrl(config.baseUrl, nextUrlRaw);
+                  // 檢查是否已處理過，避免重複
+                  if (!visitedOrQueued.has(nextUrl)) {
+                    this.logger.log(`[${cityName}] 找到下一頁，加入佇列: ${nextUrl}`);
+                    visitedOrQueued.add(nextUrl);
+                    // ❗❗❗ 關鍵：下一頁的 level 保持不變！
+                    queue.push({ url: nextUrl, level: level });
+                  }
+                }
+              }
+            }
           }
 
           if ($(config.stopSelector).length > 0) {
@@ -160,7 +187,7 @@ export class CrawlerService {
                   const allFileContent = fileContents.join('');
                   
                   // 如果是台東市，移除「相關檔案」那段文字
-                  if (cityDisplayName === "台東市" && content.includes("相關檔案")) {
+                  if (cityDisplayName === "臺東市" && content.includes("相關檔案")) {
                     // 移除「相關檔案：」之後的所有內容（包括檔案名列表）
                     content = content.split("相關檔案")[0].trim();
                   }
@@ -211,14 +238,14 @@ export class CrawlerService {
     return result;
   }
 
-  /** 🆕 從頁面下載並提取檔案內容 */
+  /** 🆕 從頁面下載並提取檔案內容（取前三段、限2000字） */
   private async downloadFilesFromPage($: cheerio.CheerioAPI, config: any, pageUrl: string): Promise<string[]> {
     const fileContents: string[] = [];
     
     try {
       const downloadLinks: string[] = [];
       $(config.downloadData).find('a').each((index, el) => {
-        if (index >= 3) return false; // 只取前三個檔案
+        if (index >= 2) return false; // 只取前2個檔案
         const href = $(el).attr('href');
         if (href) {
           const fullUrl = resolveUrl(config.baseUrl, href);
@@ -232,7 +259,7 @@ export class CrawlerService {
 
       this.logger.log(`[共用爬蟲] 找到 ${downloadLinks.length} 個下載連結: ${downloadLinks.join(', ')}`);
 
-      // 並行下載前三個檔案並提取內容
+      // 並行下載檔案並提取內容
       const downloadPromises = downloadLinks.map(async (downloadUrl) => {
         try {
           const fileContent = await this.downloadAndExtractText(downloadUrl);
@@ -244,8 +271,57 @@ export class CrawlerService {
       });
 
       const results = await Promise.all(downloadPromises);
-      fileContents.push(...results.filter(content => content.length > 0));
-      
+      const merged = results.filter(content => content.length > 0).join('\n\n');
+
+      // 🧩 改良：以「真實句號」為主的段落擷取
+      if (merged) {
+        let paragraphs: string[] = [];
+
+        // 先以自然語句（句號、問號、驚嘆號）分割
+        const sentences = merged
+          .split(/(?<=[。！？.!?])\s*/)
+          .map(s => s.trim())
+          .filter(s => s.length > 10);
+
+        let buffer = "";
+        for (const sentence of sentences) {
+          buffer += sentence;
+          // 每段約 300–500 字，視情況自然切割
+          if (buffer.length > 350) {
+            paragraphs.push(buffer.trim());
+            buffer = "";
+          }
+          // 最多組成三段
+          if (paragraphs.length >= 3) break;
+        }
+        if (buffer && paragraphs.length < 3) paragraphs.push(buffer.trim());
+
+        // 如果前面沒切出三段，就補上原始的內容分隔邏輯（保底）
+        if (paragraphs.length === 0) {
+          paragraphs = merged.split(/\n\s*\n+/).map(p => p.trim()).filter(p => p.length > 20);
+        }
+
+        // 限制總長 <= 4000字
+        let total = 0;
+        const selected: string[] = [];
+        for (const para of paragraphs) {
+          if (selected.length >= 3) break;
+          if (total + para.length > 4000) break;
+          selected.push(para);
+          total += para.length;
+        }
+
+        // 補句號（若最後一段沒句號結尾）
+        if (selected.length > 0) {
+          const i = selected.length - 1;
+          const last = selected[i];
+          if (!/[。！？.!?]$/.test(last)) selected[i] = last + "。";
+        }
+
+        fileContents.push(selected.join('\n\n'));
+        this.logger.log(`[共用爬蟲] 已擷取 ${selected.length} 段內容，總字數 ${total}。`);
+      }
+
     } catch (err) {
       this.logger.warn(`[共用爬蟲] 檔案下載過程發生錯誤: ${pageUrl}，錯誤: ${err.message}`);
     }
@@ -336,6 +412,7 @@ export class CrawlerService {
       yilan: YilanCrawlerStrategy,
       tainan: TainanCrawlerStrategy,
       matsu: LienchiangCrawlerStrategy,
+      pingtung: PingtungCrawlerStrategy,
     };
 
     const StrategyClass = strategyMap[cityName];
