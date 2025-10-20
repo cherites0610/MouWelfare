@@ -17,11 +17,11 @@ import {
   Image,
   Platform,
   ScrollView,
-  SafeAreaView,
   Linking,
   ActivityIndicator,
   Share,
   Alert,
+  SafeAreaView
 } from 'react-native';
 import { useSelector } from 'react-redux';
 
@@ -103,6 +103,7 @@ useEffect(() => {
         };
         
         setWelfare(finalWelfareData);
+        console.log(finalWelfareData)
       } catch (error) {
         console.error('載入福利資料時發生錯誤:', error);
         setError('無法加載數據，請稍後重試');
@@ -283,32 +284,10 @@ useEffect(() => {
             {welfare.familyMember.length > 0 && (
               <Text style={styles.sectionTitle}>可能獲得福利之家人</Text>
             )}
-            {/* <FlatList
-              style={styles.list}
-              scrollEnabled={false}
-              data={welfare.familyMember} // 假設 API 返回或使用臨時數據
-              renderItem={({ item, index }) => (
-                <View
-                  style={[
-                    styles.listRow,
-                    index === (welfare.familyMember.length) - 1 && styles.lastItemRow,
-                  ]}
-                >
-                  <Text style={styles.listIndex}>{index + 1}</Text>
-                  <Image
-                    source={{ uri: item?.avatarUrl }}
-                    style={styles.avatar}
-                  />
-                  <Text style={styles.listItemText}>{item.name}</Text>
-                </View>
-              )}
-              keyExtractor={(item, index) => index.toString()}
-            /> */}
             <FlatList
                       style={styles.list}
                       scrollEnabled={false}
-                        data={welfare.familyMember}
-                      // ✅ 步驟 2: 使用下面這段新的 renderItem 邏輯
+                      data={welfare.familyMember}
                       renderItem={({ item, index }) => (
                         <TouchableOpacity 
                           style={styles.familyRow}
@@ -337,21 +316,20 @@ useEffect(() => {
             
             {/* <Text style={styles.sectionTitle}>原始文章:</Text>  
            <Text style={styles.notes}>{welfare.detail}</Text> */}
-</View>
-</ScrollView>
-           {/* <View style={styles.bottomActionContainer}>
-            <View style={styles.statusRow}>
-              <Text style={styles.sectionTitle}>需要詳細原始資料:</Text>
-              <TouchableOpacity onPress={() => openLink(welfare.link)}>
-                <Text style={styles.linkText}>點此前往原文網站</Text>
-              </TouchableOpacity>
-            </View> */}
-            <View style={styles.bottomActionContainer}>
-            <TouchableOpacity onPress={() => openLink(welfare.link)} style={styles.linkButton}>
-              <Text style={styles.linkText}>點此前往原文網站</Text>
-              <Ionicons name="open-outline" size={20} color="#007aff" />
+          </View>
+          
+            <View style={styles.buttonContainer}>
+            <TouchableOpacity 
+              style={styles.button} 
+              onPress={() => openLink(welfare.link)}
+            >
+              <Text style={styles.buttonText}>點此前往原文網站</Text>
             </TouchableOpacity>
           </View>
+          
+          </ScrollView>
+           
+            
           </View>
       
       ) : error ? (
@@ -483,31 +461,45 @@ const styles = StyleSheet.create({
   reasonText:{
     fontSize: 14, color: '#333', lineHeight: 22 
   },
-  bottomActionContainer: {
-    padding: 16,
-    paddingTop: 8,
-    marginBottom: 40,
-    borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
-    backgroundColor: '#fff'
-  },
   pageContainer: {
     flex: 1,
     backgroundColor: '#fff',
   },
   scrollContainer: {
     flex: 1,
+    // paddingBottom: 100
+  },
+  buttonContainer: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#E0E0E0',
+    backgroundColor: '#FFFFFF',
+    marginBottom:60
+  },
+  button: {
+    backgroundColor: COLORS.background,
+    borderRadius: 8,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+  },
+  buttonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
   linkButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    paddingBottom:10
+    // paddingBottom:10
   },
   linkText: {
     color: '#007aff',
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
   },
   familyRow: {
