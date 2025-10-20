@@ -40,7 +40,7 @@ export class FamilyService {
 
   async findAllByUserID(userID: string) {
     const userFamilys = await this.familyRepository.find({
-      relations: ["userFamilies", "userFamilies.user"],
+      relations: ["userFamilies", "userFamilies.user","userFamilies.user.location"],
       where: { userFamilies: { user: { id: userID } } },
     });
 
@@ -53,7 +53,7 @@ export class FamilyService {
   }
   async findOneByFamilyID(id: string) {
     const family = await this.familyRepository.findOne({
-      relations: ["userFamilies", "userFamilies.user"],
+      relations: ["userFamilies", "userFamilies.user","userFamilies.user.location"],
       where: { id: id },
     });
 

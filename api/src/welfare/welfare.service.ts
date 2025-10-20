@@ -203,12 +203,15 @@ export class WelfareService {
 
       // 步驟 3: 將這個「完整」的模擬身份列表傳遞給燈號計算函式
       const familyID = dto.families?.[0]; // 假設 DTO 中有 familyID
+      
+      const userLocation = dto.locations?.[0];
       await this.appendLightAndFamilyInfo(
         welfares,
         responseList,
         dto.userID,
         identitiesForLightCalculation, // <-- 傳遞包含了所有篩選條件的完整列表
-        familyID
+        familyID,
+        userLocation
       );
     }
 
@@ -274,7 +277,9 @@ export class WelfareService {
 
   getWelfareLight(
     welfareIdentities: Identity[],
-    userIdentities: Identity[] | undefined 
+    userIdentities: Identity[] | undefined,
+    welfareLocation?: string,
+    userLocation?: string,
   ): LightStatusResult  {
   const reasons: string[] = [];
   const welfareIdentityNames = welfareIdentities.map(i => i.name);
@@ -292,6 +297,24 @@ export class WelfareService {
   reasons.push(`福利要求身份: ${welfareIdentityNames.join('、') || '無特殊要求'}`);
   reasons.push(`您的身份: ${userIdentityNames.join('、')}\n`);
 
+   // --- 🔴 紅燈判斷：只要一項不符，就直接出局 ---
+ if (welfareLocation) { // 首先，確認福利本身是否有地區限制
+    if (userLocation) { // 接著，確認使用者是否有提供地區
+        if (welfareLocation === userLocation) {
+            reasons.push(`✅ 地區：符合要求 (福利與您的地區皆為 [${welfareLocation}])。`);
+        } else {
+            reasons.push(`❌ 地區：不符合 (福利要求: [${welfareLocation}]，您選擇的地區為 [${userLocation}])。`);
+            return { status: LightStatus.NotEligible, reasons, welfareIdentityNames, userIdentityNames };
+        }
+    } else {
+        // 使用者未提供地區，但福利有要求
+        reasons.push(`❌ 地區：不符合 (此福利限定於 [${welfareLocation}]，但您未提供地區資訊)。`);
+        return { status: LightStatus.NotEligible, reasons, welfareIdentityNames, userIdentityNames };
+    }
+  } else {
+    reasons.push('⚪ 地區：無特定要求。');
+  }
+
   // 🟡 步驟 2: 檢查福利本身是否沒有任何身份要求 (第二個黃燈條件)
   if (welfareIdentities.length === 0) {
      reasons.push('🟡 此福利無特殊身份要求，任何人皆可能符合資格，建議您點擊「前往原文網站」詳閱申請細節。');
@@ -303,7 +326,7 @@ export class WelfareService {
    };
   }
 
- // --- 🔴 紅燈判斷：只要一項不符，就直接出局 ---
+// --- 🔴 紅燈判斷：後續的身份檢查 ---
   const AGE_GROUP_IDS = [1, 2, 3];
   const GENDER_GROUP_IDS = [4, 5];
   const INCOME_GROUP_IDS = [6, 7];
@@ -398,7 +421,8 @@ export class WelfareService {
 }
 
 private getWelfareLightForProfile(
-    welfareIdentities: Identity[],
+    // welfareIdentities: Identity[],
+    welfare: Welfare,
     user: User, // <-- 關鍵不同：接收完整的 User 物件
   ): LightStatusResult {
     this.logger.log(`  -> 正在為使用者 [${user.name}] 的真實個人檔案計算燈號...`);
@@ -436,7 +460,7 @@ private getWelfareLightForProfile(
     this.logger.log(`     - 為 [${user.name}] 組合後的身份: [${dynamicUserIdentities.map(i => i.name).join(', ')}]`);
 
     // 4. 最後，呼叫既有的核心判斷引擎，傳入我們剛剛組合好的完整身份列表
-    return this.getWelfareLight(welfareIdentities, dynamicUserIdentities);
+    return this.getWelfareLight(welfare.identities,dynamicUserIdentities, welfare.location?.name,user.location?.name);
   }
   private filterByNames(
     dtoValues: string[] | undefined,
@@ -475,34 +499,44 @@ private getWelfareLightForProfile(
     dtoList: WelfareResponseDTO[],
     userID: string,
     identities: Identity[],
-    familyID?: string
+    familyID?: string,
+    userLocation?: string,
   ) {
+    this.logger.log(`[Service] appendLightAndFamilyInfo - 收到的 familyID: ${familyID}`);
     for (let i = 0; i < welfareList.length; i++) {
         const welfare = welfareList[i];
         const dto = dtoList[i];
         
         // 計算使用者本人的燈號
-        const userLightResult = this.getWelfareLight(welfare.identities, identities);
+        const userLightResult = this.getWelfareLight(welfare.identities, identities,welfare.location?.name,userLocation);
         dto.lightStatus = userLightResult.status;
         dto.lightReason = userLightResult.reasons;
 
         // 如果提供了 familyID，則處理家庭成員
         if (familyID) {
-            const family = await this.familyService.findOneByFamilyID(familyID);
+            const family = await  this.familyService.findOneByFamilyID(familyID);
+            this.logger.log(family ? `  -> 成功在資料庫中找到家庭: ${family.name}` : `  -> ⚠️ 警告：未在資料庫中找到 familyID 為 ${familyID} 的家庭`);
             if (!family) continue; // 如果找不到家庭，就跳過這個福利的家庭部分
 
             const otherFamilyMembers = family.userFamilies.filter(
                 (uf) => uf.user.id !== userID
             );
-
+              this.logger.log(`  -> 找到了 ${otherFamilyMembers.length} 位其他家庭成員`);
             // <-- 修改點 1：為陣列加上明確的類型
             const eligibleFamilyMembers: FamilyMemberDTO[] = [];
 
             for (const familyMember of otherFamilyMembers) {
                 const result = this.getWelfareLightForProfile(
-                    welfare.identities,
+                    welfare,
                     familyMember.user
                 );
+
+                // --- 🔍 新增的監視器 ---
+                const lightEmoji = result.status === 1 ? '🟢' : (result.status === 2 ? '🟡' : '🔴');
+                this.logger.log(`  -> 對 [${familyMember.user.name}] 的審查結果:`);
+                this.logger.log(`     - 燈號狀態: ${result.status} (${lightEmoji})`);
+                this.logger.log(`     - 審查報告:\n       - ${result.reasons.join('\n       - ')}`);
+                // --- 監視器結束 ---
                 
                 // 我們可以顯示所有綠燈或黃燈的家人
                 if (result.status === LightStatus.Eligible || result.status === LightStatus.NoIdentity) {
@@ -514,6 +548,7 @@ private getWelfareLightForProfile(
                     });
                 }
             }
+            this.logger.log(`  -> 最終符合資格並準備回傳的成員數量: ${eligibleFamilyMembers.length}`);
             dto.familyMember = eligibleFamilyMembers;
         }
     }
@@ -562,6 +597,9 @@ private getWelfareLightForProfile(
     }
 
     // 3. 將 Map 轉換回陣列
+    const allLocations = this.constDataService.getLocations();
+    const foundLocation = allLocations.find(loc => queryText.includes(loc.name));
+    const userLocationFromText = foundLocation ? foundLocation.name : undefined;
     const userIdentitiesFromText = Array.from(foundIdentities.values());
 
     this.logger.log(`   ‣ 提取到的身份: [${userIdentitiesFromText.map(i => i.name).join(', ')}]`);
@@ -593,7 +631,7 @@ private getWelfareLightForProfile(
     this.logger.log(`   ‣ 最終組合身份: [${userIdentitiesFromText.map(i => i.name).join(', ')}]`);
 
     // 3. 呼叫既有的核心邏輯進行判斷
-    return this.getWelfareLight(welfare.identities, userIdentitiesFromText);
+    return this.getWelfareLight(welfare.identities, userIdentitiesFromText,welfare.location?.name,userLocationFromText);
   }
 
   async getWelfareLightStatus(welfareId: string, userId: string): Promise<LightStatusResult> {
@@ -675,6 +713,6 @@ private getWelfareLightForProfile(
     this.logger.log(`🔄 開始執行燈號計算邏輯...`);
 
   // 3. 呼叫既有邏輯判斷
-  return this.getWelfareLight(welfare.identities, user.identities);
+  return this.getWelfareLight(welfare.identities, user.identities,welfare.location?.name,user.location?.name);
 }
 }
