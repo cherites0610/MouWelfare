@@ -45,26 +45,21 @@ export default function Index() {
     if (isFetching) return; // 防止重複請求
     setIsFetching(true);
 
-    // 如果是下一頁且沒有更多數據，直接結束
     if (!hasMore && isNextPage) {
       setIsFetching(false);
       return;
     }
 
-    // 非下一頁（刷新）時，設置 refreshing 並重置頁數
     if (!isNextPage) {
       setRefreshing(true);
       setData([]);
       setPage(1);
     }
-    // 是下一頁時，設置 loading more 狀態
     if (isNextPage) {
       setIsLoadingMore(true);
     }
 
-    // 計算下一頁的頁數
     const nextPage = isNextPage ? page + 1 : page;
-
     const familyID = FAMILYS.find((item) => item.name === family)?.id;
     queryParams.familyID = familyID ?? "";
 
@@ -82,46 +77,71 @@ export default function Index() {
       income: queryParams.income ?? [],
     }
 
-    // 執行 API 請求
     fetchWelfareApi(query)
       .then(async (res) => {
         const favoritesResponse = await fetchFavoriteAPI(authToken);
         const favoriteIds = new Set(favoritesResponse.data.map((fav: Welfare) => fav.id));
+
         const enrichedData = res.data.data.map(welfare => ({
           ...welfare,
           isFavorited: favoriteIds.has(welfare.id),
-          }));
+        }));
+
+        // 🔹 新增排序邏輯
+        const sortedData = enrichedData.sort((a, b) => {
+          // 1️⃣ 紅綠燈優先
+          const lightPriority = (card: Welfare) => {
+            switch (card.lightStatus) {
+              case 1: return 0; // 綠
+              case 2: return 1; // 黃
+              case 3: return 2; // 紅
+              default: return 3;
+            }
+          };
+          const pa = lightPriority(a);
+          const pb = lightPriority(b);
+          if (pa !== pb) return pa - pb;
+
+          // 2️⃣ 居住地匹配優先
+          const locationMatchA = a.location === user?.location?.name ? 0 : 1;
+          const locationMatchB = b.location === user?.location?.name ? 0 : 1;
+          if (locationMatchA !== locationMatchB) return locationMatchA - locationMatchB;
+
+          // 3️⃣ 年齡匹配優先
+          const ageMatch = (card: Welfare) => {
+            if (!age) return 1;
+            return card.applicationCriteria.some(c => c.includes(age)) ? 0 : 1;
+          };
+          const aa = ageMatch(a);
+          const ab = ageMatch(b);
+          if (aa !== ab) return aa - ab;
+
+          // 4️⃣ 預設依發佈日期排序
+          return new Date(b.publicationDate).getTime() - new Date(a.publicationDate).getTime();
+        });
+
         setData((prevData: Welfare[]) => {
-          // 如果是下一頁，追加數據；否則替換數據
-          const newData = isNextPage ? [...prevData, ...enrichedData] : enrichedData;
-          // 去重，根據 id 確保數據唯一
+          const newData = isNextPage ? [...prevData, ...sortedData] : sortedData;
+          // 去重
           return Array.from(new Map(newData.map((item) => [item.id, item])).values());
         });
 
-        // 更新頁數
         if (isNextPage) {
           setPage((prevPage: number) => prevPage + 1);
         }
-        
-        // 更新 hasMore 狀態
+
         setHasMore(res.data.pagination.totalPage - res.data.pagination.page > 0);
       })
       .catch((err) => {
         console.error('獲取資料失敗:', err);
-        // 可選：顯示錯誤提示
         alert('無法加載數據，請稍後重試');
       })
       .finally(() => {
-        // 結束時重置狀態
-        if (!isNextPage) {
-          setRefreshing(false);
-        }
-        if (isNextPage) {
-          setIsLoadingMore(false);
-        }
+        if (!isNextPage) setRefreshing(false);
+        if (isNextPage) setIsLoadingMore(false);
         setIsFetching(false);
       });
-  },[isFetching, hasMore, page, user, FAMILYS, family, authToken]);
+    }, [isFetching, hasMore, page, user, FAMILYS, family, authToken, age]);
 
   const handleRefresh = useCallback(() => {
     setPage(1);
