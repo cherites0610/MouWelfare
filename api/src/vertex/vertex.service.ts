@@ -15,6 +15,19 @@ export class VertexService {
   private readonly credentials: any;
   private readonly logger = new Logger(VertexService.name);
 
+  // 🆕 台灣縣市列表
+  private readonly TAIWAN_LOCATIONS = [
+    '臺北市', '台北市', '新北市', '桃園市', '臺中市', '台中市', '臺南市', '台南市', '高雄市',
+    '基隆市', '新竹市', '嘉義市', '新竹縣', '苗栗縣', '彰化縣', '南投縣', '雲林縣',
+    '嘉義縣', '屏東縣', '宜蘭縣', '花蓮縣', '臺東縣', '台東縣', '澎湖縣', '金門縣', '連江縣'
+  ];
+
+  // 🆕 福利類別列表（根據你的實際資料調整）
+  private readonly WELFARE_CATEGORIES = [
+    '社會救助福利', '育兒津貼', '婦女與幼兒福利', '老人福利', '身心障礙福利',
+    '就業輔助', '教育補助', '住宅補助', '醫療補助', '生育補助', '托育補助'
+  ];
+
   constructor(
     private readonly configService: ConfigService,
     private readonly conversationService: ConversationService,
@@ -49,13 +62,167 @@ export class VertexService {
     return tokenResponse.token;
   }
 
+  /**
+   * 從使用者問題中提取地區和類別
+   * 使用簡單的關鍵字匹配方法
+   */
+  private extractLocationAndCategories(userQuery: string): { 
+    location: string | undefined; 
+    categories: string[] 
+  } {
+    let location: string | undefined = undefined;
+    const categories: string[] = [];
+
+    // 提取地區
+    for (const loc of this.TAIWAN_LOCATIONS) {
+      if (userQuery.includes(loc)) {
+        location = loc;
+        // 標準化台北、台中、台南、台東的寫法
+        if (loc === '台北市') location = '臺北市';
+        if (loc === '台中市') location = '臺中市';
+        if (loc === '台南市') location = '臺南市';
+        if (loc === '台東縣') location = '臺東縣';
+        break;
+      }
+    }
+
+    // 提取類別
+    for (const category of this.WELFARE_CATEGORIES) {
+      if (userQuery.includes(category)) {
+        categories.push(category);
+      }
+    }
+
+    // 特殊關鍵字映射
+    const keywordMapping: Record<string, string[]> = {
+      '育兒': ['育兒津貼', '婦女與幼兒福利', '托育補助'],
+      '幼兒': ['婦女與幼兒福利', '育兒津貼'],
+      '小孩': ['育兒津貼', '婦女與幼兒福利'],
+      '孩子': ['育兒津貼', '婦女與幼兒福利'],
+      '老人': ['老人福利'],
+      '長者': ['老人福利'],
+      '身障': ['身心障礙福利'],
+      '殘障': ['身心障礙福利'],
+      '就業': ['就業輔助'],
+      '工作': ['就業輔助'],
+      '教育': ['教育補助'],
+      '學費': ['教育補助'],
+      '住宅': ['住宅補助'],
+      '租屋': ['住宅補助'],
+      '醫療': ['醫療補助'],
+      '看病': ['醫療補助'],
+      '生育': ['生育補助', '婦女與幼兒福利'],
+    };
+
+    for (const [keyword, cats] of Object.entries(keywordMapping)) {
+      if (userQuery.includes(keyword)) {
+        cats.forEach(cat => {
+          if (!categories.includes(cat)) {
+            categories.push(cat);
+          }
+        });
+      }
+    }
+
+    this.logger.log(`🔍 從問題「${userQuery}」中提取到:`);
+    if (location) this.logger.log(`   ‣ 地區: ${location}`);
+    if (categories.length > 0) this.logger.log(`   ‣ 類別: ${categories.join(', ')}`);
+
+    return { location, categories };
+  }
+
+  /**
+   * 使用 AI 提取地區和類別（更精準的方法）
+   * 可選：如果簡單關鍵字匹配不夠精準，可以使用這個方法
+   */
+  private async extractWithAI(userQuery: string): Promise<{ 
+    location: string | undefined; 
+    categories: string[] 
+  }> {
+    const accessToken = await this.getAccessToken();
+    const apiEndpoint = `https://discoveryengine.googleapis.com/v1alpha/projects/${this.projectId}/locations/global/collections/${this.collectionId}/engines/${this.engineId}/servingConfigs/default_search:answer`;
+
+    const prompt = `請從以下使用者問題中提取「地區」和「福利類別」，以 JSON 格式回答：
+
+使用者問題：「${userQuery}」
+
+可能的地區：${this.TAIWAN_LOCATIONS.join('、')}
+可能的類別：${this.WELFARE_CATEGORIES.join('、')}
+
+請回答 JSON 格式：
+{
+  "location": "提取到的縣市（如果沒有則為 null）",
+  "categories": ["提取到的類別陣列"]
+}`;
+
+    const data = {
+      query: { text: prompt },
+      answerGenerationSpec: {
+        ignoreAdversarialQuery: false,
+        ignoreNonAnswerSeekingQuery: false,
+        modelSpec: { modelVersion: 'stable' },
+      },
+    };
+
+    try {
+      const response = await axios.post(apiEndpoint, data, {
+        headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+      });
+
+      const answerText = response.data.answer?.answerText || '{}';
+      const extracted = JSON.parse(answerText);
+      
+      return {
+        location: extracted.location || undefined,
+        categories: extracted.categories || []
+      };
+    } catch (error) {
+      this.logger.warn('AI 提取失敗，使用關鍵字匹配:', error.message);
+      return this.extractLocationAndCategories(userQuery);
+    }
+  }
+
+  /**
+   * 建立 boostSpec
+   * 修正：categories 是陣列，需使用 ANY 語法
+   * 修正：boost 值必須在 [-1, 1] 之間
+   */
+  private createBoostSpec(userLocation: string | undefined, preferredCategories: string[] | undefined) {
+    const conditionBoostSpecs: any[] = [];
+
+    if (userLocation) {
+      conditionBoostSpecs.push({
+        condition: `location: ANY("${userLocation}")`,
+        boost: 0.8  // 強力提升地區相關福利（範圍: -1 到 1）
+      });
+    }
+
+    if (preferredCategories && preferredCategories.length > 0) {
+      preferredCategories.forEach((category: string) => {
+        conditionBoostSpecs.push({
+          condition: `categories: ANY("${category}")`,
+          boost: 0.5  // 適度提升類別相關福利（範圍: -1 到 1）
+        });
+      });
+    }
+
+    return conditionBoostSpecs.length > 0 ? { conditionBoostSpecs } : undefined;
+  }
+
   /** 呼叫 Search API（僅用於新對話的第一次查詢） */
-  private async callSearchApi(userQuery: string, userId: string,fullContextText:string) {
+  private async callSearchApi(
+    userQuery: string, 
+    userId: string,
+    fullContextText: string,
+    userLocation: string | undefined,
+    preferredCategories: string[] | undefined
+  ) {
     const accessToken = await this.getAccessToken();
     const apiEndpoint = `https://discoveryengine.googleapis.com/v1alpha/projects/${this.projectId}/locations/global/collections/${this.collectionId}/engines/${this.engineId}/servingConfigs/default_search:search`;
 
-    // 使用 sessions/- 創建新的 session
-    const data = {
+    const boostSpec = this.createBoostSpec(userLocation, preferredCategories);
+
+    const data: any = {
       query: userQuery,
       pageSize: 10,
       queryExpansionSpec: { condition: 'AUTO' },
@@ -64,6 +231,11 @@ export class VertexService {
       userInfo: { timeZone: 'Asia/Taipei' },
       session: `projects/${this.projectId}/locations/global/collections/${this.collectionId}/engines/${this.engineId}/sessions/-`,
     };
+
+    if (boostSpec) {
+      data.boostSpec = boostSpec;
+      this.logger.debug('使用 boostSpec:', JSON.stringify(boostSpec, null, 2));
+    }
 
     this.logger.debug('Search API 請求 (新對話):', JSON.stringify(data, null, 2));
 
@@ -95,54 +267,65 @@ export class VertexService {
         location: r.document?.structData?.location,
         publicationDate: r.document?.structData?.publicationDate,
         categories: r.document?.structData?.categories,
-        applicationCriteria:r.document?.structData?.applicationCriteria
+        applicationCriteria: r.document?.structData?.applicationCriteria
       }));
 
       const enrichedWelfareCards = await Promise.all(welfareCards.map(async (card) => {
         if (card.id) { 
           try {
             const lightResult = await this.welfareService.getWelfareLightStatusFromText(
-            card.id,
-            fullContextText, // <-- 使用當前的聊天文字
-          );
-        
-        // 將 status 和 reasons 都附加到卡片資料上
+              card.id,
+              fullContextText,
+            );
             return { 
               ...card, 
               lightStatus: lightResult.status,
               lightReason: lightResult.reasons 
             };
           } catch (error) {
-            this.logger.error('Search API 錯誤:', error.response?.data || error.message);
+            this.logger.error('查詢資格錯誤:', error.message);
             return { ...card, lightStatus: undefined, lightReason: ['查詢資格時發生錯誤'] };
           }
         }
         return { ...card, lightStatus: undefined };
-      })
-      );
-    return { welfareCards: enrichedWelfareCards, sessionName, queryId };
+      }));
+
+      return { welfareCards: enrichedWelfareCards, sessionName, queryId };
 
     } catch (error) {
       this.logger.error('Search API 錯誤:', error.response?.data || error.message);
       throw error;
+    }
   }
-}
 
   /** 呼叫 Search API（用於延續對話，使用現有 session） */
-  private async callSearchApiWithSession(userQuery: string, sessionName: string, userId: string, fullContextText:string) {
+  private async callSearchApiWithSession(
+    userQuery: string, 
+    sessionName: string, 
+    userId: string, 
+    fullContextText: string,
+    userLocation: string | undefined,
+    preferredCategories: string[] | undefined
+  ) {
     const accessToken = await this.getAccessToken();
     const apiEndpoint = `https://discoveryengine.googleapis.com/v1alpha/projects/${this.projectId}/locations/global/collections/${this.collectionId}/engines/${this.engineId}/servingConfigs/default_search:search`;
 
-    // 使用現有的 sessionName
-    const data = {
+    const boostSpec = this.createBoostSpec(userLocation, preferredCategories);
+
+    const data: any = {
       query: userQuery,
       pageSize: 10,
       queryExpansionSpec: { condition: 'AUTO' },
       spellCorrectionSpec: { mode: 'AUTO' },
       languageCode: 'zh-TW',
       userInfo: { timeZone: 'Asia/Taipei' },
-      session: sessionName, // 使用現有的 session
+      session: sessionName,
     };
+
+    if (boostSpec) {
+      data.boostSpec = boostSpec;
+      this.logger.debug('使用 boostSpec:', JSON.stringify(boostSpec, null, 2));
+    }
 
     this.logger.debug('Search API 請求 (延續對話):', JSON.stringify(data, null, 2));
 
@@ -166,30 +349,31 @@ export class VertexService {
         location: r.document?.structData?.location,
         publicationDate: r.document?.structData?.publicationDate,
         categories: r.document?.structData?.categories,
-        applicationCriteria:r.document?.structData?.applicationCriteria
+        applicationCriteria: r.document?.structData?.applicationCriteria
       }));
 
       const enrichedWelfareCards = await Promise.all(
-      welfareCards.map(async (card) => {
-        if (card.id) {
-          try {
-            const lightResult = await this.welfareService.getWelfareLightStatusFromText(
-              card.id,
-              fullContextText,
-            );
-            return { 
+        welfareCards.map(async (card) => {
+          if (card.id) {
+            try {
+              const lightResult = await this.welfareService.getWelfareLightStatusFromText(
+                card.id,
+                fullContextText,
+              );
+              return { 
                 ...card, 
                 lightStatus: lightResult.status,
                 lightReason: lightResult.reasons
               };
-          } catch (error) {
-            this.logger.warn(`獲取福利 ${card.id} 的 lightStatus 失敗:`, error.message);
-            return { ...card, lightStatus: undefined, lightReason: ['查詢資格時發生錯誤'] };
+            } catch (error) {
+              this.logger.warn(`獲取福利 ${card.id} 的 lightStatus 失敗:`, error.message);
+              return { ...card, lightStatus: undefined, lightReason: ['查詢資格時發生錯誤'] };
+            }
           }
-        }
-        return { ...card, lightStatus: undefined };
-      }),
-    );
+          return { ...card, lightStatus: undefined };
+        }),
+      );
+
       return { welfareCards: enrichedWelfareCards };
 
     } catch (error) {
@@ -227,7 +411,6 @@ export class VertexService {
       },
     };
 
-    // 添加 session 和 queryId（如果存在）
     if (sessionName) {
       data.session = sessionName;
     }
@@ -256,8 +439,56 @@ export class VertexService {
     }
   }
 
-  /** 主函式：AI 答案 + 福利資訊，支援新對話與延續對話 */
-  async getAiAnswer(userQuery: string, userId: string, conversationId?: number) {
+  /**
+   * 嚴格過濾福利卡片
+   * 只保留完全符合 location 和 categories 條件的卡片
+   */
+  private strictFilterWelfareCards(
+    cards: any[], 
+    targetLocation: string | undefined, 
+    targetCategories: string[] | undefined
+  ): any[] {
+    if (!targetLocation && (!targetCategories || targetCategories.length === 0)) {
+      // 沒有任何篩選條件，返回所有卡片
+      return cards;
+    }
+
+    return cards.filter(card => {
+      let locationMatch = true;
+      let categoryMatch = true;
+
+      // 嚴格匹配地區
+      if (targetLocation) {
+        locationMatch = card.location === targetLocation;
+      }
+
+      // 嚴格匹配類別（categories 必須包含至少一個目標類別）
+      if (targetCategories && targetCategories.length > 0) {
+        if (!Array.isArray(card.categories) || card.categories.length === 0) {
+          categoryMatch = false;
+        } else {
+          // 檢查卡片的 categories 是否包含任一目標類別
+          categoryMatch = targetCategories.some((targetCat: string) => 
+            card.categories.includes(targetCat)
+          );
+        }
+      }
+
+      // 必須同時滿足地區和類別條件
+      return locationMatch && categoryMatch;
+    });
+  }
+
+  /** 
+   * 主函式：AI 答案 + 福利資訊，支援新對話與延續對話
+   * 自動從使用者問題中提取地區和類別
+   * 嚴格過濾結果，無符合資料時明確告知
+   */
+  async getAiAnswer(
+    userQuery: string, 
+    userId: string, 
+    conversationId?: number
+  ) {
     let newConversationId: number;
     let sessionName: string | undefined = undefined;
     let queryId: string | undefined = undefined;
@@ -267,10 +498,12 @@ export class VertexService {
     this.logger.log('--- getAiAnswer 啟動 ---');
     this.logger.log('當前 conversationId:', conversationId);
 
+    // 自動從使用者問題中提取地區和類別
+    const { location, categories } = this.extractLocationAndCategories(userQuery);
+    
     const isNewConversation = !conversationId;
 
     if (isNewConversation) {
-      // 🆕 新對話流程
       this.logger.log('🆕 開始新對話流程');
       
       const newConversation = await this.conversationService.createConversation(userId, '未命名對話');
@@ -278,15 +511,19 @@ export class VertexService {
 
       fullContextText = userQuery;
 
-      // 先呼叫 Search API 生成 sessionName
-      const searchResult = await this.callSearchApi(userQuery,userId,fullContextText);
+      const searchResult = await this.callSearchApi(
+        userQuery, 
+        userId, 
+        fullContextText,
+        location,
+        categories
+      );
       sessionName = searchResult.sessionName;
       queryId = searchResult.queryId;
       welfareCards = searchResult.welfareCards;
 
       this.logger.log(`新對話 Search API 完成: sessionName=${sessionName}, queryId=${queryId}`);
     } else {
-      // 🔄 延續對話流程
       this.logger.log('🔄 延續對話流程');
       newConversationId = conversationId;
 
@@ -294,26 +531,37 @@ export class VertexService {
       sessionName = lastAiMessage?.metadata?.sessionName || lastAiMessage?.metadata?.session;
 
       const historyText = await this.conversationService.getHistoryAsText(newConversationId);
-      fullContextText = `${historyText}\n${userQuery}`; // 將歷史紀錄和當前問題組合
+      fullContextText = `${historyText}\n${userQuery}`;
       this.logger.log(`   ‣ 組合後的完整上下文: "${fullContextText.replace(/\n/g, ' ')}"`);
 
       if (!sessionName) {
-        // ⚠️ 找不到 sessionName → 自動回退到新對話
         this.logger.warn(`延續對話找不到有效 sessionName，將自動建立新 session`);
 
         const newConversation = await this.conversationService.createConversation(userId, '未命名對話');
         newConversationId = newConversation.id;
 
-        const searchResult = await this.callSearchApi(userQuery, userId,fullContextText);
+        const searchResult = await this.callSearchApi(
+          userQuery, 
+          userId, 
+          fullContextText,
+          location,
+          categories
+        );
         sessionName = searchResult.sessionName;
         queryId = searchResult.queryId;
         welfareCards = searchResult.welfareCards;
 
         this.logger.log(`自動新對話 Search API 完成: sessionName=${sessionName}, queryId=${queryId}`);
       } else {
-        // 找到 sessionName → 延續對話查詢福利
         try {
-          const searchResult = await this.callSearchApiWithSession(userQuery, sessionName,userId,fullContextText);
+          const searchResult = await this.callSearchApiWithSession(
+            userQuery, 
+            sessionName, 
+            userId, 
+            fullContextText,
+            location,
+            categories
+          );
           welfareCards = searchResult.welfareCards;
           this.logger.log(`延續對話搜尋到 ${welfareCards.length} 筆福利資料`);
         } catch (error) {
@@ -322,32 +570,64 @@ export class VertexService {
       }
     }
 
-    // 2️⃣ 調用 Answer API
-    const { answerText, relatedQuestions } = await this.callAnswerApi(userQuery, sessionName, queryId);
-    this.logger.log(`Answer API 完成，回應長度: ${answerText.length} 字元`);
+    // 嚴格過濾福利卡片
+    const originalCount = welfareCards.length;
+    const filteredWelfareCards = this.strictFilterWelfareCards(welfareCards, location, categories);
+    this.logger.log(`嚴格過濾: ${originalCount} → ${filteredWelfareCards.length} 筆`);
 
-    // 3️⃣ 儲存問答記錄
+    // 如果過濾後沒有結果，修改 AI 回覆
+    let finalAnswerText: string;
+    let finalRelatedQuestions: string[] = [];
+    let noResultsFound = false;
+
+    if (filteredWelfareCards.length === 0 && (location || (categories && categories.length > 0))) {
+      // 有篩選條件但沒有符合的結果
+      noResultsFound = true;
+      const conditionText: string[] = [];
+      if (location) conditionText.push(`地區「${location}」`);
+      if (categories && categories.length > 0) conditionText.push(`類別「${categories.join('、')}」`);
+      
+      finalAnswerText = `很抱歉，目前資料庫中沒有符合 ${conditionText.join(' 與 ')} 的福利資料。\n\n建議您可以：\n1. 嘗試搜尋其他縣市或類別\n2. 放寬搜尋條件\n3. 聯繫當地社會局了解更多資訊`;
+      
+      this.logger.log(`⚠️ 無符合結果: ${conditionText.join(' 與 ')}`);
+    } else {
+      // 有結果或沒有篩選條件，使用 Answer API
+      const answerResult = await this.callAnswerApi(userQuery, sessionName, queryId);
+      finalAnswerText = answerResult.answerText;
+      finalRelatedQuestions = answerResult.relatedQuestions;
+    }
+
+    this.logger.log(`Answer 完成，回應長度: ${finalAnswerText.length} 字元`);
+
     const metadata = {
-      welfareCards,
+      welfareCards: filteredWelfareCards,
       sessionName,
       queryId,
-      relatedQuestions,
+      relatedQuestions: finalRelatedQuestions,
       isNewConversation: !conversationId || !sessionName,
+      extractedLocation: location,
+      extractedCategories: categories,
+      noResultsFound,  // 標記是否無結果
+      originalResultCount: originalCount,  // 記錄原始結果數
+      filteredResultCount: filteredWelfareCards.length,  // 記錄過濾後結果數
     };
 
     await this.conversationService.addMessage(newConversationId, 'user', userQuery);
-    await this.conversationService.addMessage(newConversationId, 'ai', answerText, metadata);
+    await this.conversationService.addMessage(newConversationId, 'ai', finalAnswerText, metadata);
 
     this.logger.log('--- getAiAnswer 結束 ---');
 
     return {
       conversationId: newConversationId,
-      answer: answerText,
-      welfareCards,
-      relatedQuestions,
+      answer: finalAnswerText,
+      welfareCards: filteredWelfareCards,
+      relatedQuestions: finalRelatedQuestions,
       sessionName,
       queryId,
       isNewConversation: !conversationId || !sessionName,
+      extractedLocation: location,
+      extractedCategories: categories,
+      noResultsFound,  // 回傳是否無結果
     };
   }
 }
