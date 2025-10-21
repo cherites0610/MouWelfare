@@ -484,7 +484,7 @@ export class VertexService {
    * 自動從使用者問題中提取地區和類別
    * 嚴格過濾結果，無符合資料時明確告知
    */
-  async getAiAnswer(
+    async getAiAnswer(
     userQuery: string, 
     userId: string, 
     conversationId?: number
@@ -493,23 +493,21 @@ export class VertexService {
     let sessionName: string | undefined = undefined;
     let queryId: string | undefined = undefined;
     let welfareCards: any[] = [];
-    let fullContextText: string = userQuery; 
+    let fullContextText: string = userQuery;
 
     this.logger.log('--- getAiAnswer 啟動 ---');
     this.logger.log('當前 conversationId:', conversationId);
 
-    // 自動從使用者問題中提取地區和類別
+    // 1️⃣ 提取地區和類別
     const { location, categories } = this.extractLocationAndCategories(userQuery);
-    
+
     const isNewConversation = !conversationId;
 
     if (isNewConversation) {
+      // 2️⃣ 新對話
       this.logger.log('🆕 開始新對話流程');
-      
       const newConversation = await this.conversationService.createConversation(userId, '未命名對話');
       newConversationId = newConversation.id;
-
-      fullContextText = userQuery;
 
       const searchResult = await this.callSearchApi(
         userQuery, 
@@ -522,8 +520,8 @@ export class VertexService {
       queryId = searchResult.queryId;
       welfareCards = searchResult.welfareCards;
 
-      this.logger.log(`新對話 Search API 完成: sessionName=${sessionName}, queryId=${queryId}`);
     } else {
+      // 3️⃣ 延續對話
       this.logger.log('🔄 延續對話流程');
       newConversationId = conversationId;
 
@@ -532,11 +530,9 @@ export class VertexService {
 
       const historyText = await this.conversationService.getHistoryAsText(newConversationId);
       fullContextText = `${historyText}\n${userQuery}`;
-      this.logger.log(`   ‣ 組合後的完整上下文: "${fullContextText.replace(/\n/g, ' ')}"`);
 
       if (!sessionName) {
         this.logger.warn(`延續對話找不到有效 sessionName，將自動建立新 session`);
-
         const newConversation = await this.conversationService.createConversation(userId, '未命名對話');
         newConversationId = newConversation.id;
 
@@ -550,8 +546,6 @@ export class VertexService {
         sessionName = searchResult.sessionName;
         queryId = searchResult.queryId;
         welfareCards = searchResult.welfareCards;
-
-        this.logger.log(`自動新對話 Search API 完成: sessionName=${sessionName}, queryId=${queryId}`);
       } else {
         try {
           const searchResult = await this.callSearchApiWithSession(
@@ -563,53 +557,66 @@ export class VertexService {
             categories
           );
           welfareCards = searchResult.welfareCards;
-          this.logger.log(`延續對話搜尋到 ${welfareCards.length} 筆福利資料`);
         } catch (error) {
           this.logger.warn('延續對話時搜尋福利資料失敗，但不影響對話:', error.message);
         }
       }
     }
 
-    // 嚴格過濾福利卡片
+    // 4️⃣ 嚴格過濾福利卡片
     const originalCount = welfareCards.length;
     const filteredWelfareCards = this.strictFilterWelfareCards(welfareCards, location, categories);
     this.logger.log(`嚴格過濾: ${originalCount} → ${filteredWelfareCards.length} 筆`);
 
-    // 如果過濾後沒有結果，修改 AI 回覆
+    // 5️⃣ 生成 AI 回覆
     let finalAnswerText: string;
     let finalRelatedQuestions: string[] = [];
     let noResultsFound = false;
 
     if (filteredWelfareCards.length === 0 && (location || (categories && categories.length > 0))) {
-      // 有篩選條件但沒有符合的結果
+      // 無符合結果 → 提示使用者
       noResultsFound = true;
       const conditionText: string[] = [];
       if (location) conditionText.push(`地區「${location}」`);
       if (categories && categories.length > 0) conditionText.push(`類別「${categories.join('、')}」`);
       
       finalAnswerText = `很抱歉，目前資料庫中沒有符合 ${conditionText.join(' 與 ')} 的福利資料。\n\n建議您可以：\n1. 嘗試搜尋其他縣市或類別\n2. 放寬搜尋條件\n3. 聯繫當地社會局了解更多資訊`;
-      
-      this.logger.log(`⚠️ 無符合結果: ${conditionText.join(' 與 ')}`);
     } else {
-      // 有結果或沒有篩選條件，使用 Answer API
-      const answerResult = await this.callAnswerApi(userQuery, sessionName, queryId);
+      // 有符合卡片 → 注入卡片資訊給 AI
+      const cardSummaries = filteredWelfareCards
+        .slice(0, 3)
+        .map(c => `[${c.title}](${c.link}) - ${c.summary}`)
+        .join('\n');
+
+      const aiPrompt = `
+      你是一位熱心且專業的福利查詢小幫手「阿哞」。
+
+      使用者問題：「${userQuery}」
+
+      目前符合條件的福利：
+      ${cardSummaries}
+
+      請生成簡短回答（150 字以內），內容必須和上述福利對應。
+      若使用者可能需要更多資訊，可在回覆最後追問「您是否想了解更多福利？」。
+      `;
+
+      const answerResult = await this.callAnswerApi(aiPrompt, sessionName, queryId);
       finalAnswerText = answerResult.answerText;
       finalRelatedQuestions = answerResult.relatedQuestions;
     }
 
-    this.logger.log(`Answer 完成，回應長度: ${finalAnswerText.length} 字元`);
-
+    // 6️⃣ 記錄對話
     const metadata = {
       welfareCards: filteredWelfareCards,
       sessionName,
       queryId,
       relatedQuestions: finalRelatedQuestions,
-      isNewConversation: !conversationId || !sessionName,
+      isNewConversation: isNewConversation,
       extractedLocation: location,
       extractedCategories: categories,
-      noResultsFound,  // 標記是否無結果
-      originalResultCount: originalCount,  // 記錄原始結果數
-      filteredResultCount: filteredWelfareCards.length,  // 記錄過濾後結果數
+      noResultsFound,
+      originalResultCount: originalCount,
+      filteredResultCount: filteredWelfareCards.length,
     };
 
     await this.conversationService.addMessage(newConversationId, 'user', userQuery);
@@ -624,10 +631,10 @@ export class VertexService {
       relatedQuestions: finalRelatedQuestions,
       sessionName,
       queryId,
-      isNewConversation: !conversationId || !sessionName,
+      isNewConversation: isNewConversation,
       extractedLocation: location,
       extractedCategories: categories,
-      noResultsFound,  // 回傳是否無結果
+      noResultsFound,
     };
   }
 }
