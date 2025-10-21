@@ -298,21 +298,18 @@ export class WelfareService {
   reasons.push(`您的身份: ${userIdentityNames.join('、')}\n`);
 
    // --- 🔴 紅燈判斷：只要一項不符，就直接出局 ---
- if (welfareLocation) { // 首先，確認福利本身是否有地區限制
-    if (userLocation) { // 接著，確認使用者是否有提供地區
-        if (welfareLocation === userLocation) {
-            reasons.push(`✅ 地區：符合要求 (福利與您的地區皆為 [${welfareLocation}])。`);
-        } else {
-            reasons.push(`❌ 地區：不符合 (福利要求: [${welfareLocation}]，您選擇的地區為 [${userLocation}])。`);
-            return { status: LightStatus.NotEligible, reasons, welfareIdentityNames, userIdentityNames };
-        }
-    } else {
-        // 使用者未提供地區，但福利有要求
-        reasons.push(`❌ 地區：不符合 (此福利限定於 [${welfareLocation}]，但您未提供地區資訊)。`);
-        return { status: LightStatus.NotEligible, reasons, welfareIdentityNames, userIdentityNames };
-    }
+ if (!userLocation) {
+    // 使用者未提供地區（例如未在篩選器中選擇，或個人資料中沒有）
+    reasons.push(`🟡 地區：您尚未選擇地區，無法判斷是否符合福利的地區要求 [${welfareLocation || '未知'}] )。`);
+    return { status: LightStatus.NoIdentity, reasons, welfareIdentityNames, userIdentityNames };
+  }
+
+  // 走到這裡，代表 welfareLocation 和 userLocation 都有值，開始比對
+  if (welfareLocation === userLocation) {
+    reasons.push(`✅ 地區：符合要求 (福利與您選擇的地區皆為 [${welfareLocation}])。`);
   } else {
-    reasons.push('⚪ 地區：無特定要求。');
+    reasons.push(`❌ 地區：不符合 (福利要求: [${welfareLocation}]，您選擇的地區為 [${userLocation}])。`);
+    return { status: LightStatus.NotEligible, reasons, welfareIdentityNames, userIdentityNames };
   }
 
   // 🟡 步驟 2: 檢查福利本身是否沒有任何身份要求 (第二個黃燈條件)
