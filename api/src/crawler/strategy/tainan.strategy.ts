@@ -7,6 +7,7 @@ import { appendJson } from "../utils/append-json.js";
 import { join } from "path";
 import { dirname } from "path";
 import { fileURLToPath } from "url";
+import { Queue } from "bullmq";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -14,7 +15,11 @@ const __dirname = dirname(__filename);
 export class TainanCrawlerStrategy {
   private readonly logger = new Logger(TainanCrawlerStrategy.name);
 
-  constructor(private downloadAndExtractText: (url: string) => Promise<string>) {}
+  constructor(
+    private downloadAndExtractText: (url: string) => Promise<string>,
+
+    private dataQueue: Queue,
+  ) {}
 
   /** 第一層：抓公告主頁列表 */
   async crawlListPage(startUrl: string, baseUrl: string): Promise<string[]> {
@@ -102,7 +107,7 @@ export class TainanCrawlerStrategy {
 
     this.logger.log(`✅ 完成抓取內文頁: ${pageUrl}, 內容長度: ${content.length}`);
 
-    return { city: "台南市", url: pageUrl, title, date: finalDate, content };
+    return { city: "臺南市", url: pageUrl, title, date: finalDate, content };
   }
 
   /** 🆕 從頁面下載並提取檔案內容 */
@@ -198,11 +203,21 @@ export class TainanCrawlerStrategy {
                     result.push(data);
                     existingLinks.add(detailUrl);
                     processedCount++;
-                    
-                    // 寫入 JSON 檔案
+
+                    // 寫入 JSON
                     const resultsPath = join(__dirname, "../../../output", "results.json");
                     await appendJson(resultsPath, data);
-                    
+
+                    // ✅ 推送到 BullMQ
+                    if (this.dataQueue) {
+                      await this.dataQueue.add("process", data, {
+                        attempts: 3,
+                        backoff: { type: "fixed", delay: 5000 },
+                        removeOnComplete: true,
+                      });
+                      this.logger.log(`[${cityName}] 推送到 BullMQ: ${data.title}`);
+                    }
+
                     this.logger.log(`[${cityName}] 抓到資料 (${processedCount}): ${data.title}`);
                   }
                 } catch (err) {
@@ -219,7 +234,6 @@ export class TainanCrawlerStrategy {
       }
       
       this.logger.log(`[${cityName}] ✅ 三層策略爬取完成，處理了 ${processedCount} 筆資料`);
-      
     } catch (err) {
       this.logger.error(`[${cityName}] 三層策略爬蟲過程發生錯誤: ${err.message}`);
     }

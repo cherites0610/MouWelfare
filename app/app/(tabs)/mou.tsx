@@ -42,7 +42,7 @@ interface ResultItem {
   summary?: string;
   location?: string;
   forward?: string[];
-  categories?: string[];
+  categories: string[];
   detail?: string;
   publicationDate?: string;
   applicationCriteria?: string[];
@@ -509,107 +509,6 @@ const App: React.FC = () => {
   setIsInitialized(false); 
 };
 
-// const performAiSearch = async (query: string, options?: { asNewConversation?: boolean }) => {
-//   const isNewConversation = options?.asNewConversation ?? false;
-
-//   const userMessage: Message = { type: "user", content: query };
-//   const loadingMessage: Message = { type: "loading" };
-
-//   const baseMessages = isNewConversation ? [] : messages;
-//   setMessages([...baseMessages, userMessage, loadingMessage]);
-
-//   try {
-//     let finalQuery = query;
-//     if (autoInjectChatContext && user) {
-//       const userProfilePrompt = generateUserProfilePrompt(user);
-//       if (userProfilePrompt) {
-//         finalQuery = `${query} (${userProfilePrompt})`;
-//         console.log("自動篩選已啟用，增強後的查詢:", finalQuery);
-//       }
-//     }
-
-//     const conversationId = isNewConversation ? undefined : chatID;
-//     console.log("finalQuery:", finalQuery);
-
-//     const { content: aiResponseContent, cards: rawWelfareCards, newConversationId } =
-//       await sendMessageToModel(finalQuery, conversationId);
-
-//     if (newConversationId !== undefined) {
-//       setChatID(newConversationId);
-//     }
-
-//     setMessages((prev) => {
-//       const prevMessages = isNewConversation ? [userMessage] : prev.filter(m => m.type !== "loading");
-//       return [...prevMessages, { type: "bot", content: aiResponseContent }];
-//     });
-
-//     // 前端二次過濾
-//     if (rawWelfareCards && rawWelfareCards.length > 0) {
-//       const conversationContext = [...baseMessages, userMessage]
-//         .filter(m => m.type === 'user')
-//         .map(m => m.content)
-//         .join(' ');
-
-//       let targetLocation: string | undefined;
-//       let targetCategories: string[] = [];
-
-//       // 提取地點
-//       for (const loc of sortedLocations) {
-//         if (conversationContext.includes(loc) || conversationContext.includes(loc.slice(0, -1))) {
-//           targetLocation = loc;
-//           break;
-//         }
-//       }
-
-//       // 提取類別
-//       for (const keyword of sortedCategories) {
-//         if (conversationContext.includes(keyword)) {
-//           targetCategories = categorySynonyms[keyword] ?? [keyword];
-//           break;
-//         }
-//       }
-
-//       // 過濾並補齊欄位（方法二）
-//       const filteredCards: ResultItem[] = rawWelfareCards
-//         .map((card) => ({
-//           ...card,
-//           forward: card.forward ?? [],
-//           categories: card.categories ?? [],
-//           applicationCriteria: card.applicationCriteria ?? [],
-//           lightReason: card.lightReason ?? [],
-//         }))
-//         .filter((card) => {
-//           let isMatch = true;
-//           if (targetLocation && card.location !== targetLocation) {
-//             isMatch = false;
-//           }
-//           if (targetCategories.length > 0) {
-//             const hasIntersection = targetCategories.some(tc => card.categories.includes(tc));
-//             if (!hasIntersection) isMatch = false;
-//           }
-//           return isMatch;
-//         });
-
-//       if (filteredCards.length > 0) {
-//         setMessages((prev) => [...prev, { type: "result", resultItems: filteredCards }]);
-//       } else {
-//         console.log("前端過濾後沒有找到符合條件的卡片。");
-//         // 如果需要，可顯示「無結果」提示
-//         // setMessages((prev) => [...prev, { type: "result", resultItems: [{ title: '未找到符合條件的福利', url: '#' }] }]);
-//       }
-//     }
-
-//   } catch (error) {
-//     setMessages((prev) => {
-//       const prevMessages = isNewConversation ? [userMessage] : prev.filter(m => m.type !== "loading");
-//       return [...prevMessages, { type: "bot", content: "查詢時發生錯誤，請稍後再試。" }];
-//     });
-//   } finally {
-//     scrollViewRef.current?.scrollToEnd({ animated: true });
-//   }
-// };
-
-/*茹茵新增*/
 const performAiSearch = async (query: string, options?: { asNewConversation?: boolean }) => {
   
     const isNewConversation = options?.asNewConversation ?? false;
@@ -632,14 +531,7 @@ const performAiSearch = async (query: string, options?: { asNewConversation?: bo
       
       const conversationId = isNewConversation ? undefined : chatID;
       console.log("finalQuery:", finalQuery);
-      
-      const result = await sendMessageToModel(finalQuery, conversationId);
-      const aiResponseContent = result.content;
-      const welfareCards = result.cards;
-      const newConversationId = result.newConversationId;
-      
-      // 從 result 中取得（如果後端有返回的話）
-      const noResultsFound = (result as any).noResultsFound || false;
+      const { content: aiResponseContent, cards: rawWelfareCards, newConversationId } = await sendMessageToModel(finalQuery, conversationId);
       
       if (newConversationId !== undefined) {
         setChatID(newConversationId);
@@ -650,14 +542,63 @@ const performAiSearch = async (query: string, options?: { asNewConversation?: bo
         return [...prevMessages, { type: "bot", content: aiResponseContent }];
       });
 
-      // 只在有結果時顯示卡片
-      if (welfareCards && welfareCards.length > 0) {
-        console.log(`顯示 ${welfareCards.length} 筆福利卡片`);
-        setMessages((prev) => [...prev, { type: "result", resultItems: welfareCards }]);
-      } else {
-        console.log("沒有福利資料");
+      // 確保前端二次過濾邏輯始終被應用
+      if (rawWelfareCards && rawWelfareCards.length > 0) {
+        // 重新構建對話上下文，確保包含當前用戶的查詢
+        // 注意：這裡的 conversationContext 應該基於當前所有訊息，包括新發送的 userMessage
+        const conversationContext = [...baseMessages, userMessage].filter(m => m.type === 'user').map(m => m.content).join(' ');
+        
+        let targetLocation: string | undefined;
+        let targetCategories: string[] = [];
+
+        // 提取地點
+        for (const loc of sortedLocations) {
+          if (conversationContext.includes(loc) || conversationContext.includes(loc.slice(0, -1))) {
+            targetLocation = loc;
+            break; 
+          }
+        }
+
+        // 提取類別
+        for (const keyword of sortedCategories) {
+          if (conversationContext.includes(keyword)) {
+            // 檢查字典中是否有這個關鍵字
+            if (categorySynonyms[keyword]) {
+                targetCategories = categorySynonyms[keyword];
+            } else {
+                // 如果字典沒有，代表關鍵字本身就是官方分類名稱
+                targetCategories = [keyword];
+            }
+            break; 
+          }
+        }
+        // 應用過濾
+        const filteredCards = rawWelfareCards.filter(card => {
+          let isMatch = true;
+          // 如果有目標地點，且卡片地點不匹配，則不匹配
+          if (targetLocation && card.location !== targetLocation) {
+            isMatch = false;
+          }
+          // 如果有目標類別，且卡片類別不包含目標類別，則不匹配
+          if (targetCategories.length > 0 && Array.isArray(card.categories)) {
+            // 檢查「卡片的分類」和「我們的目標分類」之間是否有任何交集
+            const hasIntersection = targetCategories.some(tc => card.categories.includes(tc));
+            if (!hasIntersection) {
+                isMatch = false;
+            }
+          }
+          return isMatch;
+        });
+
+        if (filteredCards.length > 0) {
+          setMessages((prev) => [...prev, { type: "result", resultItems: filteredCards }]);
+        } else {
+          // 如果過濾後沒有卡片，可以考慮顯示一個提示，或者不顯示卡片
+          console.log("前端過濾後沒有找到符合條件的卡片。");
+          // 如果希望在過濾後沒有結果時，也顯示一個「無結果」的卡片，可以取消註解下面這段
+          //  setMessages((prev) => [...prev, { type: "result", resultItems: [{ title: '未找到符合條件的福利', url: '#' }] }]);
+        }
       }
-      
     } catch (error) {
       setMessages((prev) => {
         const prevMessages = isNewConversation ? [userMessage] : prev.filter(m => m.type !== "loading");
@@ -667,7 +608,6 @@ const performAiSearch = async (query: string, options?: { asNewConversation?: bo
       scrollViewRef.current?.scrollToEnd({ animated: true });
     }
   };
-/*茹茵新增end*/
 
   // 定義自定義的渲染規則
   const customRenderRules: RenderRules = {

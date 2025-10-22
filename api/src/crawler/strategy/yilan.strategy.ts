@@ -78,7 +78,7 @@ export class YilanCrawlerStrategy {
     }
 
     return {
-      city: "宜蘭市",
+      city: "宜蘭縣",
       url: detailUrl,
       title: $(".in h3").text().trim(),
       date: isoDate,

@@ -23,7 +23,7 @@ interface CrawlResult {
 
 export class LienchiangCrawlerStrategy {
   private readonly logger = new Logger(LienchiangCrawlerStrategy.name);
-  private city = "連江市";
+  private city = "連江縣";
   private totalCount = 0;
   private results: any[] = [];
 

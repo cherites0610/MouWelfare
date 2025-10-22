@@ -564,7 +564,7 @@ private getWelfareLightForProfile(
     // 1. 獲取福利要求的身份 (與之前相同)
     const welfare = await this.welfareRepository.findOne({
       where: { id: String(welfareId) },
-      relations: ['identities'],
+      relations: ['identities',"location"],
     });
     if (!welfare) {
       throw new Error(`找不到福利 (id=${welfareId})`);

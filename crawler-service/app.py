@@ -386,7 +386,7 @@ def crawl_files_from_table(page_source, base_url, page_url):
             continue
 
         results.append({
-            "city": "南投市",
+            "city": "南投縣",
             "title": title,
             "date": date,
             "content": content,
@@ -493,7 +493,7 @@ def crawl_nantou(results: list, visited: set, config: dict = None):
                     continue
 
                 data = {
-                    "city": "南投市",
+                    "city": "南投縣",
                     "title": title,
                     "date": date,
                     "content": content,
