@@ -520,11 +520,13 @@ const performAiSearch = async (query: string, options?: { asNewConversation?: bo
     const baseMessages = isNewConversation ? [] : messages;
     setMessages([...baseMessages, userMessage, loadingMessage]);
 
+    const personalized = autoInjectChatContext && !!user;
+
     try {
       let finalQuery = query;
 
       if (autoInjectChatContext && user) {
-        if (isPersonalized) {
+        if (personalized) {
           const userProfilePrompt = generateUserProfilePrompt(user);
           finalQuery = `請根據下列使用者背景推薦相關福利：
           [使用者背景]
@@ -532,7 +534,6 @@ const performAiSearch = async (query: string, options?: { asNewConversation?: bo
 
           [使用者查詢]
           ${query}`;
-          console.log("🧩 使用個人化查詢，增強後的查詢:", finalQuery);
         } else {
           // 🚫 非個人化查詢，完全不加入使用者背景
           finalQuery = query;
@@ -575,7 +576,7 @@ const performAiSearch = async (query: string, options?: { asNewConversation?: bo
         ].join(' ');
 
         // 再從累積文字提取地點與類別
-        if (!isPersonalized) {
+        if (!personalized) {
           targetLocation = extractLocationFromText(accumulatedUserInput);
           targetCategories = extractCategoriesFromText(accumulatedUserInput);
           console.log("🧩 非個人化模式：從累積使用者輸入提取篩選條件");
