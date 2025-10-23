@@ -7,8 +7,9 @@ import { ConversationService } from './conversation.service.js';
 import { Conversation } from './entities/conversation.entity.js';
 import { Message } from './entities/message.entity.js';
 import { WelfareModule } from "../welfare/welfare.module.js";
+import { UserModule } from '../user/user.module.js';
 @Module({
-  imports: [TypeOrmModule.forFeature([User,Conversation, Message]),WelfareModule],
+  imports: [TypeOrmModule.forFeature([User,Conversation, Message]),WelfareModule,UserModule],
   controllers: [VertexController],
   providers: [VertexService, ConversationService],
   exports: [ConversationService],

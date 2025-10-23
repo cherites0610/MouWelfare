@@ -42,7 +42,7 @@ interface ResultItem {
   summary?: string;
   location?: string;
   forward?: string[];
-  categories: string[];
+  categories?: string[];
   detail?: string;
   publicationDate?: string;
   applicationCriteria?: string[];
@@ -92,7 +92,7 @@ const generateUserProfilePrompt = (user: User | null): string => {
   const profileParts: string[] = [];
   // 1. 處理地區
   if (user.location?.name) {
-    profileParts.push(`居住在 ${user.location.name}`);
+    profileParts.push(`${user.location.name}`);
   }
   // 2. 處理身分
   if (user.identities && user.identities.length > 0) {
@@ -425,7 +425,8 @@ const App: React.FC = () => {
       const response = await axios.post(AppConfig.api.endpoints.search, {
         userId: user.id,
         conversationId: finalChatId, // 直接傳遞 number 類型，undefined 也會被正確處理
-        query: message
+        query: message,
+        personalized: autoInjectChatContext //傳遞有無個人化
       }, {
         timeout: 30000, // 30 秒超時
         headers: {
@@ -509,7 +510,7 @@ const App: React.FC = () => {
   setIsInitialized(false); 
 };
 
-const performAiSearch = async (query: string, options?: { asNewConversation?: boolean }) => {
+const performAiSearch = async (query: string, options?: { asNewConversation?: boolean },isPersonalized?: boolean) => {
   
     const isNewConversation = options?.asNewConversation ?? false;
 
@@ -520,12 +521,22 @@ const performAiSearch = async (query: string, options?: { asNewConversation?: bo
     setMessages([...baseMessages, userMessage, loadingMessage]);
 
     try {
-      let finalQuery = query; 
+      let finalQuery = query;
+
       if (autoInjectChatContext && user) {
-        const userProfilePrompt = generateUserProfilePrompt(user);
-        if (userProfilePrompt) {
-          finalQuery = `${query} (${userProfilePrompt})`;
-          console.log("自動篩選已啟用，增強後的查詢:", finalQuery);
+        if (isPersonalized) {
+          const userProfilePrompt = generateUserProfilePrompt(user);
+          finalQuery = `請根據下列使用者背景推薦相關福利：
+          [使用者背景]
+          ${userProfilePrompt}
+
+          [使用者查詢]
+          ${query}`;
+          console.log("🧩 使用個人化查詢，增強後的查詢:", finalQuery);
+        } else {
+          // 🚫 非個人化查詢，完全不加入使用者背景
+          finalQuery = query;
+          console.log("🧩 使用普通查詢:", finalQuery);
         }
       }
       
@@ -544,51 +555,85 @@ const performAiSearch = async (query: string, options?: { asNewConversation?: bo
 
       // 確保前端二次過濾邏輯始終被應用
       if (rawWelfareCards && rawWelfareCards.length > 0) {
+        const userProfilePrompt = generateUserProfilePrompt(user);
         // 重新構建對話上下文，確保包含當前用戶的查詢
         // 注意：這裡的 conversationContext 應該基於當前所有訊息，包括新發送的 userMessage
-        const conversationContext = [...baseMessages, userMessage].filter(m => m.type === 'user').map(m => m.content).join(' ');
+        const conversationContext = [
+          ...[...baseMessages, userMessage].filter(m => m.type === 'user').map(m => m.content),
+          userProfilePrompt // ✅ 將使用者背景加入
+        ].join(' ');
+
+        
         
         let targetLocation: string | undefined;
         let targetCategories: string[] = [];
 
-        // 提取地點
-        for (const loc of sortedLocations) {
-          if (conversationContext.includes(loc) || conversationContext.includes(loc.slice(0, -1))) {
-            targetLocation = loc;
-            break; 
-          }
-        }
+        // 將 baseMessages + 當前 userMessage 中的文字累積起來
+        const accumulatedUserInput = [
+          ...baseMessages.filter(m => m.type === 'user').map(m => m.content),
+          query
+        ].join(' ');
 
-        // 提取類別
-        for (const keyword of sortedCategories) {
-          if (conversationContext.includes(keyword)) {
-            // 檢查字典中是否有這個關鍵字
-            if (categorySynonyms[keyword]) {
-                targetCategories = categorySynonyms[keyword];
-            } else {
-                // 如果字典沒有，代表關鍵字本身就是官方分類名稱
-                targetCategories = [keyword];
+        // 再從累積文字提取地點與類別
+        if (!isPersonalized) {
+          targetLocation = extractLocationFromText(accumulatedUserInput);
+          targetCategories = extractCategoriesFromText(accumulatedUserInput);
+          console.log("🧩 非個人化模式：從累積使用者輸入提取篩選條件");
+        }
+          else {
+          // ✅ 個人化查詢時才從背景 + 對話上下文提取
+          for (const loc of sortedLocations) {
+            if (conversationContext.includes(loc) || conversationContext.includes(loc.slice(0, -1))) {
+              targetLocation = loc;
+              break;
             }
-            break; 
+          }
+
+          // 提取類別（優先使用查詢內容）
+          let categorySource = query; // 🔹 先看使用者查詢文字
+          let foundCategory = false;
+
+          for (const keyword of sortedCategories) {
+            if (categorySource.includes(keyword)) {
+              targetCategories = categorySynonyms[keyword] || [keyword];
+              foundCategory = true;
+              break;
+            }
+          }
+
+          if (!foundCategory) {
+            targetCategories = [];
           }
         }
         // 應用過濾
         const filteredCards = rawWelfareCards.filter(card => {
-          let isMatch = true;
-          // 如果有目標地點，且卡片地點不匹配，則不匹配
-          if (targetLocation && card.location !== targetLocation) {
+        let isMatch = true;
+
+        // 🏠 地點寬鬆比對：允許部分匹配
+        if (targetLocation && card.location) {
+          const cardLoc = card.location.replace(/\s/g, '');
+          const targetLoc = targetLocation.replace(/\s/g, '');
+          if (!cardLoc.includes(targetLoc) && !targetLoc.includes(cardLoc)) {
             isMatch = false;
           }
-          // 如果有目標類別，且卡片類別不包含目標類別，則不匹配
-          if (targetCategories.length > 0 && Array.isArray(card.categories)) {
-            // 檢查「卡片的分類」和「我們的目標分類」之間是否有任何交集
-            const hasIntersection = targetCategories.some(tc => card.categories.includes(tc));
-            if (!hasIntersection) {
-                isMatch = false;
-            }
+        }
+
+        // 🧩 類別寬鬆比對：允許部分字串包含
+        if (targetCategories.length > 0 && Array.isArray(card.categories)) {
+          const hasIntersection = targetCategories.some(tc =>
+            card.categories.some(c => c.includes(tc))
+          );
+          if (!hasIntersection) {
+            isMatch = false;
           }
-          return isMatch;
-        });
+        }
+
+        return isMatch;
+      });
+
+      console.log("🎯 原始卡片數:", rawWelfareCards.length);
+      console.log("🎯 篩選條件 => 地點:", targetLocation, " 類別:", targetCategories);
+      console.log("🎯 篩選後卡片數:", filteredCards.length);
 
         if (filteredCards.length > 0) {
           setMessages((prev) => [...prev, { type: "result", resultItems: filteredCards }]);
@@ -608,6 +653,35 @@ const performAiSearch = async (query: string, options?: { asNewConversation?: bo
       scrollViewRef.current?.scrollToEnd({ animated: true });
     }
   };
+
+  // 🔍 從文字中找出類別關鍵字
+    const extractCategoriesFromText = (text: string): string[] => {
+      if (!text) return [];
+      const foundCategories: string[] = [];
+
+      for (const keyword of sortedCategories) {
+        if (text.includes(keyword)) {
+          if (categorySynonyms[keyword]) {
+            foundCategories.push(...categorySynonyms[keyword]);
+          } else {
+            foundCategories.push(keyword);
+          }
+        }
+      }
+
+      return Array.from(new Set(foundCategories)); // 去重
+    };
+
+    // 📍 從文字中找出地點關鍵字
+    const extractLocationFromText = (text: string): string | undefined => {
+      if (!text) return undefined;
+      for (const loc of sortedLocations) {
+        if (text.includes(loc) || text.includes(loc.slice(0, -1))) {
+          return loc;
+        }
+      }
+      return undefined;
+    };
 
   // 定義自定義的渲染規則
   const customRenderRules: RenderRules = {
