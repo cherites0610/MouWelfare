@@ -2,6 +2,7 @@ import { Alert, SafeAreaView, StatusBar, View } from 'react-native';
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import CowLoading from '../../../src/components/CowLoading';
 import ReanimatedDrawerLayout, {
   DrawerType,
   DrawerPosition,
@@ -17,6 +18,7 @@ import { fetchWelfareApi,fetchFavoriteAPI  } from '@/src/api/welfareApi';
 import { AppDispatch,RootState } from '@/src/store';
 import { useSelector,useDispatch  } from 'react-redux';
 import { debounce } from 'lodash';
+import { ActivityIndicator } from 'react-native';
 import { setLocations,
     setIdentities,
     setAge, 
@@ -245,15 +247,24 @@ export default function Index() {
             overlayColor="rgba(0, 0, 0, 0)"
           >
             <View style={{ flex: 1, backgroundColor: 'white' }}>
-              <WelfareList
-                listData={data}
-                refreshing={refreshing}
-                onRefresh={handleRefresh}
-                onLoadMore={onLoadMore}
-                isLoadingMore={isLoadingMore}
-                onToggleFavorite={handleToggleFavoriteInList}
-                authToken={authToken}
-              />
+              {isFetching ? (
+                // <CowLoading /> //自製可愛動畫
+
+                //普通loading
+                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                  <ActivityIndicator size="large" color={COLORS.primary} />
+                </View>
+              ) : (
+                <WelfareList
+                  listData={data}
+                  refreshing={refreshing}
+                  onRefresh={handleRefresh}
+                  onLoadMore={onLoadMore}
+                  isLoadingMore={isLoadingMore}
+                  onToggleFavorite={handleToggleFavoriteInList}
+                  authToken={authToken}
+                />
+              )}
             </View>
           </ReanimatedDrawerLayout>
         </SafeAreaView>

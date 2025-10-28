@@ -28,37 +28,66 @@ const handleToggleAutoFilter = useCallback(() => {
     dispatch(writeConfig());
   }, [autoFilterUserData, dispatch]);
 useEffect(() => {
-        // 當 globalFilters 物件發生任何變化時，這個 effect 就會重新執行
-        // 我們在這裡強制將全局狀態同步到本地狀態
-        setSelectedAge(globalFilters.age);
-        setSelectedGender(globalFilters.gender);
-        setSelectedIncome(globalFilters.income);
-        setSelectedIdentity(globalFilters.identities);
+  // ⚠️ 只有在 autoFilterUserData 為 true 時，才用 globalFilters 來覆蓋本地狀態
+  if (autoFilterUserData) {
+    setSelectedAge(globalFilters.age);
+    setSelectedGender(globalFilters.gender);
+    setSelectedIncome(globalFilters.income);
+    setSelectedIdentity(globalFilters.identities);
+  }
+}, [globalFilters, autoFilterUserData]);
+    const handleSingleSelect = (
+      option: string,
+      currentSelection: string | null,
+      setter: React.Dispatch<React.SetStateAction<string | null>>
+    ) => {
+      // 🟡 若目前為自動套用模式，代表使用者手動干預 → 關閉自動套用
+      if (autoFilterUserData) {
+        dispatch(updateConfig({ autoFilterUserData: false }));
+        dispatch(writeConfig());
+      }
 
-    }, [globalFilters]);
-    const handleSingleSelect = (option: string, currentSelection: string | null,setter: React.Dispatch<React.SetStateAction<string | null>>) => {
-        setter(currentSelection === option ? null : option);
+      // 🟢 切換選項
+      setter(currentSelection === option ? null : option);
     };
 
     // 處理手動多選
-    const handleMultiSelect = (option: string,currentSelection: string[], setter: React.Dispatch<React.SetStateAction<string[]>>) => {
-        const newSelection = [...currentSelection];
-        const index = newSelection.indexOf(option);
-        if (index > -1) {
-            newSelection.splice(index, 1); // 移除
-        } else {
-            newSelection.push(option); // 新增
-        }
-        setter(newSelection);
-    };
+    const handleMultiSelect = (
+      option: string,
+      currentSelection: string[],
+      setter: React.Dispatch<React.SetStateAction<string[]>>
+    ) => {
+      // 🟡 若目前為自動套用模式，代表使用者手動干預 → 關閉自動套用
+      if (autoFilterUserData) {
+        dispatch(updateConfig({ autoFilterUserData: false }));
+        dispatch(writeConfig());
+      }
 
+      // 🟢 正常多選邏輯
+      const newSelection = [...currentSelection];
+      const index = newSelection.indexOf(option);
+      if (index > -1) {
+        newSelection.splice(index, 1); // 移除
+      } else {
+        newSelection.push(option); // 新增
+      }
+      setter(newSelection);
+    };
+    
     const handleClear = () => {
-        setSelectedAge(null);
-        setSelectedGender(null);
-        setSelectedIncome([]);
-        setSelectedIdentity([]);
-        // (可選) 如果希望清除後立即影響列表，而不是等確認
-        // dispatch(resetFilters()); 
+      setSelectedAge(null);
+      setSelectedGender(null);
+      setSelectedIncome([]);
+      setSelectedIdentity([]);
+
+      // ❌ 關閉自動套用
+      if (autoFilterUserData) {
+        dispatch(updateConfig({ autoFilterUserData: false }));
+        dispatch(writeConfig());
+      }
+
+      // 可選：立即清空 Redux 狀態
+      // dispatch(resetFilters());
     };
 
     // 步驟 3: handleConfirm 負責將所有本地狀態 dispatch 到 Redux

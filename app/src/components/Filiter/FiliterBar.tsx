@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
-import { View } from 'react-native';
+import { View,ToastAndroid,Platform   } from 'react-native';
 import FilterButton from './FilterButton';
 import styles from './styles';
 import FilterModal from './FilterModal';
@@ -7,6 +7,7 @@ import { AppDispatch, RootState } from '@/src/store';
 import { useSelector, useDispatch } from 'react-redux';
 import { setCategories, setFamilies, setLocations } from '@/src/store/slices/filiterSlice';
 import { getTextByLocation, getTextByService, LocationNum, ServiceNum } from '@/src/utils/getTextByNumber';
+import { updateConfig, writeConfig } from '@/src/store/slices/configSlice';
 
 interface FilterBarProps {
   openFilterDrawer: () => void;
@@ -31,14 +32,34 @@ const FilterBar: React.FC<FilterBarProps> = React.memo(
     gender, 
     income  } = useSelector((state: RootState) => state.filiter)
     const setLocation = (locations: string[]) => {
-      dispatch(setLocations(locations))
-    }
-    const setCategory = (locations: string[]) => {
-      dispatch(setCategories(locations))
-    }
-    const setFamily = (familyies: string) => {
-      dispatch(setFamilies(familyies))
-    }
+      // 🟡 手動干預 → 關閉自動套用
+      if (autoFilterUserData) {
+        dispatch(updateConfig({ autoFilterUserData: false }));
+        dispatch(writeConfig());
+
+        if (Platform.OS === 'android') {
+          ToastAndroid.show('已切換為手動模式', ToastAndroid.SHORT);
+        }
+      }
+
+      dispatch(setLocations(locations));
+    };
+  const setCategory = (categories: string[]) => {
+    // if (autoFilterUserData) {
+    //   dispatch(updateConfig({ autoFilterUserData: false }));
+    //   dispatch(writeConfig());
+    // }
+    dispatch(setCategories(categories));
+  };
+
+  const setFamily = (families: string) => {
+    // if (autoFilterUserData) {
+    //   dispatch(updateConfig({ autoFilterUserData: false }));
+    //   dispatch(writeConfig());
+    // }
+    dispatch(setFamilies(families));
+  };
+
 
     // useEffect(() => {
     //   if (user?.location && autoFilterUserData) {
@@ -46,7 +67,7 @@ const FilterBar: React.FC<FilterBarProps> = React.memo(
     //   }
     // },[user,autoFilterUserData])
 
-    
+
 
     const LOCATION: string[] = Array.from({ length: LocationNum - 1 }, (_, i) => getTextByLocation(i + 1));
     const CATEGORY: string[] = Array.from({ length: ServiceNum - 1 }, (_, i) => getTextByService(i + 1));
