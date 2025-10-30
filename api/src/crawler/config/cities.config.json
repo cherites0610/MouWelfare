@@ -38,7 +38,28 @@
       "content": ".detail"
     }
   },
-  "chiayi": {
+  "chiayicity": {
+    "city": "嘉義市",
+    "baseUrl": "https://social.chiayi.gov.tw/",
+    "startUrl": "https://social.chiayi.gov.tw/cl.aspx?n=379",
+    "levels": [
+      {
+        "selector": ".list-text.content-list a",
+        "getUrlAttr": "href"
+      },
+      {
+        "selector": ".list-text.content-list a,.area-table.rwd-straight a",
+        "getUrlAttr": "href"
+      }
+    ],
+    "stopSelector": ".simple-text.title",
+    "extractSelectors": {
+      "title": ".simple-text.title",
+      "date": ".list-text.detail li span",
+      "content": ".area-essay.page-caption-p"
+    }
+  },
+   "chiayi": {
     "city": "嘉義縣",
     "baseUrl": "https://sabcc.cyhg.gov.tw/",
     "startUrl": "https://sabcc.cyhg.gov.tw/cl.aspx?n=4237",

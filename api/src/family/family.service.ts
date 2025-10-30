@@ -53,7 +53,7 @@ export class FamilyService {
   }
   async findOneByFamilyID(id: string) {
     const family = await this.familyRepository.findOne({
-      relations: ["userFamilies", "userFamilies.user","userFamilies.user.location"],
+      relations: ["userFamilies", "userFamilies.user","userFamilies.user.location","userFamilies.user.identities"],
       where: { id: id },
     });
 
