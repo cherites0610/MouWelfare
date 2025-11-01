@@ -18,8 +18,8 @@ import { FindOneDTO } from "./dto/find-one.dto.js";
 import { UserFamily } from "../user-family/entities/user-family.entity.js";
 import { LightStatus } from "../common/enum/light-status.enum.js";
 import { User } from "../user/entities/user.entity.js";
-import { LightStatusResult } from "../../../api/src/welfare/interface/light-status-result.interface.js";
 import dayjs from "dayjs";
+import { LightStatusResult } from "./interface/light-status-result.interface.js";
 
 @Injectable()
 export class WelfareService {
