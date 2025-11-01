@@ -14,15 +14,13 @@ import { useRouter } from 'expo-router';
 import { Welfare } from '../type/welfareType';
 import { Ionicons } from '@expo/vector-icons'; 
 import { addFavoriteAPI, deleteFavoriteAPI } from '../api/welfareApi';
-import { RootState } from '../store';
-import { useSelector } from 'react-redux'
 
 type WelfareListProps = {
     listData: Welfare[];
-    refreshing: boolean; // 父組件控制
-    onRefresh: () => void; // 父組件提供的刷新方法
-    isLoadingMore: boolean; // 父組件提供的加載更多狀態
-    onLoadMore: () => void; // 父組件提供的加載更多方法
+    refreshing: boolean;
+    onRefresh: () => void;
+    isLoadingMore: boolean;
+    onLoadMore: () => void;
     onToggleFavorite: (welfareId: number, currentStatus: boolean) => void;
     authToken: string;
 };
@@ -40,15 +38,12 @@ export default function WelfareList({ listData, refreshing, onRefresh, isLoading
 
     const handleEndReached = () => {
         if (!isLoadingMore && !refreshing) {
-            // 觸發下一頁請求
-            // 這裡假設父組件傳入了一個 onLoadMore 回調
             onLoadMore();
         }
     };
 
     const RightAction = ({ item, prog, drag, authToken, onToggleFavorite }: RightActionProps) => {
         const styleAnimation = useAnimatedStyle(() => {
-            // 每個按鈕寬度 80px，兩個就是 160
             const translateX = interpolate(
                 drag.value,
                 [-160, 0],
@@ -179,7 +174,7 @@ export default function WelfareList({ listData, refreshing, onRefresh, isLoading
                 data={listData} // 數據來源
                 renderItem={renderItem} // 渲染每個項目的函數
                 keyExtractor={(item) => item.id.toString()} // 每個項目的唯一 key
-                initialNumToRender={20}
+                initialNumToRender={10}
                 maxToRenderPerBatch={20}
                 windowSize={21}
                 refreshControl={

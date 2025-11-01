@@ -1,69 +1,77 @@
 import { View, Text, StyleSheet, Image } from 'react-native'
-import React, { useEffect, useState } from 'react'
+import React, { memo, useMemo } from 'react'
 import { COLORS } from '../utils/colors';
-import { FamilyMember } from '../type/family';
 import { WelfareFamilyMember } from '../type/welfareType';
 
 
 type props = { location: string, category: string[], title: string, lightStatus: number, familyMember: WelfareFamilyMember[] }
 
-export default function WelfareItem({ location, category, title, lightStatus, familyMember }: props) {
-    const [currentCategoryIndex, setCurrentCategoryIndex] = useState(0);
-
-    const getCircleColor = () => {
+function WelfareItem({ location, category, title, lightStatus, familyMember }: props) {
+    const circleColor = useMemo(() => {
         switch (lightStatus) {
             case 1:
-                return COLORS.light_green; // 綠色
+                return COLORS.light_green;
             case 2:
-                return COLORS.light_yellow; // 黃色
+                return COLORS.light_yellow;
             case 3:
-                return COLORS.light_red; // 紅色
+                return COLORS.light_red;
             default:
                 return COLORS.light_yellow;
         }
-    };
+    }, [lightStatus]);
+
+    const truncatedTitle = useMemo(() => {
+        
+        return title.length > 16 ? title.slice(0, 16) + '...' : title;
+    }, [title]);
+
+    const familyAvatars = useMemo(() => {
+        return familyMember.map((item, index) => (
+            <View key={item.avatarUrl || index}>
+                <Image style={styles.avatar} source={{ uri: item.avatarUrl }} />
+            </View>
+        ));
+    }, [familyMember]);
 
     return (
         <View style={styles.container}>
             <View style={styles.textContainer}>
                 <View>
-                    <Text style={styles.subTitle}>{location} / {category[currentCategoryIndex]}</Text>
-                    <Text style={styles.title}>{title.length > 16 ? title.slice(0, 16) + '...' : title}</Text>
+                    <Text style={styles.subTitle}>{location} / {category?.[0] ?? ''}</Text>
+                    <Text style={styles.title}>{truncatedTitle}</Text>
                 </View>
 
                 {familyMember.length > 0 && (
                     <View style={styles.avatarContainer}>
-                        {familyMember.map((item, index) => (
-                            <View key={index}>
-                                <Image style={styles.avatar} source={{ uri: item.avatarUrl }} />
-                            </View>
-                        ))}
+                        {familyAvatars}
                     </View>
                 )}
             </View>
             {lightStatus && (
-                <View style={[styles.circle, { backgroundColor: getCircleColor() }]} />
+                <View style={[styles.circle, { backgroundColor: circleColor }]} />
             )}
         </View>
     )
 }
 
+export default memo(WelfareItem);
+
 const styles = StyleSheet.create({
     container: {
         backgroundColor: 'white',
-        flexDirection: 'row', // 讓文字和圓形圖標水平排列
-        alignItems: 'center', // 垂直居中
-        paddingHorizontal: 15, // 左右內邊距
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 15,
         marginVertical: 20
     },
     textContainer: {
-        flex: 1, // 讓文字區域佔據剩餘空間
+        flex: 1,
         justifyContent: 'space-between'
     },
     title: {
-        fontSize: 18, // 文字大小
-        color: 'black', // 文字顏色
-        marginVertical: 0, // 上下間距
+        fontSize: 18, 
+        color: 'black', 
+        marginVertical: 0, 
         fontWeight: "500",
         height: 30
     },
@@ -73,10 +81,10 @@ const styles = StyleSheet.create({
         color: "gray"
     },
     circle: {
-        width: 20, // 圓形圖標的寬度
-        height: 20, // 圓形圖標的高度
-        borderRadius: 15, // 圓形效果
-        marginLeft: 10, // 與文字的間距
+        width: 20,
+        height: 20, 
+        borderRadius: 15,
+        marginLeft: 10,
     },
     avatarContainer: {
         flexDirection: 'row',

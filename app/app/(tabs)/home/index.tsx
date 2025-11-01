@@ -1,6 +1,6 @@
-import { Alert, SafeAreaView, StatusBar, View } from 'react-native';
+import { Alert, StatusBar, View } from 'react-native';
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import CowLoading from '../../../src/components/CowLoading';
 import ReanimatedDrawerLayout, {
@@ -74,7 +74,7 @@ export default function Index() {
       userID: user?.id ?? "",
       page: nextPage ?? 1,
       // pageSize: queryParams.pageSize ?? 20,
-      pageSize:1000,
+      pageSize:20,
       age: queryParams.age ?? null,
       gender: queryParams.gender ?? null,
       income: queryParams.income ?? [],
@@ -208,11 +208,12 @@ export default function Index() {
     }
   }, [user, autoFilterUserData, dispatch]);
 
-  const onLoadMore = () => {
-    if (hasMore && !isFetching) {
-      fetchWelfareData({ locations, categories, identities, searchQuery, age, gender, income }, true);
-    }
-  }
+  const onLoadMore = useCallback(() => {
+    if (hasMore && !isFetching) {
+      fetchWelfareData({ locations, categories, identities, searchQuery, age, gender, income }, true);
+    }
+    // 依賴所有函式中用到的 props 和 state
+}, [hasMore, isFetching, fetchWelfareData, locations, categories, identities, searchQuery, age, gender, income]);
 
   const openDrawer = useCallback(() => {
     drawerRef.current?.openDrawer();
@@ -222,18 +223,17 @@ export default function Index() {
     drawerRef.current?.closeDrawer();
   }, []);
 
-  const handleToggleFavoriteInList = (welfareId: number, currentStatus: boolean) => {
-    setData(currentData => 
-      currentData.map(item => 
-        item.id === welfareId ? { ...item, isFavorited: !currentStatus } : item
-      )
-    );
-  };
+  const handleToggleFavoriteInList = useCallback((welfareId: number, currentStatus: boolean) => {
+    setData(currentData => 
+      currentData.map(item => 
+        item.id === welfareId ? { ...item, isFavorited: !currentStatus } : item
+      )
+    );
+}, []);
 
   return (
     <GestureHandlerRootView>
-      <SafeAreaProvider>
-        <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.background }}>
+        <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: COLORS.background }}>
           <StatusBar backgroundColor={COLORS.background} />
           <Search />
           <Filiter
@@ -247,14 +247,6 @@ export default function Index() {
             overlayColor="rgba(0, 0, 0, 0)"
           >
             <View style={{ flex: 1, backgroundColor: 'white' }}>
-              {isFetching ? (
-                // <CowLoading /> //自製可愛動畫
-
-                //普通loading
-                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-                  <ActivityIndicator size="large" color={COLORS.primary} />
-                </View>
-              ) : (
                 <WelfareList
                   listData={data}
                   refreshing={refreshing}
@@ -264,11 +256,9 @@ export default function Index() {
                   onToggleFavorite={handleToggleFavoriteInList}
                   authToken={authToken}
                 />
-              )}
             </View>
           </ReanimatedDrawerLayout>
         </SafeAreaView>
-      </SafeAreaProvider>
     </GestureHandlerRootView>
   );
 }

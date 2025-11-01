@@ -12,15 +12,11 @@ export default function RootLayout() {
 
   return (
     <Provider store={store}>
-      <SafeAreaProvider>
-        <SafeAreaView style={{ flex: 1,backgroundColor:COLORS.background }} edges={["top", "left", "right"]}>
           <Stack
             screenOptions={{
-              headerShown: false, // 全局隱藏標頭
+              headerShown: false,
             }}
           />
-        </SafeAreaView>
-      </SafeAreaProvider>
     </Provider>
   );
 }

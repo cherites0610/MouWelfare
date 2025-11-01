@@ -9,19 +9,21 @@ export class GcsService {
   private readonly bucketName: string;
   private readonly fileName: string;
 
-    constructor() {
+  constructor() {
     const keyBase64 = process.env.GCS_KEY_BASE64;
     if (!keyBase64) throw new Error("缺少 GCS_KEY_BASE64 環境變數");
 
-    const keyJson = JSON.parse(Buffer.from(keyBase64, "base64").toString("utf-8"));
+    const keyJson = JSON.parse(
+      Buffer.from(keyBase64, "base64").toString("utf-8")
+    );
 
     this.storage = new Storage({
-        credentials: keyJson,
+      credentials: keyJson,
     });
 
     this.bucketName = process.env.GCS_BUCKET_NAME || "mouai_data";
     this.fileName = process.env.GCS_FILE_NAME || "welfare_data.jsonl";
-    }
+  }
 
   /** 把新資料 append 進 GCS 的 jsonl 檔案 */
   async appendAndUpload(records: any[]): Promise<void> {

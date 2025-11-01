@@ -35,7 +35,7 @@ const WelfareInfo = () => {
   const [error, setError] = useState<string | null>(null);
   const { user } = useSelector((state: RootState) => state.user)
   const { locations, categories, identities, family, searchQuery } = useSelector((state: RootState) => state.filiter)
-  const { familys } = useSelector((state: RootState) => state.family); // 獲取家庭類型數據
+  const { familys } = useSelector((state: RootState) => state.family);
   const { authToken } = useSelector((state: RootState) => state.config);
   const [isReasonModalVisible, setIsReasonModalVisible] = useState(false);
   const [modalContent, setModalContent] = useState({ title: '', reasons: [''] });
@@ -70,19 +70,20 @@ const WelfareInfo = () => {
   
 useEffect(() => {
     const init = async () => {
+      
       if (!welfareId) {
         setError('福利 ID 不存在，無法載入資料。');
         return;
       }
       try {
         const familyId = familys.find((item) => item.name === family)?.id;
-
+        
         // 使用 Promise.all 並行處理兩個 API 請求，提升速度
         const [welfareResponse, favoritesResponse] = await Promise.all([
           fetchWelfareByIDAPI(String(welfareId), user?.id, familyId),
           fetchFavoriteAPI(authToken) // 獲取所有收藏項目
         ]);
-
+        
         let finalWelfareData = welfareResponse.data;
 
         // 檢查當前福利是否在收藏列表中
@@ -103,14 +104,17 @@ useEffect(() => {
         };
         
         setWelfare(finalWelfareData);
-        console.log(finalWelfareData)
       } catch (error) {
         console.error('載入福利資料時發生錯誤:', error);
         setError('無法加載數據，請稍後重試');
       }
     };
-    init();
-  }, [welfareId, user?.id, authToken]); // <-- 將 authToken 加入依賴
+    const timer = setTimeout(() => {
+        init();
+    }, 0);
+
+    return () => clearTimeout(timer);
+  }, [welfareId, user?.id, authToken]);
 
   useLayoutEffect(() => {
     const handleCustomBack = () => {
@@ -175,7 +179,7 @@ useEffect(() => {
       ),
     });
     
-  }, [sourcePage, navigation, router, welfare, authToken, isFavorited]); // <-- 加入 isFavorited 依賴
+  }, [sourcePage, navigation, router, welfare, authToken, isFavorited]);
 
   const openLink = async (url: string) => {
     if (url && (await Linking.canOpenURL(url))) {

@@ -1,11 +1,10 @@
-import React from 'react';
+import React, { use, useEffect } from 'react';
 import {
     View,
     Text,
     StyleSheet,
     Image,
     TouchableOpacity,
-    SafeAreaView // Use SafeAreaView for better screen fitting
 } from 'react-native';
 import { Link, useRouter } from 'expo-router'; // Assuming you use expo-router for Link
 import { Ionicons } from '@expo/vector-icons'; // Import icons
@@ -14,11 +13,17 @@ import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '@/src/store';
 import { logout } from '@/src/store/slices/userSlice';
 import { setAuthToken, writeConfig } from '@/src/store/slices/configSlice';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function Settings() {
     const { user, status } = useSelector((state: RootState) => state.user)
     const dispatch = useDispatch<AppDispatch>();
     const route = useRouter();
+
+    useEffect(() => {
+        console.log(1);
+    }, []);
+        
 
     return (
         <SafeAreaView style={styles.safeArea}>

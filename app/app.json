@@ -20,6 +20,9 @@
           },
           "192.168.0.129": {
             "NSExceptionAllowsInsecureHTTPLoads": true
+          },
+          "127.0.0.1": {
+            "NSExceptionAllowsInsecureHTTPLoads": true
           }
         }
       }
@@ -53,7 +56,7 @@
     [
       "expo-splash-screen",
       {
-        "image": "./assets/images/logo.png",
+        "image": "./assets/images/logo.jpeg",
         "imageWidth": 200,
         "resizeMode": "contain",
         "backgroundColor": "#ffffff"
