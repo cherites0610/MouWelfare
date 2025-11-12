@@ -1,13 +1,20 @@
-import React, { useCallback, useMemo } from 'react';
-import { Modal, View, Text, FlatList, TouchableOpacity, ListRenderItem } from 'react-native';
-import styles from './styles';
+import React, { useCallback, useState, useEffect } from "react";
+import {
+  Modal,
+  View,
+  Text,
+  FlatList,
+  TouchableOpacity,
+  ListRenderItem,
+} from "react-native";
+import styles from "./styles";
 
 interface FilterModalProps {
   visible: boolean;
   title: string;
   items: string[];
   selectedItems: string[] | string;
-  setSelectedItems: Function
+  setSelectedItems: (items: string[] | string) => void;
   onClose: () => void;
 }
 
@@ -19,42 +26,56 @@ const FilterModal: React.FC<FilterModalProps> = ({
   setSelectedItems,
   onClose,
 }) => {
-  const toggleSelection = (item: string) => {
-    if (Array.isArray(selectedItems)) {
-      const selectedSet = new Set(selectedItems);
-      const isSelected = selectedSet.has(item);
-      if (isSelected) {
-        selectedSet.delete(item);
-      } else {
-        selectedSet.add(item);
-      }
-      const updatedItems = Array.from(selectedSet);
-      setSelectedItems(updatedItems)
-    } else {
-      const updatedItem = selectedItems === item ? '' : item;
-      setSelectedItems(updatedItem);
-    }
-  }
+  const [tempSelectedItems, setTempSelectedItems] = useState<string[] | string>(
+    selectedItems
+  );
 
-  // Optimize renderDropdownItem
+  useEffect(() => {
+    if (visible) {
+      setTempSelectedItems(selectedItems);
+    }
+  }, [visible, selectedItems]);
+
+  const toggleSelection = useCallback(
+    (item: string) => {
+      if (Array.isArray(tempSelectedItems)) {
+        const selectedSet = new Set(tempSelectedItems);
+        const isSelected = selectedSet.has(item);
+        if (isSelected) {
+          selectedSet.delete(item);
+        } else {
+          selectedSet.add(item);
+        }
+        const updatedItems = Array.from(selectedSet);
+        setTempSelectedItems(updatedItems);
+      } else {
+        const updatedItem = tempSelectedItems === item ? "" : item;
+        setTempSelectedItems(updatedItem);
+      }
+    },
+    [tempSelectedItems]
+  );
+
   const renderDropdownItem = useCallback<ListRenderItem<string>>(
     ({ item }) => {
-      const isSelected = selectedItems.includes(item);
+      const isSelected = Array.isArray(tempSelectedItems)
+        ? tempSelectedItems.includes(item)
+        : tempSelectedItems === item;
+
       return (
         <TouchableOpacity
           style={styles.dropdownItem}
           onPress={() => toggleSelection(item)}
         >
           <Text style={styles.dropdownText}>
-            {item} {isSelected ? '✓' : ''}
+            {item} {isSelected ? "✓" : ""}
           </Text>
         </TouchableOpacity>
       );
     },
-    [selectedItems, toggleSelection]
+    [tempSelectedItems, toggleSelection]
   );
 
-  // FlatList getItemLayout
   const getItemLayout = useCallback(
     (_: any, index: number) => ({
       length: 50,
@@ -63,6 +84,11 @@ const FilterModal: React.FC<FilterModalProps> = ({
     }),
     []
   );
+
+  const handleClose = () => {
+    setSelectedItems(tempSelectedItems);
+    onClose();
+  };
 
   return (
     <Modal
@@ -76,16 +102,16 @@ const FilterModal: React.FC<FilterModalProps> = ({
           <Text style={styles.modalTitle}>{title}</Text>
           <FlatList
             data={items}
-            keyExtractor={(item, index) => `${item}-${index}`} // 確保 key 唯一
+            keyExtractor={(item, index) => `${item}-${index}`}
             renderItem={renderDropdownItem}
             getItemLayout={getItemLayout}
-            extraData={selectedItems}
-            initialNumToRender={10} // Optimize for large lists
-            maxToRenderPerBatch={5} // 限制每批渲染數量
-            windowSize={5} // 優化視窗大小
+            extraData={tempSelectedItems}
+            initialNumToRender={21}
+            maxToRenderPerBatch={5}
+            windowSize={5}
           />
-          <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-            <Text style={styles.closeButtonText}>關閉</Text>
+          <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
+            <Text style={styles.closeButtonText}>確認</Text>
           </TouchableOpacity>
         </View>
       </View>

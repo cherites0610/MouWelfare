@@ -1,183 +1,230 @@
-import { View, Text, SafeAreaView, ScrollView, Image, TouchableOpacity, Switch, StyleSheet, FlatList, Alert, Modal, TextInput, Platform } from 'react-native'
-import React, { useEffect, useState } from 'react'
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { deleteFamilyApi, EditFamilyInfApi, exitFamilyApi, fetchFmailyApi, getFmailyCodeApi } from '@/src/api/familyApi';
-import { useDispatch, useSelector } from 'react-redux'
-import { AppDispatch, RootState } from '@/src/store';
-import QRCode from 'react-native-qrcode-svg';
-import { COLORS } from '@/src/utils/colors';
-import { fetchFamily } from '@/src/store/slices/familySlice';
-import { FamilysResponse } from '@/src/type/family';
-
+import {
+  View,
+  Text,
+  SafeAreaView,
+  ScrollView,
+  Image,
+  TouchableOpacity,
+  Switch,
+  StyleSheet,
+  FlatList,
+  Alert,
+  Modal,
+  TextInput,
+  Platform,
+} from "react-native";
+import React, { useEffect, useState } from "react";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import {
+  deleteFamilyApi,
+  EditFamilyInfApi,
+  exitFamilyApi,
+  fetchFmailyApi,
+  getFmailyCodeApi,
+} from "@/src/api/familyApi";
+import { useDispatch, useSelector } from "react-redux";
+import { AppDispatch, RootState } from "@/src/store";
+import QRCode from "react-native-qrcode-svg";
+import { COLORS } from "@/src/utils/colors";
+import { fetchFamily } from "@/src/store/slices/familySlice";
+import { FamilysResponse } from "@/src/type/family";
 
 const FamilySettingsScreen = () => {
-    const [isNotificationsEnabled, setIsNotificationsEnabled] = useState(true); // 初始值設為 true (如圖所示)
-    const { authToken } = useSelector((state: RootState) => state.config)
-    const { familys } = useSelector((state: RootState) => state.family)
-    const { user } = useSelector((state: RootState) => state.user)
-    const [code, setCode] = useState<string>()
-    const [displayModal, setDisplayModal] = useState<boolean>(false);
-    const [editNameModal, setEditNameModal] = useState<boolean>(false);
-    const [newFamilyName, setNewFamilyName] = useState<string>('');
-    const glob = useLocalSearchParams();
+  const [isNotificationsEnabled, setIsNotificationsEnabled] = useState(true); // 初始值設為 true (如圖所示)
+  const { authToken } = useSelector((state: RootState) => state.config);
+  const { familys } = useSelector((state: RootState) => state.family);
+  const { user } = useSelector((state: RootState) => state.user);
+  const [code, setCode] = useState<string>();
+  const [displayModal, setDisplayModal] = useState<boolean>(false);
+  const [editNameModal, setEditNameModal] = useState<boolean>(false);
+  const [newFamilyName, setNewFamilyName] = useState<string>("");
+  const glob = useLocalSearchParams();
 
+  const familyID = glob.familyid as string;
+  let family = familys.find((item) => item.id === familyID)!;
 
-    const familyID = glob.familyid as string
-    let family = familys.find((item) => item.id === familyID)!
+  const disDispatch = useDispatch<AppDispatch>();
+  const router = useRouter();
 
-    const disDispatch = useDispatch<AppDispatch>()
-    const router = useRouter()
-
-    const handleGenerateQrCodePress = async () => {
-        if (family.id) {
-            const result = await getFmailyCodeApi(authToken, family.id);
-            setCode(result.data)
-            setDisplayModal(true)
-        }
-    };
-
-    const handleExitFamilyPress = async () => {
-        try {
-            console.log("---------- [前端] 準備發送「退出家庭」請求 ----------");
-        console.log(`目標 URL: [DELETE] /api/family/${family?.id}/leave`); // 假設的 URL，請根據您的 API 調整
-        console.log("使用的家庭 ID (family.id):", family?.id);
-        console.log("使用的認證 Token (authToken):", authToken);
-        console.log("--------------------------------------------------");
-            const result = await exitFamilyApi(authToken, family?.id!)
-            Alert.alert("退出家庭成功")
-            await disDispatch(fetchFamily())
-            router.replace("/account/family")
-        } catch (err: any) {
-            console.error("完整的錯誤物件:", err);
-            Alert.alert("退出家庭失敗")
-        }
+  const handleGenerateQrCodePress = async () => {
+    if (family.id) {
+      const result = await getFmailyCodeApi(authToken, family.id);
+      setCode(result.data);
+      setDisplayModal(true);
     }
+  };
 
-    const handleDeleteFamilyPress = async () => {
-        Alert.alert('刪除家庭', '該動作不可復原', [
-            {
-                text: '取消',
-                onPress: () => console.log('Cancel Pressed'),
-                style: 'cancel',
-            },
-            {
-                text: '確認刪除', onPress: async () => {
-                    try {
-                        const result = await deleteFamilyApi(authToken, family?.id!)
-                        Alert.alert("刪除家庭成功")
-                        await disDispatch(fetchFamily())
-                        router.replace("/account/family")
-                    } catch (err: any) {
-                         let errorMessage = "發生未知錯誤";
+  const handleExitFamilyPress = async () => {
+    try {
+      console.log("---------- [前端] 準備發送「退出家庭」請求 ----------");
+      console.log(`目標 URL: [DELETE] /api/family/${family?.id}/leave`); // 假設的 URL，請根據您的 API 調整
+      console.log("使用的家庭 ID (family.id):", family?.id);
+      console.log("使用的認證 Token (authToken):", authToken);
+      console.log("--------------------------------------------------");
+      const result = await exitFamilyApi(authToken, family?.id!);
+      Alert.alert("退出家庭成功");
+      await disDispatch(fetchFamily());
+      router.replace("/account/family");
+    } catch (err: any) {
+      console.error("完整的錯誤物件:", err);
+      Alert.alert("退出家庭失敗");
+    }
+  };
+
+  const handleDeleteFamilyPress = async () => {
+    Alert.alert("刪除家庭", "該動作不可復原", [
+      {
+        text: "取消",
+        onPress: () => console.log("Cancel Pressed"),
+        style: "cancel",
+      },
+      {
+        text: "確認刪除",
+        onPress: async () => {
+          try {
+            const result = await deleteFamilyApi(authToken, family?.id!);
+            Alert.alert("刪除家庭成功");
+            await disDispatch(fetchFamily());
+            router.replace("/account/family");
+          } catch (err: any) {
+            let errorMessage = "發生未知錯誤";
 
             // 檢查是否是 Axios 錯誤，並有後端的回應
-            if (err && typeof err === 'object' && 'response' in err && err.response?.data?.message) {
-                errorMessage = err.response.data.message;
-            } 
+            if (
+              err &&
+              typeof err === "object" &&
+              "response" in err &&
+              err.response?.data?.message
+            ) {
+              errorMessage = err.response.data.message;
+            }
             // 檢查是否是標準的 Error 物件
             else if (err instanceof Error) {
-                errorMessage = err.message;
-            } 
-            // 如果都不是，就將它轉成字串
-            else if (typeof err === 'string') {
-                errorMessage = err;
+              errorMessage = err.message;
             }
-            
+            // 如果都不是，就將它轉成字串
+            else if (typeof err === "string") {
+              errorMessage = err;
+            }
+
             console.error("退出家庭失敗，詳細錯誤:", err); // 保留詳細的 console.error
             Alert.alert("退出家庭失敗", errorMessage); // 顯示更精準的錯誤訊息
-                    }
-                }
-            },
-        ]);
+          }
+        },
+      },
+    ]);
+  };
 
-    };
-
-    const editFamilyNameConfirm = async () => {
-        if (newFamilyName.length == 0) {
-            setEditNameModal(false)
-            return
-        }
-        
-        try {
-            const result = await EditFamilyInfApi(authToken, family?.id!, newFamilyName)
-            await disDispatch(fetchFamily())
-            family = familys.find((item) => item.id === familyID)!
-            setEditNameModal(false)
-            Alert.alert(result.message)
-        } catch (err: any) {
-            Alert.alert("修改失敗", err.message)
-        }
+  const editFamilyNameConfirm = async () => {
+    if (newFamilyName.length == 0) {
+      setEditNameModal(false);
+      return;
     }
 
-    if (!family) {
-        // 如果沒有 family 資料，可以顯示載入中或錯誤訊息
-        return (
-            <SafeAreaView style={styles.container}>
-                <Text>載入家庭資料中...</Text>
-            </SafeAreaView>
-        );
+    try {
+      const result = await EditFamilyInfApi(
+        authToken,
+        family?.id!,
+        newFamilyName
+      );
+      await disDispatch(fetchFamily());
+      family = familys.find((item) => item.id === familyID)!;
+      setEditNameModal(false);
+      Alert.alert(result.message);
+    } catch (err: any) {
+      Alert.alert("修改失敗", err.message);
     }
+  };
 
-    const renderButton = () => {
-        const role = family.userFamilies.find((item) => {
-            return item.user.id == user?.id
-        })?.role
-
-        if (role == 1) {
-            return (
-                <TouchableOpacity style={styles.deleteButton} onPress={handleDeleteFamilyPress}>
-                    <Text style={styles.deleteButtonText}>刪除家庭</Text>
-                </TouchableOpacity>
-            )
-        } else if (role == 2) {
-            return (
-                <>
-                    <TouchableOpacity style={styles.deleteButton} onPress={handleExitFamilyPress}>
-                        <Text style={styles.deleteButtonText}>退出家庭</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.mangmentDeleteButton} onPress={handleDeleteFamilyPress}>
-                        <Text style={styles.deleteButtonText}>刪除家庭</Text>
-                    </TouchableOpacity>
-                </>
-            )
-        } else {
-            return (
-                <TouchableOpacity style={styles.deleteButton} onPress={handleExitFamilyPress}>
-                    <Text style={styles.deleteButtonText}>退出家庭</Text>
-                </TouchableOpacity>
-            )
-        }
-    }
-
+  if (!family) {
+    // 如果沒有 family 資料，可以顯示載入中或錯誤訊息
     return (
-        <ScrollView style={styles.container}>
-            {/* --- 頭像和名稱區 --- */}
-            <View style={styles.userInfoSection}>
-                {family.userFamilies.map((item, index) =>
-                    <View key={index}>
-                        <Image
-                            source={{ uri: item.user.avatarUrl }} // 提供一個預設圖片
-                            style={styles.avatar}
-                        />
-                        <Text style={styles.userName}>{item.user.name.length > 5 ? item.user.name.slice(0, 5) + '...' : item.user.name}</Text>
-                    </View>
-                )}
+      <SafeAreaView style={styles.container}>
+        <Text>載入家庭資料中...</Text>
+      </SafeAreaView>
+    );
+  }
 
-            </View>
+  const renderButton = () => {
+    const role = family.userFamilies.find((item) => {
+      return item.user.id == user?.id;
+    })?.role;
 
-            {/* --- 設定選項列表 --- */}
-            <View style={styles.settingsList}>
-                {/* 群組名稱 */}
-                <TouchableOpacity style={styles.listItem} onPress={() => { setEditNameModal(true) }}>
-                    <Text style={styles.listItemText}>群組名稱</Text>
-                    <View style={styles.listItemRight}>
-                        <Text style={styles.listItemValue}>{family.name}</Text>
-                        <Text style={styles.arrowIcon}>{'>'}</Text>
-                        {/* 建議用圖標 */}
-                    </View>
-                </TouchableOpacity>
-                {/* 開啟通知 */}
-                {/* <View style={styles.listItem}>
+    if (role == 1) {
+      return (
+        <TouchableOpacity
+          style={styles.deleteButton}
+          onPress={handleDeleteFamilyPress}
+        >
+          <Text style={styles.deleteButtonText}>刪除家庭</Text>
+        </TouchableOpacity>
+      );
+    } else if (role == 2) {
+      return (
+        <>
+          <TouchableOpacity
+            style={styles.deleteButton}
+            onPress={handleExitFamilyPress}
+          >
+            <Text style={styles.deleteButtonText}>退出家庭</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.mangmentDeleteButton}
+            onPress={handleDeleteFamilyPress}
+          >
+            <Text style={styles.deleteButtonText}>刪除家庭</Text>
+          </TouchableOpacity>
+        </>
+      );
+    } else {
+      return (
+        <TouchableOpacity
+          style={styles.deleteButton}
+          onPress={handleExitFamilyPress}
+        >
+          <Text style={styles.deleteButtonText}>退出家庭</Text>
+        </TouchableOpacity>
+      );
+    }
+  };
+
+  return (
+    <ScrollView style={styles.container}>
+      {/* --- 頭像和名稱區 --- */}
+      <View style={styles.userInfoSection}>
+        {family.userFamilies.map((item, index) => (
+          <View key={index}>
+            <Image
+              source={{ uri: item.user.avatarUrl }} // 提供一個預設圖片
+              style={styles.avatar}
+            />
+            <Text style={styles.userName}>
+              {item.user.name.length > 5
+                ? item.user.name.slice(0, 5) + "..."
+                : item.user.name}
+            </Text>
+          </View>
+        ))}
+      </View>
+
+      {/* --- 設定選項列表 --- */}
+      <View style={styles.settingsList}>
+        {/* 群組名稱 */}
+        <TouchableOpacity
+          style={styles.listItem}
+          onPress={() => {
+            setEditNameModal(true);
+          }}
+        >
+          <Text style={styles.listItemText}>群組名稱</Text>
+          <View style={styles.listItemRight}>
+            <Text style={styles.listItemValue}>{family.name}</Text>
+            <Text style={styles.arrowIcon}>{">"}</Text>
+            {/* 建議用圖標 */}
+          </View>
+        </TouchableOpacity>
+        {/* 開啟通知 */}
+        {/* <View style={styles.listItem}>
                     <Text style={styles.listItemText}>開啟通知</Text>
                     <Switch
                         trackColor={{ false: '#767577', true: '#81b0ff' }} // 可以自訂顏色
@@ -188,203 +235,199 @@ const FamilySettingsScreen = () => {
                     />
                 </View> */}
 
-                {/* 產生QRCODE */}
-                <TouchableOpacity style={styles.listItem} onPress={handleGenerateQrCodePress}>
-                    <Text style={styles.listItemText}>產生QRCODE</Text>
-                </TouchableOpacity>
+        {/* 產生QRCODE */}
+        <TouchableOpacity
+          style={styles.listItem}
+          onPress={handleGenerateQrCodePress}
+        >
+          <Text style={styles.listItemText}>產生QRCODE</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* --- 刪除家庭按鈕 --- */}
+      {renderButton()}
+
+      <Modal visible={displayModal} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>邀請好友</Text>
+            <View style={styles.qrContainer}>
+              <Text style={styles.codeText}>邀請碼: {code}</Text>
+              <QRCode
+                value={code}
+                size={180}
+                color="#000000"
+                backgroundColor="#ffffff"
+              />
             </View>
-
-            {/* --- 刪除家庭按鈕 --- */}
-            {renderButton()}
-
-
-            <Modal
-                visible={displayModal}
-                transparent
-                animationType="fade"
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={() => setDisplayModal(false)}
             >
-                <View style={styles.modalOverlay}>
-                    <View style={styles.modalContent}>
-                        <Text style={styles.modalTitle}>邀請好友</Text>
-                        <View style={styles.qrContainer}>
-                            <Text style={styles.codeText}>邀請碼: {code}</Text>
-                            <QRCode
-                                value={code}
-                                size={180}
-                                color="#000000"
-                                backgroundColor="#ffffff"
-                            />
-                        </View>
-                        <TouchableOpacity
-                            style={styles.closeButton}
-                            onPress={() => setDisplayModal(false)}
-                        >
-                            <Text style={styles.closeButtonText}>關閉</Text>
-                        </TouchableOpacity>
-                    </View>
-                </View>
-            </Modal>
+              <Text style={styles.closeButtonText}>關閉</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
-            <Modal
-                visible={editNameModal}
-                transparent
-                animationType="fade"
+      <Modal visible={editNameModal} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>修改家庭名</Text>
+            <View style={styles.qrContainer}>
+              <TextInput
+                style={styles.input}
+                onChangeText={setNewFamilyName}
+                value={newFamilyName}
+                placeholder="請輸入欲修改的家庭名"
+              />
+            </View>
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={editFamilyNameConfirm}
             >
-                <View style={styles.modalOverlay}>
-                    <View style={styles.modalContent}>
-                        <Text style={styles.modalTitle}>修改家庭名</Text>
-                        <View style={styles.qrContainer}>
-                            <TextInput
-                                style={styles.input}
-                                onChangeText={setNewFamilyName}
-                                value={newFamilyName}
-                                placeholder='請輸入欲修改的家庭名'
-                            />
-                        </View>
-                        <TouchableOpacity
-                            style={styles.closeButton}
-                            onPress={editFamilyNameConfirm}
-                        >
-                            <Text style={styles.closeButtonText}>{newFamilyName.length == 0 ? "關閉" : "確定"}</Text>
-                        </TouchableOpacity>
-                    </View>
-                </View>
-            </Modal>
-        </ScrollView>
-    );
+              <Text style={styles.closeButtonText}>
+                {newFamilyName.length == 0 ? "關閉" : "確定"}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+    </ScrollView>
+  );
 };
 // --- 結束組件 ---
 
 // --- 樣式 ---
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-    },
-    userInfoSection: {
-        paddingHorizontal: 10,
-        paddingVertical: 20,
-        backgroundColor: '#ffffff', // 白色背景
-        flexDirection: "row",
-        gap: 15
-    },
-    input: {
-        borderWidth: 1,
-        borderColor: '#ccc',
-        borderRadius: 8,
-        paddingHorizontal: 15, // More horizontal padding
-        paddingVertical: Platform.OS === 'ios' ? 12 : 10,
-        fontSize: 16,
-        minWidth: 200,
-        marginBottom: 0, // Consistent spacing
-        padding: 12,
-        marginRight: 8,
-    },
-    avatar: {
-        width: 60,
-        height: 60,
-        borderRadius: 40, // 圓形
-        marginBottom: 10,
-    },
-    userName: {
-        textAlign: "center",
-        fontSize: 16,
-        color: '#333',
-    },
-    settingsList: {
-        marginTop: 10, // 與上方頭像區的間隔
-        backgroundColor: '#ffffff', // 列表背景色
-    },
-    listItem: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingVertical: 15,
-        paddingHorizontal: 20,
-        borderBottomWidth: 1,
-        borderBottomColor: '#f0f0f0', // 分隔線顏色
-    },
-    listItemText: {
-        fontSize: 16,
-        color: '#333',
-    },
-    listItemRight: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    listItemValue: {
-        fontSize: 16,
-        color: '#888', // 值的顏色稍暗
-        marginRight: 10,
-    },
-    arrowIcon: {
-        fontSize: 18,
-        color: '#cccccc', // 箭頭顏色
-    },
-    mangmentDeleteButton: {
-        borderTopWidth: 1,
-        borderColor: "#f0f0f0",
-        backgroundColor: '#ffffff', // 按鈕背景
-        paddingVertical: 15,
-        alignItems: 'center',
-    },
-    deleteButton: {
-        marginTop: 40, // 與列表的間隔
-        backgroundColor: '#ffffff', // 按鈕背景
-        paddingVertical: 15,
-        alignItems: 'center',
-    },
-    deleteButtonText: {
-        fontSize: 16,
-        color: 'red', // 紅色文字，表示危險操作
-        fontWeight: 'bold',
-    },
-    modalOverlay: {
-        flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    modalContent: {
-        backgroundColor: '#ffffff',
-        borderRadius: 16,
-        padding: 24,
-        width: '85%',
-        maxWidth: 400,
-        alignItems: 'center',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowRadius: 8,
-        elevation: 5,
-    },
-    modalTitle: {
-        fontSize: 24,
-        fontWeight: 'bold',
-        color: '#1a1a1a',
-        marginBottom: 20,
-    },
-    qrContainer: {
-        alignItems: 'center',
-        marginBottom: 24,
-    },
-    codeText: {
-        fontSize: 16,
-        color: '#333333',
-        marginBottom: 16,
-        fontWeight: '500',
-    },
-    closeButton: {
-        backgroundColor: COLORS.background,
-        borderRadius: 12,
-        paddingVertical: 12,
-        paddingHorizontal: 32,
-        minWidth: 120,
-    },
-    closeButtonText: {
-        color: '#ffffff',
-        fontSize: 16,
-        fontWeight: '600',
-        textAlign: 'center',
-    },
+  container: {
+    flex: 1,
+  },
+  userInfoSection: {
+    paddingHorizontal: 10,
+    paddingVertical: 20,
+    backgroundColor: "#ffffff", // 白色背景
+    flexDirection: "row",
+    gap: 15,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 8,
+    paddingHorizontal: 15, // More horizontal padding
+    paddingVertical: Platform.OS === "ios" ? 12 : 10,
+    fontSize: 16,
+    minWidth: 200,
+    marginBottom: 0, // Consistent spacing
+    padding: 12,
+    marginRight: 8,
+  },
+  avatar: {
+    width: 60,
+    height: 60,
+    borderRadius: 40, // 圓形
+    marginBottom: 10,
+  },
+  userName: {
+    textAlign: "center",
+    fontSize: 16,
+    color: "#333",
+  },
+  settingsList: {
+    marginTop: 10, // 與上方頭像區的間隔
+    backgroundColor: "#ffffff", // 列表背景色
+  },
+  listItem: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 15,
+    paddingHorizontal: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0", // 分隔線顏色
+  },
+  listItemText: {
+    fontSize: 16,
+    color: "#333",
+  },
+  listItemRight: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  listItemValue: {
+    fontSize: 16,
+    color: "#888", // 值的顏色稍暗
+    marginRight: 10,
+  },
+  arrowIcon: {
+    fontSize: 18,
+    color: "#cccccc", // 箭頭顏色
+  },
+  mangmentDeleteButton: {
+    borderTopWidth: 1,
+    borderColor: "#f0f0f0",
+    backgroundColor: "#ffffff", // 按鈕背景
+    paddingVertical: 15,
+    alignItems: "center",
+  },
+  deleteButton: {
+    marginTop: 40, // 與列表的間隔
+    backgroundColor: "#ffffff", // 按鈕背景
+    paddingVertical: 15,
+    alignItems: "center",
+  },
+  deleteButtonText: {
+    fontSize: 16,
+    color: "red", // 紅色文字，表示危險操作
+    fontWeight: "bold",
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalContent: {
+    backgroundColor: "#ffffff",
+    borderRadius: 16,
+    padding: 24,
+    width: "85%",
+    maxWidth: 400,
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  modalTitle: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#1a1a1a",
+    marginBottom: 20,
+  },
+  qrContainer: {
+    alignItems: "center",
+    marginBottom: 24,
+  },
+  codeText: {
+    fontSize: 16,
+    color: "#333333",
+    marginBottom: 16,
+    fontWeight: "500",
+  },
+  closeButton: {
+    backgroundColor: COLORS.background,
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 32,
+    minWidth: 120,
+  },
+  closeButtonText: {
+    color: "#ffffff",
+    fontSize: 16,
+    fontWeight: "600",
+    textAlign: "center",
+  },
 });
 // --- 結束樣式 ---
 

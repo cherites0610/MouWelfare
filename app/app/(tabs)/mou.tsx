@@ -782,7 +782,7 @@ const App: React.FC = () => {
           // 🧩 類別寬鬆比對：允許部分字串包含
           if (targetCategories.length > 0 && Array.isArray(card.categories)) {
             const hasIntersection = targetCategories.some((tc) =>
-              card.categories.some((c) => c.includes(tc))
+              card.categories!.some((c) => c.includes(tc))
             );
             if (!hasIntersection) {
               isMatch = false;
@@ -1049,7 +1049,7 @@ const App: React.FC = () => {
           <View style={styles.botMessage}>
             <Image source={botAvatar} style={styles.avatar} />
             <View style={styles.loading}>
-              <Text style={styles.botText}>加載中 </Text>
+              <Text>加載中 </Text>
               <ActivityIndicator size="small" color="#22c55e" />
             </View>
           </View>
@@ -1106,7 +1106,9 @@ const App: React.FC = () => {
             style={styles.sendButton}
             onPress={handleSendMessage}
           >
-            <Text style={styles.sendButtonText}>發送</Text>
+            <Text style={styles.sendButtonText}>
+              <Ionicons name="send" size={28} color={COLORS.background} />
+            </Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -1208,7 +1210,7 @@ const styles = StyleSheet.create({
     height: 224,
     backgroundColor: "#fff",
     borderRadius: 8,
-    marginRight: 16,
+    marginRight: 8,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
@@ -1324,23 +1326,24 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   sendButton: {
-    backgroundColor: COLORS.background,
+    backgroundColor: "white",
     paddingVertical: 12,
-    paddingHorizontal: 16,
+    paddingHorizontal: 9,
     borderRadius: 8,
     justifyContent: "center",
   },
   sendButtonText: {
     color: "#fff",
     fontSize: 16,
-    fontWeight: "bold",
+    // fontWeight: "bold",
   },
   botTextContainer: {
     backgroundColor: "#fff",
-    padding: 12,
+    // padding: 12,
+    paddingHorizontal: 12,
     borderRadius: 8,
     maxWidth: width * 0.7,
-    marginLeft: 8,
+    // marginLeft: 8,
     borderWidth: 1,
     borderColor: "#e5e7eb",
   },
