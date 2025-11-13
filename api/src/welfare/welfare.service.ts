@@ -198,13 +198,14 @@ export class WelfareService {
 
     if (dto?.userID) {
       const user = await this.userService.findOneByID(dto.userID);
-
       const userLightResult = this.getWelfareLight(
         welfare.identities,
         user.identities,
         welfare.location?.name,
         user.location?.name
       );
+      console.log(userLightResult);
+
       response.lightStatus = userLightResult.status;
       response.lightReason = userLightResult.reasons;
 
@@ -256,9 +257,11 @@ export class WelfareService {
   ): LightStatusResult {
     const reasons: string[] = [];
     const welfareIdentityNames = welfareIdentities.map((i) => i.name);
+    console.log(userLocation);
 
     const locationCheck = this.checkLocation(welfareLocation, userLocation);
     reasons.push(locationCheck.message);
+    console.log(locationCheck);
 
     if (!locationCheck.eligible) {
       // 地區不符，立即回傳紅燈。
@@ -502,7 +505,10 @@ export class WelfareService {
     dtoList: WelfareResponseDTO[]
   ) {
     const identities = this.parseFiltersToIdentities(dto);
-    const user = await this.userRepository.findOneBy({ id: dto.userID });
+    const user = await this.userRepository.findOne({
+      where: { id: dto.userID },
+      relations: { location: true, identities: true },
+    });
     const userLocation = user?.location?.name;
 
     const familyID = dto.families?.[0];
