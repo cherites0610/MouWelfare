@@ -236,6 +236,18 @@ const WelfareInfo = () => {
     setIsReasonModalVisible(true);
   };
 
+  const handleCompareClick = () => {
+    if (!welfare) return;
+    console.log("123");
+    // 跳轉到對比頁面，並傳遞 welfareId
+    router.push({
+      pathname: "/home/WelfareComparison", // 根據你的實際檔案路徑調整
+      params: {
+        welfareId: welfare.id,
+      },
+    });
+  };
+
   return (
     <SafeAreaView style={styles.pageContainer}>
       {welfare ? (
@@ -360,12 +372,15 @@ const WelfareInfo = () => {
                 )}
                 keyExtractor={(item, index) => index.toString()}
               />
-
-              {/* <Text style={styles.sectionTitle}>原始文章:</Text>  
-           <Text style={styles.notes}>{welfare.detail}</Text> */}
             </View>
 
             <View style={styles.buttonContainer}>
+              <TouchableOpacity
+                style={styles.button}
+                onPress={handleCompareClick}
+              >
+                <Text style={styles.buttonText}>對比類似福利</Text>
+              </TouchableOpacity>
               <TouchableOpacity
                 style={styles.button}
                 onPress={() => openLink(welfare.link)}
@@ -525,7 +540,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: "#E0E0E0",
     backgroundColor: "#FFFFFF",
-    marginBottom: 60,
+    gap: 10,
   },
   button: {
     backgroundColor: COLORS.background,

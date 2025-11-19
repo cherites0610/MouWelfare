@@ -20,6 +20,7 @@ import { LightStatus } from "../common/enum/light-status.enum.js";
 import { User } from "../user/entities/user.entity.js";
 import dayjs from "dayjs";
 import { LightStatusResult } from "./interface/light-status-result.interface.js";
+import { ResilientAIService } from "../ai/resilient-ai.service.js";
 
 @Injectable()
 export class WelfareService {
@@ -86,6 +87,7 @@ export class WelfareService {
     private readonly constDataService: ConstDataService,
     private readonly familyService: FamilyService,
     private readonly userService: UserService,
+    private readonly aiProvider: ResilientAIService,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>
   ) {}
@@ -204,7 +206,6 @@ export class WelfareService {
         welfare.location?.name,
         user.location?.name
       );
-      console.log(userLightResult);
 
       response.lightStatus = userLightResult.status;
       response.lightReason = userLightResult.reasons;
@@ -225,6 +226,20 @@ export class WelfareService {
     }
 
     return response;
+  }
+
+  async findSourceOne(id: string, dto?: FindOneDTO): Promise<Welfare> {
+    const welfare = await this.welfareRepository.findOne({
+      relations: ["location", "categories", "identities"],
+      where: { id },
+    });
+
+    if (!welfare) {
+      this.logger.error(`❌ 未找到福利 ID: ${id}`);
+      throw new NotFoundException("未找到福利");
+    }
+
+    return welfare;
   }
 
   async update(id: string, updateWelfareDto: UpdateWelfareDto) {
@@ -249,7 +264,7 @@ export class WelfareService {
     return result.affected === 1 ? true : false;
   }
 
-  private getWelfareLight(
+  getWelfareLight(
     welfareIdentities: Identity[],
     userIdentities: Identity[] | undefined,
     welfareLocation?: string,
@@ -257,11 +272,9 @@ export class WelfareService {
   ): LightStatusResult {
     const reasons: string[] = [];
     const welfareIdentityNames = welfareIdentities.map((i) => i.name);
-    console.log(userLocation);
 
     const locationCheck = this.checkLocation(welfareLocation, userLocation);
     reasons.push(locationCheck.message);
-    console.log(locationCheck);
 
     if (!locationCheck.eligible) {
       // 地區不符，立即回傳紅燈。
@@ -583,8 +596,6 @@ export class WelfareService {
     welfareId: string,
     queryText: string
   ): Promise<LightStatusResult> {
-    this.logger.log(`🔍 從文字中計算燈號: "${queryText}"`);
-
     const welfare = await this.welfareRepository.findOne({
       where: { id: String(welfareId) },
       relations: ["identities", "location"],
@@ -593,72 +604,32 @@ export class WelfareService {
       throw new Error(`找不到福利 (id=${welfareId})`);
     }
 
-    const allIdentities = this.constDataService.getIdentities();
-    const foundIdentities = new Map<number, Identity>();
+    const identities = this.constDataService
+      .getIdentities()
+      .map((i) => i.name)
+      .join(",");
+    const prompt = `
+    標簽共有:${identities}
 
-    for (const identity of allIdentities) {
-      if (queryText.includes(identity.name)) {
-        foundIdentities.set(identity.id, identity);
-      }
-    }
-
-    for (const synonym in this.identitySynonymMapping) {
-      if (queryText.includes(synonym)) {
-        const officialName = this.identitySynonymMapping[synonym];
-        const correspondingIdentity = allIdentities.find(
-          (i) => i.name === officialName
-        );
-        if (correspondingIdentity) {
-          foundIdentities.set(correspondingIdentity.id, correspondingIdentity);
-        }
-      }
-    }
-
-    const allLocations = this.constDataService.getLocations();
-    const foundLocation = allLocations.find((loc) =>
-      queryText.includes(loc.name)
+    對話内容:${queryText}
+    `;
+    const result = await this.aiProvider.generateContent(
+      prompt,
+      userIdentityPrompt
     );
-    const userLocationFromText = foundLocation ? foundLocation.name : undefined;
-    const userIdentitiesFromText = Array.from(foundIdentities.values());
+    console.log(result);
 
-    this.logger.log(
-      `   ‣ 提取到的身份: [${userIdentitiesFromText.map((i) => i.name).join(", ")}]`
-    );
-
-    const ageMatch = queryText.match(/(\d+)\s*歲/);
-    if (ageMatch && ageMatch[1]) {
-      const age = parseInt(ageMatch[1], 10);
-      this.logger.log(`   ‣ 提取到的年齡: ${age} 歲`);
-
-      let ageIdentityId: number | null = null;
-      if (age < 20) {
-        ageIdentityId = 1;
-      } else if (age >= 20 && age <= 65) {
-        ageIdentityId = 2;
-      } else if (age > 65) {
-        ageIdentityId = 3;
-      }
-
-      if (ageIdentityId) {
-        const ageIdentity = allIdentities.find((i) => i.id === ageIdentityId);
-        if (
-          ageIdentity &&
-          !userIdentitiesFromText.some((i) => i.id === ageIdentityId)
-        ) {
-          userIdentitiesFromText.push(ageIdentity);
-        }
-      }
-    }
-
-    this.logger.log(
-      `   ‣ 最終組合身份: [${userIdentitiesFromText.map((i) => i.name).join(", ")}]`
-    );
+    // this.logger.log(
+    // `   ‣ 最終組合身份: [${userIdentitiesFromText.map((i) => i.name).join(", ")}]`
+    // );
 
     return this.getWelfareLight(
       welfare.identities,
-      userIdentitiesFromText,
+      // userIdentitiesFromText,
+      [],
       welfare.location?.name,
-      userLocationFromText
+      // userLocationFromText,
+      ""
     );
   }
 
@@ -778,3 +749,31 @@ interface EligibilityCheckResult {
   eligible: boolean;
   message: string;
 }
+
+const userIdentityPrompt = `
+# Role: 多标签分类器
+
+## Profile
+- language: 中文
+- description: 根据输入对话，从预定义身份类别列表中选择所有符合的标签。
+- personality: 客观、准确、高效。
+- expertise: 文本分类、多标签分类、自然语言理解。
+
+## Skills
+- 文本分析，特征提取，多标签分类，置信度评估。
+- 数据格式化：以JSON数组形式返回识别的标签。
+- 上下文学习，提升分类准确性。
+
+## Rules
+1.  根据对话内容客观、准确、完整、高效地识别身份。
+2.  尊重用户隐私，清晰表达，持续学习，及时反馈。
+3.  仅从预定义标签选择，主要处理中文，结果依赖上下文，无法处理模糊内容。
+
+## Workflows
+- 目标: 返回所有符合的身份标签的JSON数组。
+- 步骤: 接收对话 -> 文本分析和特征提取 -> 匹配身份标签 -> 返回JSON数组。
+- 预期结果: 包含所有符合身份标签的JSON数组。
+
+## Initialization
+作为多标签分类器，你必须遵守上述Rules，按照Workflows执行任务。
+`;

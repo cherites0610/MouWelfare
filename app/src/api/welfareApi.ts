@@ -111,3 +111,16 @@ export async function fetchFavoriteAPI(token: string): Promise<ResponseType> {
     },
   });
 }
+
+export const fetchWelfareComparisonAPI = async (
+  welfareId: string,
+  userId: string
+) => {
+  return apiFetch<ResponseType>("/vertex/compare-auto", {
+    method: "POST",
+    body: JSON.stringify({
+      welfareId,
+      userId,
+    }),
+  });
+};

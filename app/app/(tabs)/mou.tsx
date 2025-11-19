@@ -1348,42 +1348,6 @@ const styles = StyleSheet.create({
     borderColor: "#e5e7eb",
   },
 });
-const markdownStyles = {
-  body: {
-    fontSize: 16,
-    lineHeight: 24,
-    color: "#333",
-  },
-  heading1: {
-    fontSize: 24,
-    fontWeight: "bold",
-    marginBottom: 10,
-  },
-  heading2: {
-    fontSize: 20,
-    fontWeight: "bold",
-    marginBottom: 8,
-  },
-  strong: {
-    fontWeight: "bold",
-  },
-  em: {
-    fontStyle: "italic",
-  },
-  link: {
-    color: "blue",
-    textDecorationLine: "underline",
-  },
-  list_item: {
-    marginBottom: 5,
-  },
-  bullet_list: {
-    marginBottom: 5,
-  },
-  ordered_list: {
-    marginBottom: 5,
-  },
-} as const;
 
 const linkStyles = StyleSheet.create({
   internalLink: {

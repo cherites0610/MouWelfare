@@ -1,5 +1,5 @@
-const BASE_URL = "https://mou-api.cherites.org";
-// const BASE_URL = "https://79c4a3a3f421.ngrok-free.app";
+// const BASE_URL = "https://mou-api.cherites.org";
+const BASE_URL = "https://6ecf601474d1.ngrok-free.app";
 
 export interface ApiError {
   message: string;

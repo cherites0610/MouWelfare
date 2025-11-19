@@ -22,6 +22,7 @@ import { dirname } from "path";
 import { fileURLToPath } from "url";
 import { VertexModule } from "./vertex/vertex.module.js";
 import { AIModule } from "./ai/ai.module.js";
+import googleConfig from "./config/google.config.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
@@ -30,6 +31,7 @@ const __dirname = dirname(__filename);
     ConfigModule.forRoot({
       envFilePath: ".env.develop",
       isGlobal: true,
+      load: [googleConfig],
     }),
     TypeOrmModule.forRootAsync({
       useFactory: (configService) => ({
