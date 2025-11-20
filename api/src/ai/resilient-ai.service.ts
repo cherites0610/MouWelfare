@@ -18,7 +18,7 @@ export class ResilientAIService {
     this.primaryProvider = this.providers[0];
 
     const options: CircuitBreaker.Options = {
-      timeout: 30000,
+      timeout: 60000,
       errorThresholdPercentage: 50,
       resetTimeout: 300000, // 5 分鐘
     };

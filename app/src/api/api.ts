@@ -1,5 +1,5 @@
-// const BASE_URL = "https://mou-api.cherites.org";
-const BASE_URL = "https://6ecf601474d1.ngrok-free.app";
+const BASE_URL = "https://mou-api.cherites.org";
+// const BASE_URL = "https://bfe255e08136.ngrok-free.app";
 
 export interface ApiError {
   message: string;
@@ -53,6 +53,7 @@ export async function apiFetch<T>(
 
     if (!response.ok) {
       let errorMessage = `Request failed with status ${response.status}`;
+      console.log("error:", responseText);
 
       if (responseText) {
         try {

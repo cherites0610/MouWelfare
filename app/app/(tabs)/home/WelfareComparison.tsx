@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useLayoutEffect } from "react";
+import React, { useEffect, useState, useLayoutEffect, useMemo } from "react";
 import {
   View,
   Text,
@@ -18,8 +18,10 @@ import { fetchWelfareComparisonAPI } from "@/src/api/welfareApi";
 import { COLORS } from "@/src/utils/colors";
 import { ComparisonResponse } from "@/src/type/welfareType";
 
-const COLUMN_WIDTH = 160;
+// 基礎寬度設定
+const MIN_COLUMN_WIDTH = 160;
 const DIMENSION_WIDTH = 100;
+const SCREEN_WIDTH = Dimensions.get("window").width;
 
 const WelfareComparison = () => {
   const { welfareId } = useLocalSearchParams();
@@ -30,6 +32,19 @@ const WelfareComparison = () => {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<ComparisonResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // 1. 動態計算欄位寬度
+  const dynamicColumnWidth = useMemo(() => {
+    if (!data || data.columns.length === 0) return MIN_COLUMN_WIDTH;
+
+    // 螢幕總寬 - 左側固定欄位寬度
+    const availableWidth = SCREEN_WIDTH - DIMENSION_WIDTH;
+    // 平均分配給每個欄位
+    const distributedWidth = availableWidth / data.columns.length;
+
+    // 如果平均寬度大於最小寬度，就用平均寬度（填滿螢幕），否則用最小寬度（可滑動）
+    return Math.max(MIN_COLUMN_WIDTH, distributedWidth);
+  }, [data]);
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -61,7 +76,6 @@ const WelfareComparison = () => {
         setData(result);
       } catch (err: any) {
         console.log(err);
-
         setError(err.message || "無法載入對比資料");
       } finally {
         setLoading(false);
@@ -70,6 +84,18 @@ const WelfareComparison = () => {
 
     fetchData();
   }, [welfareId, user?.id]);
+
+  // 2. 處理點擊跳轉
+  const handleTitlePress = (col: any) => {
+    // 由於對比列表可能沒有包含詳細的資格判定結果(lightStatus)，
+    // 這裡傳入 -1 表示狀態未知，讓詳情頁自行處理
+    const lightStatus = -1;
+    const lightReasonString = encodeURIComponent(JSON.stringify([]));
+
+    router.navigate(
+      `/home/${col.key}?lightStatus=${lightStatus}&lightReason=${lightReasonString}`
+    );
+  };
 
   if (loading) {
     return (
@@ -101,6 +127,7 @@ const WelfareComparison = () => {
       <ScrollView style={styles.verticalScroll}>
         <ScrollView horizontal={true} showsHorizontalScrollIndicator={true}>
           <View style={styles.tableContainer}>
+            {/* 表頭區域 */}
             <View style={styles.headerRow}>
               <View
                 style={[
@@ -118,6 +145,7 @@ const WelfareComparison = () => {
                     styles.columnCell,
                     styles.headerCell,
                     col.isSource && styles.sourceHeader,
+                    { width: dynamicColumnWidth }, // 套用動態寬度
                   ]}
                 >
                   <Text
@@ -128,15 +156,31 @@ const WelfareComparison = () => {
                   >
                     {col.location}
                   </Text>
-                  <Text
-                    style={[
-                      styles.welfareTitleText,
-                      col.isSource && styles.sourceText,
-                    ]}
-                    numberOfLines={2}
+
+                  {/* 3. 修改標題為可點擊 */}
+                  <TouchableOpacity
+                    onPress={() => handleTitlePress(col)}
+                    style={styles.titleButton}
                   >
-                    {col.title}
-                  </Text>
+                    <Text
+                      style={[
+                        styles.welfareTitleText,
+                        styles.clickableTitle, // 增加連結樣式
+                        col.isSource && styles.sourceText,
+                        col.isSource && { textDecorationColor: "#fff" }, // 如果是深色背景，底線改白色
+                      ]}
+                      numberOfLines={2}
+                    >
+                      {col.title}
+                    </Text>
+                    <Ionicons
+                      name="open-outline"
+                      size={14}
+                      color={col.isSource ? "#fff" : COLORS.primary}
+                      style={{ marginTop: 2 }}
+                    />
+                  </TouchableOpacity>
+
                   {col.isSource && (
                     <View style={styles.badge}>
                       <Text style={styles.badgeText}>目前查看</Text>
@@ -146,6 +190,7 @@ const WelfareComparison = () => {
               ))}
             </View>
 
+            {/* 內容區域 */}
             {data.rows.map((row, rowIndex) => (
               <View key={rowIndex} style={styles.dataRow}>
                 <View style={[styles.fixedColumn, styles.dimensionCell]}>
@@ -157,6 +202,7 @@ const WelfareComparison = () => {
                     style={[
                       styles.columnCell,
                       col.isSource && styles.sourceColumnBg,
+                      { width: dynamicColumnWidth }, // 套用動態寬度
                     ]}
                   >
                     <Text style={styles.cellText}>
@@ -189,6 +235,8 @@ const styles = StyleSheet.create({
   },
   tableContainer: {
     padding: 10,
+    // 確保內容太少時也能撐開一點
+    minHeight: 300,
   },
   headerRow: {
     flexDirection: "row",
@@ -210,7 +258,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#fafafa",
   },
   columnCell: {
-    width: COLUMN_WIDTH,
+    // width 由 inline style 覆蓋
     padding: 10,
     justifyContent: "center",
     borderRightWidth: 1,
@@ -229,13 +277,28 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "bold",
     color: "#333",
-    marginBottom: 4,
+    marginBottom: 6,
     textAlign: "center",
   },
+  // 新增標題按鈕容器樣式
+  titleButton: {
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 4,
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+  },
   welfareTitleText: {
-    fontSize: 12,
+    fontSize: 13,
     color: "#666",
     textAlign: "center",
+    lineHeight: 18,
+  },
+  // 新增可點擊的樣式 (藍色 + 底線)
+  clickableTitle: {
+    color: COLORS.primary || "blue",
+    textDecorationLine: "underline",
+    fontWeight: "600",
   },
   dimensionCell: {
     justifyContent: "center",
@@ -248,7 +311,7 @@ const styles = StyleSheet.create({
   cellText: {
     fontSize: 14,
     color: "#333",
-    lineHeight: 20,
+    lineHeight: 22,
   },
   sourceHeader: {
     backgroundColor: COLORS.background,
@@ -260,10 +323,10 @@ const styles = StyleSheet.create({
     color: "#fff",
   },
   badge: {
-    marginTop: 4,
+    marginTop: 8,
     backgroundColor: "rgba(255,255,255,0.3)",
-    paddingHorizontal: 6,
-    paddingVertical: 2,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
     borderRadius: 4,
   },
   badgeText: {

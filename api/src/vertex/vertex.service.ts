@@ -369,7 +369,7 @@ export class VertexService {
     );
 
     // 組合：本體 + 前 3 筆類似
-    const cardsToCompare = [sourceCard, ...similarCards.slice(0, 5)];
+    const cardsToCompare = [sourceCard, ...similarCards.slice(0, 3)];
 
     // 1. 產生 Rows (AI 分析内容)
     const rows = await this.generateComparisonTable(cardsToCompare);

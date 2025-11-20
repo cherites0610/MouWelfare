@@ -11,14 +11,13 @@ import { COLORS } from "@/src/utils/colors";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter, useNavigation } from "expo-router";
 import React, { useEffect, useState, useLayoutEffect } from "react";
-import { StackNavigationProp, StackActions } from "@react-navigation/stack";
+import { StackNavigationProp } from "@react-navigation/stack";
 import {
   View,
   Text,
   FlatList,
   TouchableOpacity,
   StyleSheet,
-  KeyboardAvoidingView,
   Image,
   Platform,
   ScrollView,
@@ -90,19 +89,17 @@ const WelfareInfo = () => {
       try {
         const familyId = familys.find((item) => item.name === family)?.id;
 
-        // 使用 Promise.all 並行處理兩個 API 請求，提升速度
         const [welfareResponse, favoritesResponse] = await Promise.all([
           fetchWelfareByIDAPI(String(welfareId), user?.id, familyId),
-          fetchFavoriteAPI(authToken), // 獲取所有收藏項目
+          fetchFavoriteAPI(authToken),
         ]);
 
         let finalWelfareData = welfareResponse.data;
 
-        // 檢查當前福利是否在收藏列表中
         const isCurrentlyFavorited = favoritesResponse.data.some(
           (fav) => fav.id === finalWelfareData.id
         );
-        setIsFavorited(isCurrentlyFavorited); // 設定初始收藏狀態
+        setIsFavorited(isCurrentlyFavorited);
 
         finalWelfareData = {
           ...finalWelfareData,
@@ -138,7 +135,6 @@ const WelfareInfo = () => {
       }
     };
 
-    // 分享邏輯
     const handleShare = async () => {
       if (!welfare) return;
       try {
@@ -150,19 +146,16 @@ const WelfareInfo = () => {
       }
     };
 
-    // 收藏/取消收藏的切換邏輯
     const handleToggleFavorite = async () => {
       if (!welfare) return;
       try {
         let result;
         if (isFavorited) {
-          // 如果已收藏，則呼叫刪除 API
           result = await deleteFavoriteAPI(authToken, welfare.id);
-          setIsFavorited(false); // 更新本地狀態為「未收藏」
+          setIsFavorited(false);
         } else {
-          // 如果未收藏，則呼叫新增 API
           result = await addFavoriteAPI(authToken, welfare.id);
-          setIsFavorited(true); // 更新本地狀態為「已收藏」
+          setIsFavorited(true);
         }
         Alert.alert("操作結果", result.message);
       } catch (err: any) {
@@ -183,7 +176,6 @@ const WelfareInfo = () => {
           />
         </TouchableOpacity>
       ),
-      // ✨ 在這裡新增 headerRight
       headerRight: () =>
         welfare && (
           <View style={styles.headerRightContainer}>
@@ -212,6 +204,17 @@ const WelfareInfo = () => {
       console.warn("Invalid or unsupported URL:", url);
     }
   };
+
+  const handleCompareClick = () => {
+    if (!welfare) return;
+    router.push({
+      pathname: "/(tabs)/home/WelfareComparison",
+      params: {
+        welfareId: welfare.id,
+      },
+    });
+  };
+
   if (error) {
     return (
       <View style={styles.errorContainer}>
@@ -228,7 +231,6 @@ const WelfareInfo = () => {
     );
   }
   const showFamilyMemberReason = (member: Welfare["familyMember"][0]) => {
-    // 將理由陣列用換行符號組合成長字串
     setModalContent({
       title: `${member.name} 的資格評估說明`,
       reasons: member.lightReason,
@@ -236,23 +238,15 @@ const WelfareInfo = () => {
     setIsReasonModalVisible(true);
   };
 
-  const handleCompareClick = () => {
-    if (!welfare) return;
-    console.log("123");
-    // 跳轉到對比頁面，並傳遞 welfareId
-    router.push({
-      pathname: "/home/WelfareComparison", // 根據你的實際檔案路徑調整
-      params: {
-        welfareId: welfare.id,
-      },
-    });
-  };
-
   return (
     <SafeAreaView style={styles.pageContainer}>
       {welfare ? (
         <View style={{ flex: 1 }}>
-          <ScrollView style={styles.scrollContainer}>
+          {/* 1. 修改 ScrollView：增加 contentContainerStyle paddingBottom，防止内容被按鈕擋住 */}
+          <ScrollView
+            style={styles.scrollContainer}
+            contentContainerStyle={{ paddingBottom: 140 }}
+          >
             <View style={styles.container}>
               <Text style={styles.title}>{welfare.title}</Text>
               <Text style={{ ...styles.releaseDate, marginBottom: 3 }}>
@@ -327,7 +321,6 @@ const WelfareInfo = () => {
                 <View style={styles.reasonContainer}>
                   <Text style={styles.reasonTitle}>評估說明：</Text>
                   <Text style={styles.reasonText}>
-                    {/* 將理由陣列轉換為換行的字串 */}
                     {welfare.lightReason.join("\n")}
                   </Text>
                 </View>
@@ -343,52 +336,50 @@ const WelfareInfo = () => {
                 renderItem={({ item, index }) => (
                   <TouchableOpacity
                     style={styles.familyRow}
-                    onPress={() => showFamilyMemberReason(item)} // 綁定點擊事件
+                    onPress={() => showFamilyMemberReason(item)}
                     activeOpacity={0.7}
                   >
                     <View style={styles.familyInfo}>
-                      {/* <Text style={styles.listIndex}>{index + 1}</Text> */}
                       <Image
                         source={
                           item.avatarUrl
                             ? { uri: item.avatarUrl }
                             : require("../../../assets/images/logo.jpeg")
-                        } // 增加一個預設頭像
+                        }
                         style={styles.avatar}
                       />
                       <Text style={styles.listItemText}>{item.name}</Text>
                     </View>
                     <View style={styles.familyLightStatus}>
-                      {/* 顯示家人的燈號 */}
                       <View
                         style={[
                           styles.circleIndicatorSmall,
                           { backgroundColor: getCircleColor(item.lightStatus) },
                         ]}
                       />
-                      {/* <Text style={styles.resultTextSmall}>{getCircleText(item.lightStatus)}</Text> */}
                     </View>
                   </TouchableOpacity>
                 )}
                 keyExtractor={(item, index) => index.toString()}
               />
             </View>
-
-            <View style={styles.buttonContainer}>
-              <TouchableOpacity
-                style={styles.button}
-                onPress={handleCompareClick}
-              >
-                <Text style={styles.buttonText}>對比類似福利</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.button}
-                onPress={() => openLink(welfare.link)}
-              >
-                <Text style={styles.buttonText}>點此前往原文網站</Text>
-              </TouchableOpacity>
-            </View>
           </ScrollView>
+
+          {/* 2. 移出 ScrollView：ButtonContainer 放在這裡，使用絕對定位或Flex使其固定在底部 */}
+          <View style={styles.buttonContainer}>
+            <TouchableOpacity
+              style={styles.button}
+              onPress={handleCompareClick}
+            >
+              <Text style={styles.buttonText}>對比類似福利</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.button}
+              onPress={() => openLink(welfare.link)}
+            >
+              <Text style={styles.buttonText}>點此前往原文網站</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       ) : error ? (
         <View style={styles.errorContainer}>
@@ -409,7 +400,9 @@ const WelfareInfo = () => {
     </SafeAreaView>
   );
 };
+
 const styles = StyleSheet.create({
+  // ... (其他樣式保持不變)
   headerRightContainer: {
     flexDirection: "row",
     alignItems: "center",
@@ -436,8 +429,6 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: "bold",
-    // marginTop: 16,
-    // marginBottom: 8,
     marginRight: 6,
   },
   list: {
@@ -454,7 +445,7 @@ const styles = StyleSheet.create({
     paddingRight: 30,
   },
   lastItemRow: {
-    borderBottomWidth: 0, // 移除底線
+    borderBottomWidth: 0,
   },
   listIndex: {
     fontSize: 14,
@@ -471,10 +462,6 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
     marginBottom: 10,
   },
-  statusText: {
-    fontSize: 16,
-    fontWeight: "bold",
-  },
   infoIcon: {
     paddingLeft: 4,
     paddingRight: 10,
@@ -488,12 +475,6 @@ const styles = StyleSheet.create({
   resultText: {
     fontSize: 14,
   },
-  // linkText: {
-  //   color: 'blue',
-  //   fontStyle: 'italic',
-  //   fontSize: 16,
-  //   textDecorationLine: "underline",
-  // },
   notes: {
     fontSize: 15,
     color: "#333",
@@ -532,8 +513,8 @@ const styles = StyleSheet.create({
   },
   scrollContainer: {
     flex: 1,
-    // paddingBottom: 100
   },
+  // 3. 修改 ButtonContainer 樣式，增加陰影讓其「浮起來」
   buttonContainer: {
     paddingHorizontal: 20,
     paddingVertical: 16,
@@ -541,6 +522,20 @@ const styles = StyleSheet.create({
     borderTopColor: "#E0E0E0",
     backgroundColor: "#FFFFFF",
     gap: 10,
+    // 增加陰影效果 (Floating Effect)
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: -3, // 向上投射陰影
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 10, // Android 陰影
+    position: "absolute", // 絕對定位在底部
+    bottom: 0,
+    left: 0,
+    right: 0,
+    zIndex: 999, // 確保在最上層
   },
   button: {
     backgroundColor: COLORS.background,
@@ -555,18 +550,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
   },
-  linkButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    // paddingBottom:10
-  },
-  linkText: {
-    color: "#007aff",
-    fontSize: 14,
-    fontWeight: "600",
-  },
   familyRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -575,24 +558,20 @@ const styles = StyleSheet.create({
     borderBottomWidth: 0.5,
     borderBottomColor: "#e0e0e0",
   },
-  // 包裹頭像和姓名的左側容器
   familyInfo: {
     flexDirection: "row",
     alignItems: "center",
   },
-  // 包裹燈號和文字的右側容器
   familyLightStatus: {
     flexDirection: "row",
     alignItems: "center",
   },
-  // 一個較小的燈號圓點
   circleIndicatorSmall: {
     width: 12,
     height: 12,
     borderRadius: 6,
     marginRight: 6,
   },
-  // 較小的結果文字
   resultTextSmall: {
     fontSize: 12,
     color: "#555",
